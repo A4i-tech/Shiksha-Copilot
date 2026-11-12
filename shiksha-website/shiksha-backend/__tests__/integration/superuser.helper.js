@@ -1,5 +1,4 @@
 const request = require("supertest");
-const axios = require("axios");
 
 const baseURL = process.env.SHIKSHA_BASE_URL;
 if (!baseURL) {
@@ -135,22 +134,7 @@ async function cleanupEphemeralTeacher(rootToken, { userId, roleId, content = []
   }
 }
 
-// A fresh SAS URL answers 403 until the storage clock reaches its start time.
-async function getBlob(url) {
-  for (let attempt = 0; ; attempt++) {
-    try {
-      return await axios.get(url, { responseType: "arraybuffer" });
-    } catch (error) {
-      if (error.response?.status !== 403 || attempt >= 10) {
-        throw new Error(`blob GET failed: HTTP ${error.response?.status ?? error.code}`);
-      }
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-    }
-  }
-}
-
 module.exports = {
-  getBlob,
   baseURL,
   superUserPhone,
   superUserPin,
