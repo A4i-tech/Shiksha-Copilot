@@ -180,6 +180,17 @@ async def resolve_image(image: str, is_url: bool, storage: Storage | None = None
         return BytesIO(await resp.read())
 
 
+MIME_LABELS = {
+    "application/pdf": "PDF",
+    "application/msword": "DOC",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "DOCX",
+    "application/vnd.ms-powerpoint": "PPT",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation": "PPTX",
+    "text/plain": "TXT",
+    "text/markdown": "MD",
+}
+
+
 async def save_file_with_hash(storage: Storage, file: UploadFile, filename: str, allowed_mimes: set[str], chunk_size: int, max_size: int) -> tuple[str, str]:
     suffix = pathlib.Path(filename).suffix.lower()
     sha256 = hashlib.sha256()
@@ -196,7 +207,9 @@ async def save_file_with_hash(storage: Storage, file: UploadFile, filename: str,
         await f.seek(0)
         path = pathlib.Path(str(f.name))
         mime = await asyncio.to_thread(magic.from_file, path, mime=True)
-        if mime not in allowed_mimes: raise ValueError("Unexpected mime (%s)" % mime)
+        if mime not in allowed_mimes:
+            accepted = ", ".join(label for m, label in MIME_LABELS.items() if m in allowed_mimes)
+            raise ValueError("File type %s is not supported. Upload a %s file." % (mime, accepted.rsplit(", ", 1)[0] + " or " + accepted.rsplit(", ", 1)[1]))
 
         final_name = f"{sha256.hexdigest()}{suffix}"
         await f.seek(0)
@@ -229,12 +242,13 @@ class LibreOffice:
         proc = await asyncio.create_subprocess_exec(self.path, *default_args, *args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
         try:
             stdout, stderr = await asyncio.wait_for(proc.communicate(), settings.pres_soffice_timeout)
-        except (asyncio.TimeoutError, asyncio.CancelledError) as e:
+        except asyncio.TimeoutError as e:
+            raise RuntimeError("soffice timed out after %ds" % settings.pres_soffice_timeout) from e
+        finally:
             # don't leave a hung/orphaned soffice behind (a corrupt document can hang it)
-            proc.kill()
-            await proc.wait()
-            if isinstance(e, asyncio.TimeoutError): raise RuntimeError("soffice timed out after %ds" % settings.pres_soffice_timeout) from e
-            raise
+            if proc.returncode is None:
+                proc.kill()
+                await proc.wait()
         code = proc.returncode or 0
         if code != 0: raise RuntimeError("soffice exited with code %d: %s" % (code, stderr.decode().strip()))
         return stdout

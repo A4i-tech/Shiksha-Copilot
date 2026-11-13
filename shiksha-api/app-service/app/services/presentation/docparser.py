@@ -140,7 +140,11 @@ async def _transform(content: AsyncBufferedReader, mime: str) -> str | None:
         return await asyncio.to_thread(_to_markdown, await content.read())
     if mime in OFFICE_MIME_SUFFIXES:
         await content.seek(0)
-        pdf = await LibreOffice().convert(io.BytesIO(await content.read()), "pdf", OFFICE_MIME_SUFFIXES[mime])
+        try:
+            pdf = await LibreOffice().convert(io.BytesIO(await content.read()), "pdf", OFFICE_MIME_SUFFIXES[mime])
+        except RuntimeError as e:
+            logging.getLogger(__name__).error("Office conversion failed for %s: %s", mime, e)
+            raise RuntimeError("The document could not be converted. Check that it opens in Word or PowerPoint, then upload it again.") from e
         return await asyncio.to_thread(_to_markdown, pdf)
     return None
 

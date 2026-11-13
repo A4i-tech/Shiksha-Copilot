@@ -25,7 +25,7 @@ class PresentationPage(BasePage):
         self.file_input.set_input_files({"name": name, "mimeType": mime_type, "buffer": content})
 
     def terminate_job(self):
-        """Ends the running job so the test user's pending-job limit is freed."""
+        # the job must end so the test user's pending-job limit is freed
         if self.terminate_btn.count() == 0 or not self.terminate_btn.is_enabled():
             return
         self.page.once("dialog", lambda dialog: dialog.accept())
