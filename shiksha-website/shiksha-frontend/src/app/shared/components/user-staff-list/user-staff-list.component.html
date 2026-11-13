@@ -300,7 +300,7 @@
 			</app-modal>
 
 			<app-modal *ngIf="modalService.showBlukUploadDialog">
-					<app-upload-popup [context]="getType()?.download_file " [allowedFileTypes]="uploadFileTypes" (fileUploaded)="uploadedFile($event)" (upload)="upload($event)"></app-upload-popup>
+					<app-upload-popup *ngIf="excelMaxBytes$ | async as maxFileSize" [context]="getType()?.download_file " [allowedFileTypes]="uploadFileTypes" [maxFileSize]="maxFileSize" (fileUploaded)="uploadedFile($event)" (upload)="upload($event)"></app-upload-popup>
 			</app-modal>  
 				
 

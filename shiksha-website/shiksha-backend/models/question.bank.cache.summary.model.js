@@ -88,6 +88,8 @@ const questionBankCacheSummarySchema = new Schema({
   minimize:true
 })
 
+questionBankCacheSummarySchema.index({ isCacheUpdated: 1, inProgress: 1, _id: 1 });
+
 const QuestionBankCacheSummary = mongoose.model("QuestionBankCacheSummary",questionBankCacheSummarySchema);
 
 module.exports = QuestionBankCacheSummary;

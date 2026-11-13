@@ -1,4 +1,6 @@
 import { AfterViewInit, Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { inject } from '@angular/core';
+import { UploadLimitsService } from 'src/app/core/services/upload-limits.service';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription, Subject, debounceTime, distinctUntilChanged, Observable, forkJoin } from 'rxjs';
 import { UtilityService } from 'src/app/core/services/utility.service';
@@ -167,6 +169,7 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
   selectedRole!: string;
   selectedSchool!: string;
   uploadFileTypes = BULK_UPLOAD_FILE_TYPES;
+  readonly excelMaxBytes$ = inject(UploadLimitsService).excelMaxBytes$;
   fileToUpload!: File;
   lessonContentType!: string | null;
   contentListConfig:ContentListConfig = {
