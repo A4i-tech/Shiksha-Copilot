@@ -1,11 +1,14 @@
 const express = require("express");
 const router = express.Router();
+const verifyWebhookSignature = require("../middlewares/webhook.signature.js");
 const asyncMiddleware = require("../middlewares/asyncMiddleware.js");
 const TeacherLessonPlanController = require("../controllers/teacher.lesson.plan.controller.js");
 const { isAuthenticated, requirePermission } = require("../middlewares/auth.js");
 const {
 	validateTeacherLessonPlan,
+	retrySchema,
 } = require("../validations/teacher.lesson.plan.validation.js");
+const validateRequest = require("../validations/common.validation.js");
 
 const teacherLessonPlanController = new TeacherLessonPlanController();
 
@@ -66,6 +69,7 @@ router.post(
 	"/teacher-lesson-plan/retry",
 	isAuthenticated,
 	requirePermission("lesson-plan.generate"),
+	validateRequest(retrySchema),
 	asyncMiddleware(
 		teacherLessonPlanController.retryLessonPlan.bind(
 			teacherLessonPlanController
@@ -97,6 +101,7 @@ router.post(
 
 router.post(
     "/teacher-lesson-plan/webhook",
+    verifyWebhookSignature,
     asyncMiddleware(
         teacherLessonPlanController.handleWebhook.bind(
             teacherLessonPlanController

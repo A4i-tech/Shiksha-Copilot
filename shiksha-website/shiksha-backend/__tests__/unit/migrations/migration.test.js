@@ -4,6 +4,7 @@ jest.mock("../../../migrations/state-admin-chart-grants", () => jest.fn().mockRe
 const Chapter = require("../../../models/chapter.model");
 const MasterLesson = require("../../../models/master.lesson.model");
 const MasterResource = require("../../../models/master.resource.model");
+const RegeneratedLessonResource = require("../../../models/regenerate.lesson.resource.model");
 const Question = require("../../../models/question.model");
 const TeacherLessonPlan = require("../../../models/teacher.lesson.plan.model");
 const QuestionBank = require("../../../models/question.bank.model");
@@ -11,6 +12,7 @@ const QuestionBankConfiguration = require("../../../models/question.bank.config.
 
 describe("runMigrations status backfill", () => {
   beforeEach(() => {
+    jest.spyOn(RegeneratedLessonResource, "distinct").mockResolvedValue(["copy1"]);
     jest.spyOn(Chapter, "updateMany").mockResolvedValue({ modifiedCount: 0 });
     jest.spyOn(MasterLesson, "updateMany").mockResolvedValue({ modifiedCount: 0 });
     jest.spyOn(MasterResource, "updateMany").mockResolvedValue({ modifiedCount: 0 });
@@ -36,5 +38,17 @@ describe("runMigrations status backfill", () => {
     expect(MasterLesson.updateMany).toHaveBeenCalledWith(expectedFilter, expectedUpdate);
     expect(MasterResource.updateMany).toHaveBeenCalledWith(expectedFilter, expectedUpdate);
     expect(Question.updateMany).toHaveBeenCalledWith(expectedFilter, expectedUpdate);
+  });
+
+  it("flags pre-existing regenerated copies found through lesson regen logs", async () => {
+    const runMigrations = require("../../../migrations/migration");
+
+    await runMigrations();
+
+    expect(RegeneratedLessonResource.distinct).toHaveBeenCalledWith("genContentId", { isLesson: true });
+    expect(MasterLesson.updateMany).toHaveBeenCalledWith(
+      { _id: { $in: ["copy1"] }, isRegenerated: { $ne: true } },
+      { $set: { isRegenerated: true } }
+    );
   });
 });

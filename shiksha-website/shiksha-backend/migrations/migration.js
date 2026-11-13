@@ -12,6 +12,7 @@ const QuestionBankConfiguration = require("../models/question.bank.config.model"
 const Classes = require("../models/school.class.model")
 const Chapters = require("../models/chapter.model")
 const Schools = require("../models/school.model")
+const RegeneratedLessonResource = require("../models/regenerate.lesson.resource.model");
 const Question = require("../models/question.model")
 const unifyUsers = require("./unify-users");
 const backfillAnswerCount = require("./answer-count-backfill");
@@ -20,6 +21,12 @@ const grantStateAdminCharts = require("./state-admin-chart-grants");
 async function runMigrations() {
     try {
         await unifyUsers();
+        // Copies made before the flag existed took the schema default (false).
+        const copyIds = await RegeneratedLessonResource.distinct("genContentId", { isLesson: true });
+        await MasterLesson.updateMany(
+            { _id: { $in: copyIds }, isRegenerated: { $ne: true } },
+            { $set: { isRegenerated: true } }
+        );
         await Promise.all([
             backfillAnswerCount(),
             grantStateAdminCharts(),

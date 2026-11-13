@@ -12,8 +12,12 @@ const schema = Joi.object({
 });
 
 const validateTeacherResourceFeedback = validateRequest(schema);
+const validateTeacherResourceFeedbackUpdate = validateRequest(
+	schema.fork(["resourceId", "teacherId", "instructionSet"], (field) => field.strip()).options({ stripUnknown: true })
+);
 
 module.exports = {
 	validateTeacherResourceFeedback,
+	validateTeacherResourceFeedbackUpdate,
 	schema,
 };

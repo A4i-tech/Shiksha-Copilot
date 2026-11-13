@@ -4,6 +4,7 @@ const asyncMiddleware = require("../middlewares/asyncMiddleware.js");
 const LessonFeedbackController = require("../controllers/feedback.lesson.controller.js");
 const {
 	validateFeedbackLesson,
+	validateFeedbackLessonUpdate,
 } = require("../validations/feedback.lesson.validation.js");
 const { isAuthenticated, requirePermission } = require("../middlewares/auth.js");
 
@@ -11,8 +12,9 @@ const lessonFeedbackController = new LessonFeedbackController();
 
 router.post(
 	"/lesson-feedback/create",
-	validateFeedbackLesson,
 	isAuthenticated,
+	requirePermission("lesson-plan.edit"),
+	validateFeedbackLesson,
 	asyncMiddleware(
 		lessonFeedbackController.create.bind(lessonFeedbackController)
 	)
@@ -50,7 +52,7 @@ router.put(
 	"/lesson-feedback/update/:id",
 	isAuthenticated,
 	requirePermission("content.manage"),
-	validateFeedbackLesson,
+	validateFeedbackLessonUpdate,
 	asyncMiddleware(
 		lessonFeedbackController.update.bind(lessonFeedbackController)
 	)
