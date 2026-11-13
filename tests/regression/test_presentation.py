@@ -13,7 +13,7 @@ def _get_first_presentation_id(logged_in_page) -> Optional[str]:
     Navigate to content generation list, filter for presentation type,
     return job ID from URL after clicking first presentation card.
     """
-    logged_in_page.goto(f"{BASE_URL}/#/user/content-generation")
+    logged_in_page.goto(f"{BASE_URL}/#/content-generation")
     logged_in_page.wait_for_load_state("networkidle")
     logged_in_page.wait_for_timeout(2000)
 

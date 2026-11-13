@@ -6,7 +6,7 @@ load_dotenv()
 
 BASE_URL = os.getenv("FRONTEND_URL")
 TEACHER_PANEL_ITEMS = [
-    "Dashboard", "Content Generation", "Generation Status",
+    "Home", "Content Generation",
     "Chatbot", "Question Paper Generation", "My Schedules",
     "Help", "FAQ"
 ]
@@ -16,7 +16,7 @@ TIMEOUT2 = 2000
 
 def test_teacher_panel_actionability(logged_in_page):
     
-    logged_in_page.goto(f"{BASE_URL}/#/user/dashboard")
+    logged_in_page.goto(f"{BASE_URL}/#/profile")  # the active menu item has its own overlay, so start outside the list
 
     # Shared overlay locators for smoke test
     spinner = logged_in_page.locator("ngx-spinner")
