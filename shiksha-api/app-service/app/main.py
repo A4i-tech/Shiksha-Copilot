@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 
 from fastmcp import FastMCP
 from fastmcp.server.http import StarletteWithLifespan
-from app.config import settings
+from app.config import settings, parse_origins
 from app.routers import chat_router, chat_router_mcp, presentation_router, question_paper_router, lesson_plan_router
 from langfuse import get_client
 
@@ -54,7 +54,7 @@ app.state.MCP_APP = mcp_app
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  
+    allow_origins=parse_origins(settings.allowed_origins),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

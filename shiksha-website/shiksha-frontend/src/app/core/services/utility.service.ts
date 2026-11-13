@@ -389,12 +389,16 @@ private extractVideoId(url: string): string {
   return matches ? matches[1] : '';
 }
 
+ // accepts any https host (not just YouTube); non-https input (incl. http) is intentionally blanked, not passed through
  trustUrl(videoUrl: string): SafeResourceUrl {
   const videoId = this.extractVideoId(videoUrl);
+  const trimmedUrl = videoUrl.trim();
   if(videoId){
     return this.domSanitizer.bypassSecurityTrustResourceUrl(`https://www.youtube.com/embed/${videoId}`);
+  }else if(/^https:\/\//i.test(trimmedUrl)){
+    return this.domSanitizer.bypassSecurityTrustResourceUrl(trimmedUrl);  // nosemgrep: typescript.angular.security.audit.angular-domsanitizer.angular-bypasssecuritytrust -- scheme restricted to https above, blocks javascript:/data: URIs
   }else{
-    return this.domSanitizer.bypassSecurityTrustResourceUrl(videoUrl);
+    return this.domSanitizer.bypassSecurityTrustResourceUrl('');
   }
 }
 

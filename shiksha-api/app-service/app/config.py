@@ -10,6 +10,10 @@ from typing import Any, Literal, Optional
 import yaml
 
 
+def parse_origins(raw: str) -> list[str]:
+    return [o.strip() for o in raw.split(",") if o.strip()]
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
@@ -19,6 +23,7 @@ class Settings(BaseSettings):
     debug: bool = False
     host: str = "0.0.0.0"
     port: int = 8000
+    allowed_origins: str = "http://localhost:4200"  # exact port, unlike shiksha-backend's localhost:<port> regex
 
     # Logging Configuration
     log_level: str = "INFO"

@@ -29,6 +29,12 @@ Semgrep runs on every pull request into `a4i/staging`. CodeQL already runs weekl
 
 For CodeQL: dismiss the alert in the Security tab with a reason, or add the path to the query config.
 
+## Where results show up
+
+- **This PR's own result**: a sticky PR comment from `github-actions[bot]` (deleted and reposted fresh on every push, same pattern as the accessibility check), either "no blocking findings" or the list of `rule:file:line` that are failing the check. Skipped on fork PRs, the token has no comment-write access there.
+- **Pre-existing backlog, repo-wide**: a count-by-rule table in the run's **Checks** summary (advisory, never gates), plus a downloadable `semgrep-full.json` artifact. Same thing SEEDS's gate already does.
+- **SARIF**: Security > Code scanning, same as CodeQL.
+
 ## Backlog, enforcement status, and roadmap
 
 Tracked in issue [A4i-tech/.github#575](https://github.com/A4i-tech/.github/issues/575), not duplicated here, counts and file:line locations go stale the moment someone commits. That issue has the current pre-existing finding list, which PR fixes which category, the admin step to make `semgrep` a required status check on `a4i/staging` once the tuning window is done, and the later-phase tools (Trivy, osv-scanner, Dependabot, DAST) not covered by this PR.
