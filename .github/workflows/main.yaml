@@ -10,7 +10,7 @@ on:
 jobs:
   ci-api:
     uses: ./.github/workflows/ci-api.yaml
-    secrets: inherit  # nosemgrep: yaml.github-actions.security.secrets-inherit.secrets-inherit -- reusable workflow needs full secret set
+    secrets: inherit  # nosemgrep: yaml.github-actions.security.secrets-inherit.secrets-inherit
     with:
       publish_staging: ${{ github.event_name == 'push' && github.ref_name == 'a4i/staging' }}
       publish_latest: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
@@ -18,7 +18,7 @@ jobs:
 
   ci-backend:
     uses: ./.github/workflows/ci-backend.yaml
-    secrets: inherit  # nosemgrep: yaml.github-actions.security.secrets-inherit.secrets-inherit -- reusable workflow needs full secret set
+    secrets: inherit  # nosemgrep: yaml.github-actions.security.secrets-inherit.secrets-inherit
     with:
       publish_staging: ${{ github.event_name == 'push' && github.ref_name == 'a4i/staging' }}
       publish_latest: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
@@ -26,7 +26,7 @@ jobs:
 
   ci-frontend:
     uses: ./.github/workflows/ci-frontend.yaml
-    secrets: inherit  # nosemgrep: yaml.github-actions.security.secrets-inherit.secrets-inherit -- reusable workflow needs full secret set
+    secrets: inherit  # nosemgrep: yaml.github-actions.security.secrets-inherit.secrets-inherit
     with:
       publish_staging: ${{ github.event_name == 'push' && github.ref_name == 'a4i/staging' }}
       publish_latest: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
@@ -35,7 +35,7 @@ jobs:
     needs: [ci-api, ci-backend]
     if: always()
     uses: ./.github/workflows/shiksha-coverage-summary.yml
-    secrets: inherit  # nosemgrep: yaml.github-actions.security.secrets-inherit.secrets-inherit -- reusable workflow needs full secret set
+    secrets: inherit  # nosemgrep: yaml.github-actions.security.secrets-inherit.secrets-inherit
 
   cd-api-prod:
     name: Deploy api

@@ -165,10 +165,6 @@ class SubtopicChapterLOsExtractionStep(BasePipelineStep):
 
             # Get credentials for metadata extraction
             credentials = azure_openai_credentials()
-            logger.info(  # nosemgrep: python.lang.security.audit.logging.logger-credential-leak.python-logger-credential-disclosure -- api_key redacted above
-                "CREDENTIALS BEING USED: %s",
-                json.dumps({**credentials, "api_key": "***REDACTED***"}, indent=2),
-            )
 
             # Prepare learning outcomes description with action verbs
             original_lo_description = ChapterMetadata.model_fields[

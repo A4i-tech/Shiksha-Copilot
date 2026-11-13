@@ -47,7 +47,7 @@ router.post("/presentation/events/token",
 		const iv = crypto.randomBytes(12);
 		const cipher = crypto.createCipheriv("aes-256-gcm", RUNTIME_TOKEN_SECRET, iv);
 		const encrypted = Buffer.concat([cipher.update(JSON.stringify({path, exp: Date.now() + 60_000}), "utf8"), cipher.final()]);
-		res.send(Buffer.concat([iv, cipher.getAuthTag(), encrypted]).toString("base64url"));  // nosemgrep: javascript.express.security.audit.xss.direct-response-write.direct-response-write -- base64url ciphertext, not reflected user input, charset can't carry HTML
+		res.type("text/plain").send(Buffer.concat([iv, cipher.getAuthTag(), encrypted]).toString("base64url"));
 	},
 );
 router.get(
@@ -55,12 +55,19 @@ router.get(
 	(req, res, next) => {
 		// decrypt token to get path
 		const raw = Buffer.from(req.params.token, "base64url");
-		const iv = raw.subarray(0, 12);
-		const tag = raw.subarray(12, 28);
-		const encrypted = raw.subarray(28);
-		const decipher = crypto.createDecipheriv("aes-256-gcm", RUNTIME_TOKEN_SECRET, iv, { authTagLength: 16 });
-		decipher.setAuthTag(tag);
-		const {path, exp} = JSON.parse(Buffer.concat([decipher.update(encrypted), decipher.final()]).toString("utf8"));
+		if (raw.length < 28) return res.sendStatus(400);
+
+		let path, exp;
+		try {
+			const iv = raw.subarray(0, 12);
+			const tag = raw.subarray(12, 28);
+			const encrypted = raw.subarray(28);
+			const decipher = crypto.createDecipheriv("aes-256-gcm", RUNTIME_TOKEN_SECRET, iv, { authTagLength: 16 });
+			decipher.setAuthTag(tag);
+			({path, exp} = JSON.parse(Buffer.concat([decipher.update(encrypted), decipher.final()]).toString("utf8")));
+		} catch {
+			return res.sendStatus(400);
+		}
 		if (Date.now() > exp) return res.sendStatus(410);
 
 		req.url = path;

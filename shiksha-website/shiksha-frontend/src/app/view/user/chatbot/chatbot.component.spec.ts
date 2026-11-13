@@ -29,4 +29,9 @@ describe('ChatbotComponent', () => {
   it('should create', () => {
     expect(component).toBeTruthy();
   });
+
+  it('transformText escapes raw HTML before applying markdown-style replacements', () => {
+    expect(component.transformText('<img onerror=alert(1)>')).toContain('&lt;img onerror=alert(1)&gt;');
+    expect(component.transformText('**bold**')).toBe('<strong>bold</strong>');
+  });
 });

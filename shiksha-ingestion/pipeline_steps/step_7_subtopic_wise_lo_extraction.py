@@ -184,11 +184,6 @@ class SubtopicWiseLOExtractionStep(BasePipelineStep):
             os.makedirs(output_dir, exist_ok=True)
             credentials = azure_openai_credentials()
 
-            logger.info(  # nosemgrep: python.lang.security.audit.logging.logger-credential-leak.python-logger-credential-disclosure -- api_key redacted above
-                "CREDENTIALS BEING USED: %s",
-                json.dumps({**credentials, "api_key": "***REDACTED***"}, indent=2),
-            )
-
             # Get action verbs
             action_verbs = "; ".join(get_action_verbs(grade, subject))
             action_verbs_prohibited = "; ".join(
