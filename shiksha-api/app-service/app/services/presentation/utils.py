@@ -71,16 +71,22 @@ async def youtube_video_search(query: str, max_results: int) -> list[YouTubeVide
     if not settings.youtube_api_key:
         raise ValueError("Cannot browse for videos - no YouTube API key is configured.")
 
-    async with _client() as client:
-        response = await client.get("https://www.googleapis.com/youtube/v3/search", params={
-            "part": "snippet",
-            "q": query,
-            "type": "video",
-            "maxResults": max_results,
-            "safeSearch": "strict",
-            "key": settings.youtube_api_key
-        })
-        data = await response.json()
+    try:
+        async with _client() as client:
+            response = await client.get("https://www.googleapis.com/youtube/v3/search", params={
+                "part": "snippet",
+                "q": query,
+                "type": "video",
+                "maxResults": max_results,
+                "safeSearch": "strict",
+                "key": settings.youtube_api_key
+            })
+            data = await response.json()
+    except aiohttp.ContentTypeError:
+        raise RuntimeError("YouTube search returned a reply that is not JSON. Try again later.") from None
+    except aiohttp.ClientResponseError as e:
+        # the aiohttp error text holds the request URL, which carries the API key
+        raise RuntimeError(f"YouTube search failed with HTTP {e.status}. Check the YouTube API key and quota.") from None
     return _youtube_process_response(data)
 
 
