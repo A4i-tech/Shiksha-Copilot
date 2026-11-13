@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     debug: bool = False
     host: str = "0.0.0.0"
     port: int = 8000
-    allowed_origins: str = "http://localhost:4200"  # unlike shiksha-backend, only the frontend's fixed dev port talks to this API locally
+    allowed_origins: str = "http://localhost:4200"  # exact port, unlike shiksha-backend's localhost:<port> regex
 
     # Logging Configuration
     log_level: str = "INFO"

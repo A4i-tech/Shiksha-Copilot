@@ -55,7 +55,6 @@ router.get(
 	(req, res, next) => {
 		// decrypt token to get path
 		const raw = Buffer.from(req.params.token, "base64url");
-		if (raw.length < 28) return res.sendStatus(400);
 
 		let path, exp;
 		try {
