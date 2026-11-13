@@ -3,6 +3,7 @@ from string import Template
 
 from dotenv import load_dotenv
 from pydantic import Field, PositiveInt, field_validator
+from pydantic_ai import Agent, InstrumentationSettings
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Any, Literal, Optional
 
@@ -24,6 +25,7 @@ class Settings(BaseSettings):
 
     # LLM Configuration
     openai_api_key: str = Field(min_length=1)
+    openai_base_url: Optional[str] = None
     embed_model: str = "text-embedding-ada-002"
     general_chat_model: str = "gpt-5.6-luna"
     lesson_chat_model: str = "gpt-5.6-luna"
@@ -35,11 +37,16 @@ class Settings(BaseSettings):
 
     qdrant_url: Optional[str] = None
     qdrant_api_key: Optional[str] = None
+    rag_adapter_cache_size: PositiveInt = 32
 
     # Translator Configuration
     translator_key: Optional[str] = None
     translator_region: Optional[str] = None
     translator_endpoint: Optional[str] = None
+    translation_provider: Literal["azure", "openai"] = "openai"
+    translation_base_url: Optional[str] = None
+    translation_api_key: Optional[str] = None
+    translation_model: Optional[str] = None
 
     # Presentation Configuration
     pres_captioner: str = "openai:gpt-5-nano"
@@ -74,6 +81,8 @@ if settings.debug:
     import logfire
     logfire.configure()
     logfire.instrument_pydantic_ai()
+else:
+    Agent.instrument_all(InstrumentationSettings(include_binary_content=False))
 
 root_dir = pathlib.Path(__file__).resolve().parents[1]
 assets_dir = root_dir / "assets"

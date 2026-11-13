@@ -139,6 +139,9 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
         id: uuid,
         supersetDomain: this.supersetService.supersetUrl,
         mountPoint: this.mountPoint.nativeElement,
+        // Superset rejects the embed with a 403 when the request carries no Referer. A host that sends
+        // Referrer-Policy: same-origin strips it on this cross-origin iframe, so set it for the iframe itself.
+        referrerPolicy: 'strict-origin-when-cross-origin',
         fetchGuestToken: () => {
           if (primedToken) {
             const token = primedToken;

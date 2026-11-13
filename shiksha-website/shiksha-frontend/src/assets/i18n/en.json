@@ -638,6 +638,8 @@
   "You can generate up to 40 questions in the question paper.": "You can generate up to 40 questions in the question paper.",
   "Copy to clipboard": "Copy to clipboard",
   "Modified On": "Modified On",
+  "Modified": "Modified:",
+  "Topic {{number}}:": "Topic {{number}}:",
   "Daily chat limit: 20 messages per day": "Daily chat limit: 20 messages per day",
   "Sample Instructions": "Sample Instructions",
   "Generate customized question paper that assess students' learning": "Generate customized question paper that assess students' learning",
@@ -1308,5 +1310,17 @@
       "value": "General Science"
     },
     "Science"
-  ]
+  ],
+  "Modify": "Modify",
+  "Done": "Done",
+  "How much of the paper tests each type of thinking. Tap Modify to change it.": "How much of the paper tests each type of thinking. Tap Modify to change it.",
+  "Click on the numbers to change them as per your requirements. Total distribution must equal 100%.": "Click on the numbers to change them as per your requirements. Total distribution must equal 100%.",
+  "Weightage": "Weightage",
+  "Decrease": "Decrease",
+  "Increase": "Increase",
+  "Restore defaults": "Restore defaults",
+  "Go to Objectives Weightage": "Go to Objectives Weightage",
+  "Total is {{total}}%. Add {{diff}}% more so it adds up to 100%.": "Total is {{total}}%. Add {{diff}}% more so it adds up to 100%.",
+  "Total is {{total}}%. Remove {{diff}}% so it adds up to 100%.": "Total is {{total}}%. Remove {{diff}}% so it adds up to 100%.",
+  "Objectives Weightage adds up to {{total}}%. Make it 100% to continue.": "Objectives Weightage adds up to {{total}}%. Make it 100% to continue."
 }

@@ -37,19 +37,6 @@ jobs:
     uses: ./.github/workflows/shiksha-coverage-summary.yml
     secrets: inherit
 
-  cicd-frontend:
-    name: Deploy frontend
-    needs: [ci-backend]
-    if: github.event_name == 'push' && github.ref_name == 'a4i/staging'
-    uses: ./.github/workflows/cicd-frontend.yaml
-    secrets: inherit
-    with:
-      deploy_name: shiksha-frontend-staging
-      deploy_target: github-pages
-      environment: uat
-      api_url: ${{ format('{0}/api', vars.KUBE_STAGING_FRONTEND_URL) }}
-      turnstile_site_key: ${{ vars.TURNSTILE_SITE_KEY }}
-
   cd-api-prod:
     name: Deploy api
     needs: ci-api
@@ -140,7 +127,7 @@ jobs:
 
   regression-tests:
     name: Regression Tests
-    needs: [cicd-frontend]
+    needs: [ci-frontend]
     if: false # disabled, tracked in A4i-tech/.github#780
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -157,7 +144,7 @@ jobs:
         run: playwright install chromium
       - name: Run Regression Tests
         env:
-          FRONTEND_URL: ${{ needs.cicd-frontend.outputs.page_url }}
+          FRONTEND_URL: ${{ vars.KUBE_STAGING_FRONTEND_URL }}
           TEST_USER_PHONE: ${{ secrets.TEST_USER_PHONE }}
           TEST_USER_OTP: ${{ secrets.TEST_USER_OTP }}
         run: pytest tests/regression --csv regression_report.csv
@@ -190,7 +177,7 @@ jobs:
 
   performance-tests:
     name: Performance Tests
-    needs: [cicd-frontend]
+    needs: [ci-frontend]
     if: false # disabled, tracked in A4i-tech/.github#780
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -199,7 +186,7 @@ jobs:
       - name: Run k6 Load Test
         uses: grafana/k6-action@v0.3.0
         env:
-          FRONTEND_URL: ${{ needs.cicd-frontend.outputs.page_url }}/#/auth/signin
+          FRONTEND_URL: ${{ vars.KUBE_STAGING_FRONTEND_URL }}/#/auth/signin
         with:
           filename: tests/performance/load_test.js
           flags: --summary-export=k6_summary.json
@@ -209,10 +196,132 @@ jobs:
           name: k6-summary
           path: k6_summary.json
 
+  accessibility-tests:
+    name: Accessibility Tests
+    needs: [ci-frontend]
+    if: |
+      github.event_name == 'pull_request' && github.base_ref == 'a4i/staging' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: a11y-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      STAGING_URL: ${{ vars.KUBE_STAGING_FRONTEND_URL }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Download frontend image
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-image
+          path: ${{ runner.temp }}
+
+      - name: Load frontend image
+        run: gunzip -c "$RUNNER_TEMP/frontend-image.tar.gz" | docker load
+
+      # The image ships without assets/env.js; /api is proxied to the existing staging backend.
+      - name: Host frontend on the runner
+        env:
+          TURNSTILE_SITE_KEY: ${{ vars.TURNSTILE_SITE_KEY }}
+        run: |
+          host="${STAGING_URL#https://}"
+          host="${host%%/*}"
+          sed "s/STAGING_HOST/$host/g" tests/accessibility/nginx.conf > "$RUNNER_TEMP/nginx.conf"
+          printf 'window.env = { apiUrl: "/api", turnstileSiteKey: "%s" };\n' "$TURNSTILE_SITE_KEY" > "$RUNNER_TEMP/env.js"
+          docker run -d --name a11y-fe -p 8000:8000 \
+            -v "$RUNNER_TEMP/nginx.conf:/etc/nginx/nginx.conf:ro" \
+            -v "$RUNNER_TEMP/env.js:/srv/assets/env.js:ro" \
+            shiksha-frontend-local
+          for _ in $(seq 1 20); do
+            curl -sf -o /dev/null http://localhost:8000/ && exit 0
+            sleep 2
+          done
+          echo "::error::frontend never came up"
+          docker logs a11y-fe || true
+          exit 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci --prefix tests/accessibility
+
+      - name: Install Playwright browsers
+        timeout-minutes: 10
+        run: npx --prefix tests/accessibility playwright install chromium --with-deps
+
+      # Fails the job (and so the PR check) on any critical violation, any page
+      # below the score threshold, or any page that could not be scanned.
+      - name: Run Accessibility Tests
+        id: a11y
+        env:
+          FRONTEND_URL: http://localhost:8000
+          TEST_USER_PHONE: ${{ secrets.TEST_USER_PHONE }}
+          TEST_USER_OTP: ${{ secrets.TEST_USER_OTP }}
+          TEST_ADMIN_PHONE: ${{ secrets.TEST_ADMIN_PHONE }}
+          TEST_ADMIN_OTP: ${{ secrets.TEST_ADMIN_OTP }}
+        run: node tests/accessibility/run-accessibility.js
+
+      - name: Upload accessibility report
+        id: report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: accessibility-report
+          path: tests/accessibility/results/
+
+      # Delete the old report comment and post fresh so the report always sits at the bottom of the PR.
+      - name: Comment report on PR
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ARTIFACT_URL: ${{ steps.report.outputs.artifact-url }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          BODY=tests/accessibility/results/summary.md
+          if [ ! -f "$BODY" ]; then
+            mkdir -p "$(dirname "$BODY")"
+            printf '## Accessibility (axe-core, WCAG 2.1 AA)\n\n**Scan did not complete**, see the workflow log.\n' > "$BODY"
+          fi
+          {
+            echo
+            if [ -n "${ARTIFACT_URL:-}" ]; then
+              echo "[Download the full HTML report]($ARTIFACT_URL), unzip and open \`accessibility-report-*.html\`."
+            else
+              echo "_Report artifact was not uploaded, see the workflow log._"
+            fi
+            echo
+            echo "<sub>a11y-report</sub>"
+          } >> "$BODY"
+
+          gh api "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" --paginate \
+            --jq '.[] | select(.user.login == "github-actions[bot]")
+                      | select(.body | contains("<sub>a11y-report</sub>")) | .id' \
+            | while read -r id; do
+                echo "Removing previous report comment $id"
+                gh api -X DELETE "repos/$GITHUB_REPOSITORY/issues/comments/$id"
+              done
+
+          gh pr comment "$PR_NUMBER" --body-file "$BODY"
+
+      - name: Dump frontend container logs
+        if: failure() || cancelled()
+        run: docker logs a11y-fe --tail 100 || true
+
   notify:
     runs-on: ubuntu-latest
     if: ${{ always() && github.event_name == 'push' && (github.ref_name == 'a4i/main' || github.ref_name == 'a4i/staging') }}
-    needs: [cicd-frontend, ci-api, ci-backend, health-check, cd-api-prod, cd-backend-prod, cd-frontend-prod, regression-tests, performance-tests, integration-backend]
+    needs: [ci-frontend, ci-api, ci-backend, health-check, cd-api-prod, cd-backend-prod, cd-frontend-prod, regression-tests, performance-tests, integration-backend]
     timeout-minutes: 10
     steps:
       - name: Checkout
@@ -229,10 +338,10 @@ jobs:
       - name: Generate Status JSON
         id: status
         env:
-          FE_RES: ${{ (needs.cicd-frontend.result != 'skipped' && needs.cicd-frontend.result) || needs.cd-frontend-prod.result }}
+          FE_RES: ${{ (github.ref_name == 'a4i/staging' && needs.ci-frontend.result) || needs.cd-frontend-prod.result }}
           API_RES: ${{ needs.cd-api-prod.result }}
           BE_RES: ${{ (github.ref_name == 'a4i/staging' && needs.ci-backend.result) || needs.cd-backend-prod.result }}
-          FE_URL: ${{ needs.cicd-frontend.outputs.page_url || needs.cd-frontend-prod.outputs.page_url }}
+          FE_URL: ${{ (github.ref_name == 'a4i/staging' && vars.KUBE_STAGING_FRONTEND_URL) || needs.cd-frontend-prod.outputs.page_url }}
           API_URL: ${{ needs.cd-api-prod.outputs['service-url'] }}
           BE_URL: ${{ (github.ref_name == 'a4i/staging' && vars.KUBE_STAGING_FRONTEND_URL) || needs.cd-backend-prod.outputs['service-url'] }}
           E2E_RES: ${{ needs.integration-backend.result }}

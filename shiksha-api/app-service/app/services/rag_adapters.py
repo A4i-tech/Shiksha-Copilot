@@ -9,10 +9,12 @@ import os
 import shutil
 import logging
 import tempfile
+import uuid
 from abc import ABC, abstractmethod
 from typing import List, Optional, TypeVar, Union, overload
 from app.config import settings
 from app.utils.blob_store import BlobStore
+from langfuse import observe
 from pydantic import BaseModel
 from rag_wrapper import InMemRagOps, QdrantRagOps
 from llama_index.core.base.response.schema import RESPONSE_TYPE
@@ -86,6 +88,7 @@ class BaseRagAdapter(ABC):
     async def chat_with_index(self, curr_message: str, chat_history: List[ChatMessage], output_cls: type[T] = ...) -> RESPONSE_TYPE:
         ...
 
+    @observe(name="rag_chat", capture_input=False, capture_output=False)
     async def chat_with_index(self, curr_message: str, chat_history: List[ChatMessage], output_cls: type[T] | None = None) -> AgentChatResponse | RESPONSE_TYPE:
         return await self.rag_ops.chat_with_index(curr_message, chat_history, metadata_filter=self.metadata_filter, output_cls=output_cls)
 
@@ -115,7 +118,7 @@ class InMemRagOpsAdapter(BaseRagAdapter):
         self.index_path = index_path
         self._blob_store = BlobStore()
         self.persist_dir = os.path.join(
-            tempfile.gettempdir(), index_path.replace("/", "_")
+            tempfile.gettempdir(), f"{index_path.replace('/', '_')}_{uuid.uuid4().hex}"
         )
 
     async def initialize(self) -> InMemRagOps:
@@ -228,10 +231,9 @@ class QdrantRagOpsAdapter(BaseRagAdapter):
         pass
 
     async def cleanup(self) -> None:
-        """Clean up Qdrant resources if needed."""
-        # QdrantRagOps typically doesn't require local file cleanup
-        # as it works with remote Qdrant instances
-        pass
+        """Close the Qdrant clients."""
+        if self._rag_ops is not None:
+            await self._rag_ops.close()
 
 
 class RagAdapterFactory:

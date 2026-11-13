@@ -25,6 +25,7 @@ import { ScheduleService } from '../schedule.service';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { DatePipe } from '@angular/common';
 import { forkJoin, Subject, Subscription, takeUntil } from 'rxjs';
+import { UmamiService } from 'src/app/shared/services/umami.service';
 
 const ALL_SUB_TOPICS = 'All Sub-Topics';
 
@@ -171,7 +172,8 @@ export class AddEditScheduleComponent
   constructor(
     private fb: FormBuilder,
     private service: ScheduleService,
-    private utility: UtilityService
+    private utility: UtilityService,
+    private umamiService: UmamiService
   ) {
     this.scheduleForm = this.fb.group({
       board: [null],
@@ -946,6 +948,7 @@ export class AddEditScheduleComponent
       this.service.createSchedule(commonBodyValue).subscribe({
         next: (response: any) => {
           this.close.emit('save');
+          this.umamiService.track('schedule-created');
           this.utility.showSuccess('Schedule Created Successfully');
         },
         error: (err: any) => {

@@ -74,14 +74,14 @@ export class QuestionBankDownloadService {
   downloadQuestionBank(data: QuestionBankData) {
     const children = this.buildContent(data.questionBank.questions, false, data.questionTypeLabels);
     const doc = this.createDocument(data, children, '');
-    this.saveDocument(doc, `${data.subject}_QuestionBank.docx`);
+    return this.saveDocument(doc, `${data.subject}_QuestionBank.docx`);
   }
 
   /** Public method to download the Answer Key */
   downloadAnswerKey(data: QuestionBankData) {
     const children = this.buildContent(data.questionBank.questions, true, data.questionTypeLabels);
     const doc = this.createDocument(data, children, ' - ANSWER KEY');
-    this.saveDocument(doc, `${data.subject}_AnswerKey.docx`);
+    return this.saveDocument(doc, `${data.subject}_AnswerKey.docx`);
   }
 
   /** Unified content builder for both Bank and Answer Key */
@@ -289,7 +289,7 @@ export class QuestionBankDownloadService {
 
   /** Saves the document as a blob */
   private saveDocument(doc: Document, fileName: string) {
-    Packer.toBlob(doc).then((blob) => {
+    return Packer.toBlob(doc).then((blob) => {
       saveAs(blob, fileName);
     });
   }
