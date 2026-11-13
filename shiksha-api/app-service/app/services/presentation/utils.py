@@ -180,6 +180,17 @@ async def resolve_image(image: str, is_url: bool, storage: Storage | None = None
         return BytesIO(await resp.read())
 
 
+MIME_LABELS = {
+    "application/pdf": "PDF",
+    "application/msword": "DOC",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "DOCX",
+    "application/vnd.ms-powerpoint": "PPT",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation": "PPTX",
+    "text/plain": "TXT",
+    "text/markdown": "MD",
+}
+
+
 async def save_file_with_hash(storage: Storage, file: UploadFile, filename: str, allowed_mimes: set[str], chunk_size: int, max_size: int) -> tuple[str, str]:
     suffix = pathlib.Path(filename).suffix.lower()
     sha256 = hashlib.sha256()
@@ -196,7 +207,9 @@ async def save_file_with_hash(storage: Storage, file: UploadFile, filename: str,
         await f.seek(0)
         path = pathlib.Path(str(f.name))
         mime = await asyncio.to_thread(magic.from_file, path, mime=True)
-        if mime not in allowed_mimes: raise ValueError("Unexpected mime (%s)" % mime)
+        if mime not in allowed_mimes:
+            accepted = ", ".join(label for m, label in MIME_LABELS.items() if m in allowed_mimes)
+            raise ValueError("File type %s is not supported. Upload a %s file." % (mime, accepted.rsplit(", ", 1)[0] + " or " + accepted.rsplit(", ", 1)[1]))
 
         final_name = f"{sha256.hexdigest()}{suffix}"
         await f.seek(0)
@@ -227,20 +240,29 @@ class LibreOffice:
         if self.path is None: raise RuntimeError("soffice executable not found in PATH")
         default_args = ["--headless", "--nologo", "--nofirststartwizard", "--nodefault", "--norestore"]
         proc = await asyncio.create_subprocess_exec(self.path, *default_args, *args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-        stdout, stderr = await proc.communicate()
+        try:
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), settings.pres_soffice_timeout)
+        except asyncio.TimeoutError as e:
+            raise RuntimeError("soffice timed out after %ds" % settings.pres_soffice_timeout) from e
+        finally:
+            # don't leave a hung/orphaned soffice behind (a corrupt document can hang it)
+            if proc.returncode is None:
+                proc.kill()
+                await proc.wait()
         code = proc.returncode or 0
-        if code != 0: raise RuntimeError(stderr.decode())
+        if code != 0: raise RuntimeError("soffice exited with code %d: %s" % (code, stderr.decode().strip()))
         return stdout
 
-    async def convert(self, data: IO[bytes], output_format: LibreOfficeOutputFormat) -> bytes:
+    async def convert(self, data: IO[bytes], output_format: LibreOfficeOutputFormat, input_suffix: str = ".pptx") -> bytes:
         with tempfile.TemporaryDirectory() as profile, tempfile.TemporaryDirectory() as tmp:
             tmpdir = pathlib.Path(tmp)
-            in_path = tmpdir / "input.pptx"
+            in_path = tmpdir / ("input" + input_suffix)
             async with aiofiles.open(in_path, "wb") as f:
                 await f.write(data.read())
             await self._call("-env:UserInstallation=file://" + profile, "--convert-to", output_format, "--outdir", str(tmpdir), str(in_path))
 
             # soffice creates 'input.xyz'
             out_path = tmpdir / ("input.%s" % output_format)
+            if not out_path.exists(): raise RuntimeError("soffice produced no %s output for %s input" % (output_format, input_suffix))
             async with aiofiles.open(out_path, "rb") as f:
                 return await f.read()

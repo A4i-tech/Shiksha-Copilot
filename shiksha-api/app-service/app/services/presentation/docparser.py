@@ -6,6 +6,7 @@ import zlib
 
 from PIL import Image
 from app.models.presentation import FigureInfo
+from app.services.presentation.utils import LibreOffice
 from app.utils.storage import Storage
 from pptx import Presentation, presentation
 from pptx.enum.shapes import PP_PLACEHOLDER
@@ -124,10 +125,27 @@ def _to_markdown(data: bytes) -> str:
         return pymupdf4llm.to_markdown(doc)
 
 
+# Office formats OpenAI cannot ingest directly.
+OFFICE_MIME_SUFFIXES = {
+    "application/msword": ".doc",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
+    "application/vnd.ms-powerpoint": ".ppt",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation": ".pptx",
+}
+
+
 async def _transform(content: AsyncBufferedReader, mime: str) -> str | None:
     if mime == "application/pdf":
         await content.seek(0)
         return await asyncio.to_thread(_to_markdown, await content.read())
+    if mime in OFFICE_MIME_SUFFIXES:
+        await content.seek(0)
+        try:
+            pdf = await LibreOffice().convert(io.BytesIO(await content.read()), "pdf", OFFICE_MIME_SUFFIXES[mime])
+        except RuntimeError as e:
+            logging.getLogger(__name__).error("Office conversion failed for %s: %s", mime, e)
+            raise RuntimeError("The document could not be converted. Check that it opens in Word or PowerPoint, then upload it again.") from e
+        return await asyncio.to_thread(_to_markdown, pdf)
     return None
 
 
