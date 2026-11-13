@@ -1,4 +1,5 @@
-jest.mock("axios", () => ({ post: jest.fn() }));
+jest.mock("axios", () => ({ post: jest.fn(), get: jest.fn() }));
+jest.mock("axios-retry", () => ({ default: jest.fn() }));
 let axios;
 
 describe("copilot.bot.service", () => {
@@ -10,17 +11,39 @@ describe("copilot.bot.service", () => {
     process.env.LLM_CHECKLIST_URL = "http://checklist";
   });
 
-  it("posts to copilot bot workflow", async () => {
-    axios.post.mockResolvedValue({ status: 200, data: { ok: true } });
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("should post to copilot bot workflow", async () => {
+    axios.post.mockResolvedValue({ status: 202, data: { ok: true } });
     const service = require("../../../services/copilot.bot.service");
 
     const res = await service.postToCopilotBot({ lesson: 1 });
 
     expect(axios.post).toHaveBeenCalledWith(
       "http://workflow/api/v2/lesson-plans",
-      { lesson: 1 }
+      { lesson: 1 },
+      { "axios-retry": { retries: 0 } }
     );
     expect(res.data).toEqual({ ok: true });
+  });
+
+  it("should throw when copilot bot does not return 202", async () => {
+    axios.post.mockResolvedValue({ status: 200, data: {} });
+    const logger = require("../../../config/loggers");
+    jest.spyOn(logger, "error").mockImplementation(() => {});
+    const service = require("../../../services/copilot.bot.service");
+
+    await expect(service.postToCopilotBot({ lesson: 1 })).rejects.toThrow(
+      "Unexpected status code from Copilot bot: 200"
+    );
+  });
+
+  it("should throw at load when LLM_WORKFLOW_URL is not set", () => {
+    process.env.LLM_WORKFLOW_URL = "";
+
+    expect(() => require("../../../services/copilot.bot.service")).toThrow("LLM_WORKFLOW_URL is not set");
   });
 
   it("posts to 5E tables endpoint", async () => {
@@ -29,7 +52,30 @@ describe("copilot.bot.service", () => {
 
     const res = await service.post5ETables({ plan: 1 });
 
-    expect(axios.post).toHaveBeenCalledWith("http://checklist", { plan: 1 });
+    expect(axios.post).toHaveBeenCalledWith("http://checklist", { plan: 1 }, { timeout: 210000 });
     expect(res.data).toEqual({ ok: true });
+  });
+
+  it("should retry only network errors and 502 or 503", () => {
+    jest.doMock("axios-retry", () => {
+      const fn = jest.fn();
+      fn.isNetworkError = (e) => !e.response;
+      return { default: fn };
+    });
+    require("../../../services/copilot.bot.service");
+    const { retryCondition } = require("axios-retry").default.mock.calls[0][1];
+
+    expect(retryCondition({})).toBe(true);
+    expect(retryCondition({ response: { status: 503 } })).toBe(true);
+    expect(retryCondition({ response: { status: 500 } })).toBe(false);
+  });
+
+  it("should get the workflow run status", async () => {
+    axios.get.mockResolvedValue({ data: { runtimeStatus: "Running" } });
+    const service = require("../../../services/copilot.bot.service");
+
+    await service.getWorkflowRun("i-1");
+
+    expect(axios.get).toHaveBeenCalledWith("http://workflow/api/v2/lesson-plans/i-1", { timeout: 10000 });
   });
 });
