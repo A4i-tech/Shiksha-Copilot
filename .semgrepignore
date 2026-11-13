@@ -1,6 +1,9 @@
 # Paths excluded from the Semgrep PR gate. See .github/SECURITY_SCANS.md for
 # line-level suppression (`# nosemgrep: <rule-id>`).
 
+# vendored, not our code
 node_modules/
+# compiled bytecode, not source
 **/__pycache__/
+# static test input data, not executed code
 **/__tests__/fixtures/
