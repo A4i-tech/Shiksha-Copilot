@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 from app.main import app
+from app.config import parse_origins
 
 
 client = TestClient(app)
@@ -46,6 +47,13 @@ class TestAppConfiguration:
 
         # Check middleware is present
         assert len(app.user_middleware) > 0
+
+    def test_parse_origins_strips_spaces_and_drops_empties(self):
+        assert parse_origins("https://a.com, https://b.com,") == [
+            "https://a.com",
+            "https://b.com",
+        ]
+        assert parse_origins("") == []
 
     def test_app_includes_chat_router(self):
         """Test that chat router is included."""

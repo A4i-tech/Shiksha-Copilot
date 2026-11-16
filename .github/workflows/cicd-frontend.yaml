@@ -62,6 +62,8 @@ jobs:
       BACKEND_URL: ${{ inputs.api_url }}
       TURNSTILE_SITE_KEY: ${{ inputs.turnstile_site_key }}
       SHIKSHA_COPILOT_BUILD: ${{ github.sha }}
+      BUILD_ENVIRONMENT: ${{ inputs.environment }}
+      DEPLOY_TARGET: ${{ inputs.deploy_target }}
 
     steps:
       - name: Checkout
@@ -79,8 +81,11 @@ jobs:
         run: |
           set -euo pipefail
           npm ci
-          npm run build -- --configuration ${{ inputs.environment }} \
-            ${{ inputs.deploy_target == 'github-pages' && '--base-href /Shiksha-Copilot/' || '' }}
+          BASE_HREF_ARGS=()
+          if [ "$DEPLOY_TARGET" = "github-pages" ]; then
+            BASE_HREF_ARGS=(--base-href /Shiksha-Copilot/)
+          fi
+          npm run build -- --configuration "$BUILD_ENVIRONMENT" "${BASE_HREF_ARGS[@]}"
           : "${BACKEND_URL:?BACKEND_URL is empty}"
           : "${TURNSTILE_SITE_KEY:?TURNSTILE_SITE_KEY is empty}"
           case "$BACKEND_URL$TURNSTILE_SITE_KEY" in *'"'*|*'\'*|*'$'*|*'`'*) echo "::error::value breaks JS string literal" >&2; exit 1;; esac

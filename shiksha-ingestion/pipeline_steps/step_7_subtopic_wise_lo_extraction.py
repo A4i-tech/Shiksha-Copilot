@@ -184,8 +184,6 @@ class SubtopicWiseLOExtractionStep(BasePipelineStep):
             os.makedirs(output_dir, exist_ok=True)
             credentials = azure_openai_credentials()
 
-            logger.info("CREDENTIALS BEING USED: %s", json.dumps(credentials, indent=2))
-
             # Get action verbs
             action_verbs = "; ".join(get_action_verbs(grade, subject))
             action_verbs_prohibited = "; ".join(

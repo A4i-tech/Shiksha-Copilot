@@ -7,6 +7,7 @@ on:
 permissions:
   contents: read
   security-events: write
+  pull-requests: write
 
 concurrency:
   group: semgrep-${{ github.event.pull_request.number }}
@@ -38,6 +39,7 @@ jobs:
             --severity ERROR \
             --error \
             --sarif --output semgrep.sarif \
+            --json-output semgrep-diff.json \
             --metrics off \
             --oss-only
 
@@ -49,3 +51,70 @@ jobs:
         with:
           sarif_file: semgrep.sarif
           category: semgrep
+
+      - name: Comment diff scan result on PR
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          BODY=/tmp/semgrep-comment.md
+          if [ -f semgrep-diff.json ]; then
+            jq -r '
+              if (.results | length) == 0 then
+                "## Semgrep (this PR)\n\n**No blocking findings. Good to proceed.**\n"
+              else
+                "## Semgrep (this PR)\n\n**" + (.results | length | tostring) + " blocking finding(s), fix before merge:**\n\n" +
+                (.results | map("- `" + .check_id + "` " + .path + ":" + (.start.line | tostring)) | join("\n")) + "\n"
+              end
+            ' semgrep-diff.json > "$BODY"
+          else
+            printf '## Semgrep (this PR)\n\n**Scan did not complete**, see the workflow log.\n' > "$BODY"
+          fi
+          echo "<sub>semgrep-pr-report</sub>" >> "$BODY"
+
+          gh api "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" --paginate \
+            --jq '.[] | select(.user.login == "github-actions[bot]")
+                      | select(.body | contains("<sub>semgrep-pr-report</sub>")) | .id' \
+            | while read -r id; do
+                gh api -X DELETE "repos/$GITHUB_REPOSITORY/issues/comments/$id"
+              done
+
+          gh pr comment "$PR_NUMBER" --body-file "$BODY"
+
+      - name: Semgrep full-repo scan (advisory, not gating)
+        if: always()
+        continue-on-error: true
+        run: |
+          semgrep scan \
+            --config p/security-audit \
+            --config p/owasp-top-ten \
+            --severity ERROR \
+            --severity WARNING \
+            --json --output semgrep-full.json \
+            --metrics off \
+            --oss-only
+
+          {
+            echo "## Semgrep full-repo findings (advisory, pre-existing code, does not gate this PR)"
+            echo
+            echo '```'
+            jq -r '
+              .results
+              | group_by(.check_id + "|" + .extra.severity)
+              | map({count: length, severity: .[0].extra.severity, rule: .[0].check_id})
+              | sort_by(-.count)
+              | (["COUNT","SEVERITY","RULE"], (.[] | [.count, .severity, .rule]))
+              | @tsv
+            ' semgrep-full.json | column -t -s $'\t'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload full-repo findings
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: semgrep-full-report
+          path: semgrep-full.json
