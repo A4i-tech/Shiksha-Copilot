@@ -92,8 +92,8 @@ class JobManager:
         job = await self.get(job.id)
         if job is None or job.status == "complete":
             return False
-        if job.lease_owner is None:
-            return await self.delete(job)
+        if job.lease_owner is None and await self.delete(job, unleased=True):
+            return True
         result = await self.collection.update_one({"id": str(job.id), "status": {"$ne": "complete"}}, {"$set": {"cancel_requested": True}})
         return result.matched_count > 0
 
@@ -101,7 +101,6 @@ class JobManager:
         await self.collection.update_one({"id": str(job_id)}, {"$set": {"enqueued": True, "enqueued_at": datetime.now(timezone.utc)}})
 
     async def unenqueued(self, older_than_seconds: float) -> list[JobDetail]:
-        # creation_time is a string, so the cutoff uses the same format
         cutoff = (datetime.now(timezone.utc) - timedelta(seconds=older_than_seconds)).isoformat(timespec="microseconds").replace("+00:00", "Z")
         cursor = self.collection.find(
             {"enqueued": {"$ne": True}, **_ACTIVE, "creation_time": {"$lt": cutoff}},
@@ -185,7 +184,7 @@ class JobManager:
         return JobDetail(**doc)
 
     async def update(self, job_id: uuid.UUID, fields_set: dict[str, Any] | None = None, fields_unset: list[str] | None = None):
-        # blob writes stay unfenced until fence_watch cancels the run
+        # blob writes are unfenced; fence_watch cancels the run
         job = await self._apply({"id": str(job_id), "lease_owner": lease_owner.get()}, fields_set, fields_unset)
         if job is None:
             self.logger.warning("Dropped write to job %s: fence is held by another delivery.", job_id)
@@ -227,16 +226,19 @@ class JobManager:
     async def get_pending_count(self, user_id: UserId) -> int:
         return await self.collection.count_documents({"user_id": user_id, **_ACTIVE, "cancel_requested": {"$ne": True}})
 
-    async def delete(self, job: JobDetail) -> bool:
-        result = await self.collection.delete_one({"id": str(job.id), "status": {"$ne": "complete"}})
+    async def delete(self, job: JobDetail, unleased: bool = False) -> bool:
+        query: dict[str, Any] = {"id": str(job.id), "status": {"$ne": "complete"}}
+        if unleased:
+            query["lease_owner"] = None
+        result = await self.collection.delete_one(query)
         if result.deleted_count == 0:
             return False
         await self._append(job.id, "terminate", json.loads(job.model_copy(update={"status": "error"}).model_dump_json()))
-        await self.log_collection.delete_many({"job_id": str(job.id), "type": {"$ne": "terminate"}})  # terminate rows expire after 24 hours, so seq can restart then. The fence blocks late writers once the job is gone
+        # terminate rows expire by TTL, so seq restarts only then
+        await self.log_collection.delete_many({"job_id": str(job.id), "type": {"$ne": "terminate"}})
         return True
 
     async def log(self, job_id: uuid.UUID, type: str, data: dict) -> int:
-        # check-then-act: shrinks the stale-writer window but does not close it
         if not await self.holds(job_id, lease_owner.get()):
             self.logger.warning("Dropped %s log for job %s: fence is held by another delivery.", type, job_id)
             raise FenceLost(f"Fence lost on job {job_id}")
