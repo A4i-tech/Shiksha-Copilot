@@ -131,7 +131,7 @@ async def create_job(
         await publish_job(broker, service.jobs, job, msg_id=f"{job.id}:0")
     except Exception:
         logger.exception("Could not queue job %s", job.id)
-        await service.jobs.delete(job)
+        await service.jobs.delete(job, unleased=True)
         raise HTTPException(status_code=503, detail="The presentation queue is not reachable. Wait a minute and try again.")
     return job
 

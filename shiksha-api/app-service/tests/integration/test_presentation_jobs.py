@@ -133,6 +133,13 @@ async def test_request_cancel_deletes_an_unclaimed_job_and_flags_a_claimed_one(j
     assert not await jobs.request_cancel(free)
 
 
+async def test_unleased_delete_keeps_a_job_claimed_after_the_read(jobs):
+    job = await create(jobs)
+    await jobs.claim(job.id, "a")
+    assert not await jobs.delete(job, unleased=True)
+    assert await jobs.get(job.id) is not None
+
+
 async def test_unenqueued_returns_old_jobs_that_are_not_marked_enqueued(jobs):
     old, marked, legacy, done = await create(jobs), await create(jobs), await create(jobs), await create(jobs)
     await jobs.mark_enqueued(marked.id)

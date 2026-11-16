@@ -66,7 +66,7 @@ def make_handler(service: PresentationService, broker) -> Handler:
         token = lease_owner.set(fence)
         try:
             if (job := await service.jobs.claim(job_id, fence)) is None:
-                logger.info("Job %s: claim returned nothing (missing, complete, or failed for good)", job_id)
+                logger.warning("Job %s: claim returned nothing (missing, complete, or failed for good)", job_id)
                 return
             run = asyncio.create_task(service.run_job(job_id))
             hit: list[bool] = []
