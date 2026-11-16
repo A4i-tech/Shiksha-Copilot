@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { TranslateService } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Subscription, of, switchMap } from 'rxjs';
 import { UtilityService } from 'src/app/core/services/utility.service';
@@ -26,7 +26,7 @@ const MCQ_OPTION_LABELS = ['A', 'B', 'C', 'D'];
   selector: 'app-content-edit',
   templateUrl: './content-edit.component.html',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, ChapterPickerComponent, DropdownComponent],
+  imports: [CommonModule, FormsModule, RouterModule, ChapterPickerComponent, DropdownComponent, TranslateModule],
 })
 export class ContentEditComponent implements OnInit, OnDestroy {
   config!: ContentEntityConfig;
@@ -146,8 +146,10 @@ export class ContentEditComponent implements OnInit, OnDestroy {
   dropdownConfig(field: ContentField): DropDownConfig {
     return {
       isBackground: false,
-      placeHolderTxt: field.placeholder || `Pick ${field.label.toLowerCase()}`,
-      labelTxt: field.label,
+      placeHolderTxt: field.placeholder
+        ? this.translateService.instant(field.placeholder)
+        : `${this.translateService.instant('Pick')} ${this.translateService.instant(field.label).toLowerCase()}`,
+      labelTxt: this.translateService.instant(field.label),
       bindLabel: 'label',
       bindValue: 'value',
       required: !!(field.requiredOnCreate && this.isCreate),
@@ -173,7 +175,7 @@ export class ContentEditComponent implements OnInit, OnDestroy {
 
     if (Object.keys(this.fieldErrors).length) {
       this.utilityService.showError(
-        'Correct the fields marked with an error before you save.'
+        this.translateService.instant('Correct the fields marked with an error before you save.')
       );
       return;
     }
@@ -181,7 +183,7 @@ export class ContentEditComponent implements OnInit, OnDestroy {
     if (!body) return;
 
     if (!Object.keys(body).length) {
-      this.utilityService.showError('No field has changed.');
+      this.utilityService.showError(this.translateService.instant('No field has changed.'));
       return;
     }
 
@@ -193,7 +195,7 @@ export class ContentEditComponent implements OnInit, OnDestroy {
             if (targetStatus === CONTENT_STATUS.DRAFT) return of(res);
 
             const id = res?.data?.insertedIds?.[0];
-            if (!id) throw new Error('The record was created but its ID was not returned.');
+            if (!id) throw new Error(this.translateService.instant('The record was created but its ID was not returned.'));
 
             return this.contentService.update(this.config.segment, id, {
               status: targetStatus,
@@ -209,8 +211,8 @@ export class ContentEditComponent implements OnInit, OnDestroy {
         this.utilityService.showSuccess(
           res?.message ||
             (this.isCreate
-              ? `${this.config.singular} added successfully`
-              : `${this.config.singular} updated successfully`)
+              ? `${this.config.singular} ${this.translateService.instant('added successfully')}`
+              : `${this.config.singular} ${this.translateService.instant('updated successfully')}`)
         );
         this.router.navigate(['/content-management', this.config.key]);
       },
@@ -238,7 +240,7 @@ export class ContentEditComponent implements OnInit, OnDestroy {
       try {
         value = this.toRecordValue(field);
       } catch (err) {
-        this.fieldErrors[field.field] = 'This value is not valid JSON.';
+        this.fieldErrors[field.field] = this.translateService.instant('This value is not valid JSON.');
         return;
       }
 
@@ -248,7 +250,7 @@ export class ContentEditComponent implements OnInit, OnDestroy {
         (Array.isArray(value) && value.length === 0);
 
       if (isEmpty) {
-        if (field.requiredOnCreate) missing.push(field.label);
+        if (field.requiredOnCreate) missing.push(this.translateService.instant(field.label));
         return;
       }
 
@@ -259,7 +261,7 @@ export class ContentEditComponent implements OnInit, OnDestroy {
 
     if (missing.length) {
       this.utilityService.showError(
-        `These fields need a value: ${missing.join(', ')}.`
+        `${this.translateService.instant('These fields need a value')}: ${missing.join(', ')}.`
       );
       return null;
     }
@@ -288,7 +290,7 @@ export class ContentEditComponent implements OnInit, OnDestroy {
       JSON.parse(value);
       delete this.fieldErrors[field.field];
     } catch (err) {
-      this.fieldErrors[field.field] = 'This value is not valid JSON.';
+      this.fieldErrors[field.field] = this.translateService.instant('This value is not valid JSON.');
     }
   }
 
@@ -410,7 +412,7 @@ export class ContentEditComponent implements OnInit, OnDestroy {
       try {
         next = this.toRecordValue(field);
       } catch (err) {
-        this.fieldErrors[field.field] = 'This value is not valid JSON.';
+        this.fieldErrors[field.field] = this.translateService.instant('This value is not valid JSON.');
         return;
       }
 
