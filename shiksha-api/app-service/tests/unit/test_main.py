@@ -1,3 +1,4 @@
+import pytest
 from fastapi.testclient import TestClient
 from app.main import app
 from app.config import parse_origins
@@ -54,6 +55,10 @@ class TestAppConfiguration:
             "https://b.com",
         ]
         assert parse_origins("") == []
+
+    def test_parse_origins_rejects_malformed_entry(self):
+        with pytest.raises(ValueError):
+            parse_origins("not-a-url")
 
     def test_app_includes_chat_router(self):
         """Test that chat router is included."""

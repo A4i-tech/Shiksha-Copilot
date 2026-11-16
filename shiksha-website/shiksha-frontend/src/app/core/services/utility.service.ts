@@ -398,6 +398,7 @@ private extractVideoId(url: string): string {
   }else if(/^https:\/\//i.test(trimmedUrl)){
     return this.domSanitizer.bypassSecurityTrustResourceUrl(trimmedUrl);  // nosemgrep: typescript.angular.security.audit.angular-domsanitizer.angular-bypasssecuritytrust -- scheme restricted to https above, blocks javascript:/data: URIs
   }else{
+    console.warn('trustUrl: rejected non-https/non-YouTube URL', videoUrl);
     return this.domSanitizer.bypassSecurityTrustResourceUrl('');
   }
 }

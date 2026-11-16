@@ -1,5 +1,6 @@
 import pathlib
 from string import Template
+from urllib.parse import urlsplit
 
 from dotenv import load_dotenv
 from pydantic import Field, PositiveInt, field_validator
@@ -11,7 +12,16 @@ import yaml
 
 
 def parse_origins(raw: str) -> list[str]:
-    return [o.strip() for o in raw.split(",") if o.strip()]
+    origins = []
+    for origin in raw.split(","):
+        origin = origin.strip()
+        if not origin:
+            continue
+        parsed = urlsplit(origin)
+        if parsed.scheme not in ("http", "https") or not parsed.netloc:
+            raise ValueError(f"invalid ALLOWED_ORIGINS entry: {origin!r}")
+        origins.append(origin)
+    return origins
 
 
 class Settings(BaseSettings):

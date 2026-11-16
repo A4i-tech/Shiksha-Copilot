@@ -52,9 +52,13 @@ app = FastAPI(
 app.state.MCP_APP = mcp_app
 
 
+_allowed_origins = parse_origins(settings.allowed_origins)
+if not _allowed_origins:
+    raise RuntimeError("ALLOWED_ORIGINS resolved to an empty list; set at least one origin")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=parse_origins(settings.allowed_origins),
+    allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
