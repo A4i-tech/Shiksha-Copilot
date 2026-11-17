@@ -18,6 +18,7 @@
  */
 
 import { TranslateService } from '@ngx-translate/core';
+import { questionText } from 'src/app/shared/utility/question-bank-display.util';
 
 export type ContentEntityKey =
   | 'chapters'
@@ -89,10 +90,22 @@ export const ANSWER_TYPE_OPTIONS: ContentSelectOption[] = [
   { value: 'GRAMMAR_EDITING', label: 'Grammar: Identify and correct the error' },
 ];
 
+// The backend copies these fields from the chapter, so a curator does not type them.
+export const CURATOR_HIDDEN_FIELDS = ['chapterId', 'chapter', 'class', 'board', 'medium', 'subject'];
+
+const TITLE_BY_SEGMENT: { [segment: string]: (record: any) => string } = {
+  'lesson-plans': (record) => record.name,
+  resources: (record) => record.lessonName,
+  questions: questionText,
+};
+
+export const recordTitle = (segment: string, record: any): string => TITLE_BY_SEGMENT[segment](record);
+
 export interface ContentColumn {
   /** property of the record, a dot path is allowed */
   field: string;
   label: string;
+  badge?: boolean;
 }
 
 export interface ContentField {
@@ -143,7 +156,8 @@ export const CONTENT_ENTITIES: ContentEntityConfig[] = [
       { field: 'medium', label: 'Medium' },
       { field: 'board', label: 'Board' },
       { field: 'orderNumber', label: 'Order' },
-      { field: 'status', label: 'Status' },
+      { field: 'assignedTo', label: 'Assigned curator' },
+      { field: 'status', label: 'Status', badge: true },
     ],
     fields: [
       {

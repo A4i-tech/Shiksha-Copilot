@@ -263,16 +263,31 @@ describe("BaseDao", () => {
       expect(result.isDeleted).toBe(true);
     });
 
-    it("keeps rejecting ordinary updates to deleted rows", async () => {
-      const created = await testDao.create({
-        name: "Draft",
-        status: "draft",
-        isDeleted: true,
-      });
+    it("edits live and draft rows, and rejects an approved deleted row", async () => {
+      const live = await testDao.create({ name: "Live", status: "approved", isDeleted: false });
+      const draft = await testDao.create({ name: "Draft", status: "draft", isDeleted: true });
+      const gone = await testDao.create({ name: "Gone", status: "approved", isDeleted: true });
 
+      expect((await testDao.adminUpdate(live._id, { name: "A" }, null, true)).name).toBe("A");
+      expect((await testDao.adminUpdate(draft._id, { name: "B" }, null, true)).name).toBe("B");
       await expect(
-        testDao.adminUpdate(created._id, { name: "Changed" }, null, true)
+        testDao.adminUpdate(gone._id, { name: "C" }, null, true)
       ).rejects.toThrow("Record not found or has been deleted");
+    });
+  });
+
+  describe("adminUpdate with draftOnly", () => {
+    it("writes only a deleted draft row and rejects live and under-review rows", async () => {
+      const draft = await testDao.create({ name: "Draft", status: "draft", isDeleted: true });
+      const review = await testDao.create({ name: "Review", status: "under_review", isDeleted: true });
+      const live = await testDao.create({ name: "Live", status: "approved", isDeleted: false });
+
+      expect((await testDao.adminUpdate(draft._id, { name: "B" }, null, true, true)).name).toBe("B");
+      for (const row of [review, live]) {
+        await expect(testDao.adminUpdate(row._id, { name: "C" }, null, true, true)).rejects.toThrow(
+          "changed while you were editing"
+        );
+      }
     });
   });
 

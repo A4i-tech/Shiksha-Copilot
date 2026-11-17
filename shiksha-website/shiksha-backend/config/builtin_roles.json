@@ -43,5 +43,14 @@
     "scopeType": "SCHOOL",
     "isSystem": true,
     "isDeleted": false
+  },
+  {
+    "_id": "7368696b7368615f63637572",
+    "name": "Content Curator",
+    "description": "Writes lesson plans, resources, and questions for assigned chapters and submits them for admin review.",
+    "permissions": ["content.curate", "content.view"],
+    "scopeType": "GLOBAL",
+    "isSystem": true,
+    "isDeleted": false
   }
 ]

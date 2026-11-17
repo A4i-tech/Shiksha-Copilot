@@ -110,6 +110,7 @@ const masterLessonSchema = new mongoose.Schema(
 );
 
 masterLessonSchema.index({ isDeleted: 1, status: 1, createdBy: 1 });
+masterLessonSchema.index({ chapterId: 1, isDeleted: 1, status: 1 });
 
 const MasterLesson = mongoose.model("MasterLesson", masterLessonSchema);
 

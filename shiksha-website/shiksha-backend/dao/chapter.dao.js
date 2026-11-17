@@ -75,7 +75,7 @@ class ChapterDao extends BaseDao {
 		}));
 	}
 
-	async getAll(page = 1, limit = 10, filters = {}, sort = {}, status = {}) {
+	_listFilters(filters, status) {
 		let processedFilters = {};
 
 		// for kannada medium english subject negating medium filter to refect english lp from english medium
@@ -98,6 +98,12 @@ class ChapterDao extends BaseDao {
 		// `status` (from the caller's includeDeleted param) wins over the plain filters.
 		Object.assign(processedFilters, status);
 
+		return processedFilters;
+	}
+
+	async getAll(page = 1, limit = 10, filters = {}, sort = {}, status = {}) {
+		const processedFilters = this._listFilters(filters, status);
+
 		const results = await chapterAggregation.getChapterFilter(
 			page,
 			limit,
@@ -114,6 +120,10 @@ class ChapterDao extends BaseDao {
 			limit,
 			results: results[0].data,
 		};
+	}
+
+	getAllForExport(limit, filters = {}, sort = {}, status = {}) {
+		return chapterAggregation.getChapterExport(limit, this._listFilters(filters, status), sort);
 	}
 
 	async getChapterBySemester(filters = {}) {

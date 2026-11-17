@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import { BaseRestService } from 'src/app/core/services/base-rest.service';
 import { LOADER_MESSAGE } from 'src/app/core/services/loader-message.service';
 import { environment } from 'src/environments/environment';
+import { CONTENT_STATUS, LIST_TAB_BY_STATUS } from '../../admin/content-management/content-status.constants';
 
 @Injectable({
   providedIn: 'root',
@@ -219,7 +220,8 @@ export class ContentGenerationService extends BaseRestService {
     board?: string,
     medium?: string,
     standard?: string,
-    subject?: any
+    subject?: any,
+    curatorMode = false
   ) {
     let params = new HttpParams();
 
@@ -238,7 +240,10 @@ export class ContentGenerationService extends BaseRestService {
     params=params.set('limit','999')
     params=params.set('sortBy','orderNumber')
     params=params.set('sortOrder','asc')
-    return this.http.get(`${this.baseUrl}/chapter/list`, { params });
+    if (curatorMode) {
+      params = params.set('includeDeleted', LIST_TAB_BY_STATUS[CONTENT_STATUS.DRAFT]);
+    }
+    return this.http.get(`${this.baseUrl}/${curatorMode ? 'curator/content/chapters' : 'chapter/list'}`, { params });
   }
 
   lessonPlanExists(lessonPlanId: any) {
