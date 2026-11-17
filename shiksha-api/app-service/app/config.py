@@ -18,8 +18,11 @@ def parse_origins(raw: str) -> list[str]:
         if not origin:
             continue
         parsed = urlsplit(origin)
-        if parsed.scheme not in ("http", "https") or not parsed.netloc:
-            raise ValueError(f"invalid ALLOWED_ORIGINS entry: {origin!r}")
+        normalized = f"{parsed.scheme}://{parsed.netloc}"
+        if parsed.scheme not in ("http", "https") or not parsed.netloc or origin != normalized:
+            raise ValueError(
+                f"invalid ALLOWED_ORIGINS entry {origin!r}: use http(s)://host[:port] with no path, query, or trailing slash. Fix ALLOWED_ORIGINS and restart."
+            )
         origins.append(origin)
     return origins
 

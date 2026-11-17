@@ -57,8 +57,14 @@ class TestAppConfiguration:
         assert parse_origins("") == []
 
     def test_parse_origins_rejects_malformed_entry(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="not-a-url"):
             parse_origins("not-a-url")
+
+    def test_parse_origins_rejects_non_exact_origin(self):
+        with pytest.raises(ValueError):
+            parse_origins("https://a.com/")
+        with pytest.raises(ValueError):
+            parse_origins("*")
 
     def test_app_includes_chat_router(self):
         """Test that chat router is included."""
