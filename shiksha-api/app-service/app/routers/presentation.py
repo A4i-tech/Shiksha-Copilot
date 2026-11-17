@@ -30,20 +30,21 @@ router = APIRouter(tags=["Presentation Generation"], prefix="/presentation", lif
 XUserIDHeader = Annotated[UserId, Header(alias="X-User-ID")]
 libre_office = LibreOffice()
 
+# mime -> label shown to the user when an upload is rejected
 ALLOWED_MIMES = {
-    "application/pdf",
-    "application/msword",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "application/vnd.ms-powerpoint",
-    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-    "text/plain",
-    "text/markdown",
+    "application/pdf": "PDF",
+    "application/msword": "DOC",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "DOCX",
+    "application/vnd.ms-powerpoint": "PPT",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation": "PPTX",
+    "text/plain": "TXT",
+    "text/markdown": "MD",
 }
 
 
-def allowed_upload_mimes() -> set[str]:
+def allowed_upload_mimes() -> dict[str, str]:
     # office files are only usable after conversion; without it they would reach the planner as raw bytes
-    return ALLOWED_MIMES if settings.pres_do_transform else ALLOWED_MIMES - OFFICE_MIME_SUFFIXES.keys()
+    return ALLOWED_MIMES if settings.pres_do_transform else {m: label for m, label in ALLOWED_MIMES.items() if m not in OFFICE_MIME_SUFFIXES}
 
 
 def pres(request: Request) -> PresentationService:

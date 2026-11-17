@@ -6,7 +6,7 @@ import zlib
 
 from PIL import Image
 from app.models.presentation import FigureInfo
-from app.services.presentation.utils import LibreOffice
+from app.services.presentation.utils import ConversionFailed, LibreOffice
 from app.utils.storage import Storage
 from pptx import Presentation, presentation
 from pptx.enum.shapes import PP_PLACEHOLDER
@@ -142,8 +142,7 @@ async def _transform(content: AsyncBufferedReader, mime: str) -> str | None:
         await content.seek(0)
         try:
             pdf = await LibreOffice().convert(io.BytesIO(await content.read()), "pdf", OFFICE_MIME_SUFFIXES[mime])
-        except RuntimeError as e:
-            logging.getLogger(__name__).error("Office conversion failed for %s: %s", mime, e)
+        except ConversionFailed as e:
             raise RuntimeError("The document could not be converted. Check that it opens in Word or PowerPoint, then upload it again.") from e
         return await asyncio.to_thread(_to_markdown, pdf)
     return None

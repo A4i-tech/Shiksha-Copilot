@@ -120,6 +120,32 @@ class TestLibreOfficeSubprocess:
         assert not pid_alive(int(pidfile.read_text()))
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="uses a bash stand-in for soffice")
+class TestTransformErrors:
+    @staticmethod
+    async def transform_with(tmp_path, monkeypatch, body: str | None):
+        path = fake_soffice(tmp_path, body).path if body is not None else None
+        monkeypatch.setattr(shutil, "which", lambda name: path)
+        async with reader(tmp_path, b"x") as f:
+            await docparser._transform(f, DOCX)
+
+    async def test_rejected_document_asks_user_to_check_it(self, tmp_path, monkeypatch):
+        with pytest.raises(RuntimeError, match="could not be converted") as exc:
+            await self.transform_with(tmp_path, monkeypatch, "echo internal detail >&2\nexit 1\n")
+        assert "internal detail" not in str(exc.value)
+
+    async def test_missing_soffice_keeps_its_own_message(self, tmp_path, monkeypatch):
+        with pytest.raises(RuntimeError, match="soffice executable not found") as exc:
+            await self.transform_with(tmp_path, monkeypatch, None)
+        assert "could not be converted" not in str(exc.value)
+
+    async def test_timeout_keeps_its_own_message(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(settings, "pres_soffice_timeout", 1)
+        with pytest.raises(RuntimeError, match="soffice timed out") as exc:
+            await self.transform_with(tmp_path, monkeypatch, "exec sleep 60\n")
+        assert "could not be converted" not in str(exc.value)
+
+
 class TestTransform:
     @pytest.mark.parametrize("mime", OFFICE)
     async def test_office_converted_to_pdf_then_markdown(self, tmp_path, monkeypatch, mime):
@@ -137,16 +163,6 @@ class TestTransform:
 
         assert result == "# md from %PDF-converted"
         assert calls["args"] == (b"office-bytes", "pdf", OFFICE_MIME_SUFFIXES[mime])
-
-    async def test_conversion_failure_gives_user_actionable_message(self, tmp_path, monkeypatch):
-        async def failing_convert(self, data, output_format, input_suffix=".pptx"):
-            raise RuntimeError("soffice exited with code 1: internal detail")
-
-        monkeypatch.setattr(LibreOffice, "convert", failing_convert)
-        async with reader(tmp_path, b"x") as f:
-            with pytest.raises(RuntimeError, match="could not be converted") as exc:
-                await docparser._transform(f, DOCX)
-        assert "internal detail" not in str(exc.value)
 
     async def test_pdf_goes_straight_to_markdown(self, tmp_path, monkeypatch):
         async def boom(*a, **k):
@@ -206,14 +222,13 @@ class TestUploadMimeDetection:
 
     async def test_unsupported_binary_rejected(self, storage):
         png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
-        with pytest.raises(ValueError, match=r"not supported\. Upload a PDF, DOC, DOCX, PPT, PPTX, TXT or MD file"):
+        with pytest.raises(ValueError, match=r"This file type is not supported\. Upload a PDF, DOC, DOCX, PPT, PPTX, TXT or MD file\."):
             await save_file_with_hash(storage, self.upload(png, "x.png"), "x.png", ALLOWED_MIMES, 1024, 10_000_000)
 
     async def test_office_rejected_when_transform_disabled(self, storage, monkeypatch):
         monkeypatch.setattr(settings, "pres_do_transform", False)
-        with pytest.raises(ValueError, match="not supported") as exc:
+        with pytest.raises(ValueError, match=r"This file type is not supported\. Upload a PDF, TXT or MD file\."):
             await save_file_with_hash(storage, self.upload(make_docx(), "book.docx"), "book.docx", allowed_upload_mimes(), 1024, 10_000_000)
-        assert "DOCX" not in str(exc.value) and "PDF" in str(exc.value)
 
     async def test_oversize_rejected(self, storage):
         with pytest.raises(ValueError, match="Bad file size"):

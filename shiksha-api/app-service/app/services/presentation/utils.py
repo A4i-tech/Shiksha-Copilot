@@ -180,18 +180,7 @@ async def resolve_image(image: str, is_url: bool, storage: Storage | None = None
         return BytesIO(await resp.read())
 
 
-MIME_LABELS = {
-    "application/pdf": "PDF",
-    "application/msword": "DOC",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "DOCX",
-    "application/vnd.ms-powerpoint": "PPT",
-    "application/vnd.openxmlformats-officedocument.presentationml.presentation": "PPTX",
-    "text/plain": "TXT",
-    "text/markdown": "MD",
-}
-
-
-async def save_file_with_hash(storage: Storage, file: UploadFile, filename: str, allowed_mimes: set[str], chunk_size: int, max_size: int) -> tuple[str, str]:
+async def save_file_with_hash(storage: Storage, file: UploadFile, filename: str, allowed_mimes: dict[str, str], chunk_size: int, max_size: int) -> tuple[str, str]:
     suffix = pathlib.Path(filename).suffix.lower()
     sha256 = hashlib.sha256()
     total = 0
@@ -208,8 +197,8 @@ async def save_file_with_hash(storage: Storage, file: UploadFile, filename: str,
         path = pathlib.Path(str(f.name))
         mime = await asyncio.to_thread(magic.from_file, path, mime=True)
         if mime not in allowed_mimes:
-            accepted = ", ".join(label for m, label in MIME_LABELS.items() if m in allowed_mimes)
-            raise ValueError("File type %s is not supported. Upload a %s file." % (mime, accepted.rsplit(", ", 1)[0] + " or " + accepted.rsplit(", ", 1)[1]))
+            labels = list(allowed_mimes.values())
+            raise ValueError("This file type is not supported. Upload a " + ", ".join(labels[:-1]) + " or " + labels[-1] + " file.")
 
         final_name = f"{sha256.hexdigest()}{suffix}"
         await f.seek(0)
@@ -228,6 +217,10 @@ def randomize_url(url: str, counter: int) -> str:
     # may make an explicit requirement to 'include GIFs in presentation' where the suffix would come handy.
     data = urlparse(url)
     return data.scheme + "://" + _DUMMY_CDN + "/" + local_unique_id(counter) + pathlib.Path(data.path).suffix
+
+
+class ConversionFailed(RuntimeError):
+    """soffice ran but rejected the document."""
 
 
 LibreOfficeOutputFormat = Literal["pdf", "html", "odp", "ppt", "pptx"]
@@ -250,7 +243,7 @@ class LibreOffice:
                 proc.kill()
                 await proc.wait()
         code = proc.returncode or 0
-        if code != 0: raise RuntimeError("soffice exited with code %d: %s" % (code, stderr.decode().strip()))
+        if code != 0: raise ConversionFailed("soffice exited with code %d: %s" % (code, stderr.decode().strip()))
         return stdout
 
     async def convert(self, data: IO[bytes], output_format: LibreOfficeOutputFormat, input_suffix: str = ".pptx") -> bytes:
