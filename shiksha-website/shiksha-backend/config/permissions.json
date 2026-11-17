@@ -5,6 +5,7 @@
   { "name": "chat.use", "description": "Use the AI chat workspace for teacher support and content help.", "scopes": ["*"] },
   { "name": "content.activity.export", "description": "Download content activity reports for offline review.", "scopes": ["*"] },
   { "name": "content.activity.view", "description": "View teacher lesson-plan and resource generation activity.", "scopes": ["*"] },
+  { "name": "content.curate", "description": "Write lesson plans, resources, and questions for chapters assigned to the user, and submit those chapters for review.", "scopes": ["GLOBAL"] },
   { "name": "content.manage", "description": "Manage shared content records and administrative content workflows.", "scopes": ["*"] },
   { "name": "content.view", "description": "Open the content generation workspace.", "scopes": ["GLOBAL", "STATE", "ZONE", "DISTRICT", "BLOCK", "SCHOOL"] },
   { "name": "generation.status.view", "description": "Monitor background generation jobs and their current status.", "scopes": ["*"] },

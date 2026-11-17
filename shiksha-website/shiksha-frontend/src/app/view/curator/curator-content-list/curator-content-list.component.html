@@ -1,0 +1,142 @@
+<div class="p-8 bg-white rounded-sm min-h-[90vh]">
+  <h1 data-testid="curator-content-heading" class="text-xl md:text-3xl font-bold text-content leading-[48px]">
+    {{ 'Content Curation' | translate }}
+  </h1>
+  <div
+    class="rounded-lg border border-primary relative bg-[#E5EDF67D] text-sm md:text-[16px] py-6 px-7 mt-5 text-content-100 grid grid-cols-[auto,1fr] gap-2 items-start"
+  >
+    <img class="me-2 align-text-top" src="assets/icons/lesson-info.svg" alt="" />
+
+    <div>
+      <p>{{ 'Write the content of the chapters that an admin assigned to you, then send each finished chapter for approval' | translate }}.</p>
+      <p>
+        <span>{{ 'Curate Lesson Plan' | translate }}:</span>
+        {{ 'Write the 5E lesson plan of a period for an assigned chapter' | translate }}.
+      </p>
+      <p>
+        <span>{{ 'Curate Lesson Resource' | translate }}:</span>
+        {{ 'Add activities, real-world scenarios and questions for an assigned chapter' | translate }}.
+      </p>
+      <p>
+        <span>{{ 'My chapters' | translate }}:</span>
+        {{ 'See which subtopics still need a lesson plan, and submit a complete chapter for approval' | translate }}.
+      </p>
+    </div>
+  </div>
+
+  <div class="flex items-center justify-between mt-5 gap-4 flex-wrap">
+    <div class="flex gap-2 flex-wrap items-center">
+      <button data-testid="curate-lesson-plan-btn" class="btn-primary flex gap-2 items-center justify-center md:justify-start w-full md:w-fit border border-primary" routerLink="/curation/lesson-plan">
+        <img src="assets/icons/edit_light.svg" alt="" />
+        <span class="text-sm md:text-base">{{ 'Curate Lesson Plan' | translate }}</span>
+      </button>
+      <button data-testid="curate-lesson-resource-btn" class="btn-outline-primary flex gap-2 items-center justify-center md:justify-start w-full md:w-fit" routerLink="/curation/lesson-resources">
+        <img src="assets/icons/edit_primary.svg" alt="" />
+        <span class="text-sm md:text-base">{{ 'Curate Lesson Resource' | translate }}</span>
+      </button>
+      <button data-testid="my-chapters-btn" class="btn-outline-primary flex gap-2 items-center justify-center md:justify-start w-full md:w-fit" routerLink="/curation/chapters">
+        <img src="assets/icons/edit_primary.svg" alt="" />
+        <span class="text-sm md:text-base">{{ 'My chapters' | translate }}</span>
+      </button>
+    </div>
+
+    <div class="relative w-full md:w-72">
+      <input
+        data-testid="content-search-input"
+        [(ngModel)]="searchText"
+        (input)="onSearch()"
+        class="appearance-none rounded pl-8 py-2 px-3 text-content leading-tight focus:outline-none w-full border border-[#ccc] h-9"
+        type="text"
+        [attr.aria-label]="'Search content' | translate"
+        placeholder="{{ 'Search content' | translate }}"
+      />
+      <img class="absolute left-2 top-1/2 transform -translate-y-1/2 w-5 h-5" src="assets/icons/Search (1).svg" alt="" />
+    </div>
+  </div>
+
+  <div class="right_boxes w-full md:w-auto mt-5 border rounded-lg p-4 bg-primary-30">
+    <div class="flex gap-4 md:gap-1 flex-wrap">
+      <div *ngFor="let filter of filters" class="w-full md:w-28 cursor-pointer md:flex-1" [attr.data-testid]="'filter-' + filter.key">
+        <app-dropdown
+          [dropDownValues]="filter.options"
+          [config]="filter.config"
+          (valueUpdate)="onFilterChange(filter.key, $any($event))"
+        ></app-dropdown>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-5">
+    <div
+      data-testid="content-card"
+      class="card px-6 py-8 rounded-xl bg-white border flex flex-col justify-between"
+      *ngFor="let item of list"
+    >
+      <div>
+        <div class="flex justify-between">
+          <div
+            class="w-[52px] h-[52px] rounded-full flex justify-center items-center"
+            [ngClass]="item.segment === 'lesson-plans' ? 'bg-purple-100' : 'bg-green-100'"
+          >
+            <img *ngIf="item.segment === 'lesson-plans'" src="assets/icons/basil_document-solid.svg" alt="" />
+            <img *ngIf="item.segment !== 'lesson-plans'" src="assets/icons/basil_document-solid (1).svg" alt="" />
+          </div>
+          <div class="flex flex-col items-end">
+            <p *ngIf="item.updatedAt" class="text-xs font-normal text-content-70">
+              {{ 'Modified On' | translate }}:
+              <span>{{ item.updatedAt | date : 'MMM dd,yyyy' }}</span>
+            </p>
+            <span data-testid="status-badge" class="mt-2 px-4 py-1 rounded-2xl text-sm" [ngClass]="statusBadgeClasses[item.status]">
+              {{ statusLabels[item.status] | translate }}
+            </span>
+          </div>
+        </div>
+
+        <div class="mt-5">
+          <h2 class="text-base font-medium break-words">{{ item.name }}</h2>
+          <div class="flex items-center justify-start my-2">
+            <p class="px-2 py-1 rounded-full text-primary bg-[#F1F4FD] text-[11px] inline-block me-2">
+              {{ 'Class' | translate }} {{ item.class }}
+            </p>
+            <p class="px-2 py-1 rounded-full text-[#DE3B40] bg-[#FDF2F2] text-[11px] inline-block">
+              {{ (item.segment === 'lesson-plans' ? 'Lesson Plan' : 'Lesson Resource') | translate }}
+            </p>
+          </div>
+          <p class="my-2 text-xs font-normal text-content-70">
+            {{ 'Subject' | translate }} : <span>{{ item.subject }}</span>
+          </p>
+          <p class="my-2 text-xs font-normal text-content-70">
+            {{ 'Chapter' | translate }} : <span>{{ item.chapter }}</span>
+          </p>
+          <p class="mt-2 text-xs font-normal text-content-70">
+            {{ 'Sub-Topic' | translate }} :
+            <span *ngFor="let subtopic of item.subTopics" class="subtopic-chip px-2 py-1 my-1 rounded-full text-[#3D8248] bg-[#F1FDF3] text-[11px] me-2 inline-block">
+              {{ subtopic }}
+            </span>
+          </p>
+        </div>
+      </div>
+      <div class="flex flex-col sm:flex-row gap-2 mt-7 sm:items-end">
+        <a
+          data-testid="card-view-button"
+          [routerLink]="editLink(item)"
+          class="w-full h-10 rounded whitespace-nowrap text-sm flex items-center justify-center text-white font-semibold"
+          [ngClass]="item.segment === 'lesson-plans' ? 'bg-[#8353E2]' : 'bg-[#117B34]'"
+        >
+          {{ (item.status === 'draft' ? 'Continue Editing' : (item.segment === 'lesson-plans' ? 'View Lesson Plan' : 'View Lesson Resource')) | translate }}
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <app-pagination [totalItems]="totalItems" [pageSize]="pageSize" [currentPage]="currentPage" (pageChange)="onPageChange($event)"></app-pagination>
+
+  <div *ngIf="!isLoading && list.length === 0" class="flex items-center justify-center">
+    <div class="rounded-xl bg-white border px-6 py-8 w-[460px] h-[300px] flex flex-col items-center">
+      <div class="rounded-full bg-warn-50 p-4 my-8">
+        <img src="assets/icons/no-file.svg" alt="" />
+      </div>
+      <h2 data-testid="no-items-message" class="text-base font-medium text-center">{{ 'No items found' | translate }}</h2>
+    </div>
+  </div>
+</div>

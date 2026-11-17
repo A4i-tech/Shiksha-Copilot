@@ -1,9 +1,11 @@
 const BaseController = require("../../../controllers/base.controller");
 const {
-  createMockRequest,
+  createMockRequest: baseMockRequest,
   createMockResponse,
   createMockNext,
 } = require("../../utils/test.helpers");
+
+const createMockRequest = (options) => baseMockRequest({ user: { _id: "u1" }, ...options });
 
 // Mock Manager
 class MockManager {
@@ -328,7 +330,7 @@ describe("BaseController", () => {
         {},
         { createdAt: -1 },
         { isDeleted: true, status: { $nin: ["draft", "under_review"] } },
-        undefined
+        "u1"
       );
     });
 
@@ -369,7 +371,7 @@ describe("BaseController", () => {
         {},
         { createdAt: -1 },
         { isDeleted: true, status: "under_review" },
-        undefined
+        "u1"
       );
     });
 
@@ -387,7 +389,7 @@ describe("BaseController", () => {
         {},
         { createdAt: -1 },
         { isDeleted: true },
-        undefined
+        "u1"
       );
     });
 
@@ -405,7 +407,7 @@ describe("BaseController", () => {
         {},
         { createdAt: -1 },
         {},
-        undefined
+        "u1"
       );
     });
 
@@ -423,7 +425,7 @@ describe("BaseController", () => {
         {},
         { createdAt: -1 },
         {},
-        undefined
+        "u1"
       );
     });
   });
@@ -509,6 +511,89 @@ describe("BaseController", () => {
 
       expect(manager.bulkUpload).toHaveBeenCalledWith([{ name: "solo" }], false, "u1");
       expect(res.status).toHaveBeenCalledWith(200);
+    });
+  });
+
+  describe("getAll assigned filter (chapters)", () => {
+    const ADMIN_ID = "507f1f77bcf86cd799439012";
+    const CURATOR_ID = "507f1f77bcf86cd799439011";
+    const RECORDS = {
+      undefined: {},
+      0: { isDeleted: { $ne: true } },
+      2: { isDeleted: true, status: { $nin: ["draft", "under_review"] } },
+      3: { isDeleted: true, status: "draft", createdBy: ADMIN_ID },
+      4: { isDeleted: true, status: "under_review" },
+    };
+    const ASSIGNED = { assigned: { $ne: null }, unassigned: null };
+    let chapterController;
+    let res;
+
+    beforeEach(() => {
+      chapterController = new BaseController(mockManager, undefined, true);
+      res = createMockResponse();
+      mockManager.getAll.mockResolvedValue({ success: true, data: [] });
+    });
+
+    const listCall = (query, extra = {}) =>
+      chapterController.getAll(createMockRequest({ query, user: { _id: ADMIN_ID }, ...extra }), res);
+
+    describe.each(Object.keys(ASSIGNED))("filter[assigned]=%s", (assigned) => {
+      it.each(Object.keys(RECORDS))("combines with the Records tab includeDeleted=%s", async (records) => {
+        await listCall({ filter: { assigned }, ...(records === "undefined" ? {} : { includeDeleted: records }) });
+
+        expect(mockManager.getAll).toHaveBeenCalledWith(
+          1, NaN, { assignedTo: ASSIGNED[assigned] }, { createdAt: -1 }, RECORDS[records], ADMIN_ID
+        );
+      });
+    });
+
+    it("keeps other filters next to the assigned filter and never passes `assigned` to the manager", async () => {
+      await listCall({ filter: { assigned: "assigned", standard: "10" } });
+
+      expect(mockManager.getAll.mock.calls[0][2]).toEqual({ standard: "10", assignedTo: { $ne: null } });
+    });
+
+    it("ignores an unknown assigned value", async () => {
+      await listCall({ filter: { assigned: "everyone" } });
+
+      expect(mockManager.getAll.mock.calls[0][2]).toEqual({});
+    });
+
+    it("casts filter[assignedTo] to an ObjectId", async () => {
+      await listCall({ filter: { assignedTo: CURATOR_ID } });
+
+      const { assignedTo } = mockManager.getAll.mock.calls[0][2];
+      expect(String(assignedTo)).toBe(CURATOR_ID);
+      expect(assignedTo.constructor.name).toBe("ObjectId");
+    });
+
+    it("lets an explicit assignedTo win over filter[assigned], so a curator scope cannot be widened", async () => {
+      await listCall({ filter: { assignedTo: CURATOR_ID, assigned: "unassigned" } });
+
+      expect(String(mockManager.getAll.mock.calls[0][2].assignedTo)).toBe(CURATOR_ID);
+    });
+
+    it("leaves filter[assignedTo] alone on an entity without a content status", async () => {
+      const plainController = new BaseController(mockManager);
+
+      await plainController.getAll(createMockRequest({ query: { filter: { assignedTo: "nope" } }, user: { _id: ADMIN_ID } }), res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(mockManager.getAll.mock.calls[0][2]).toEqual({ assignedTo: "nope" });
+    });
+
+    it("answers 400 for an assignedTo that is not an id", async () => {
+      await listCall({ filter: { assignedTo: "nope" } });
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ error: "Invalid assignedTo format" });
+      expect(mockManager.getAll).not.toHaveBeenCalled();
+    });
+
+    it("curator scope: the draft tab lists every draft of the assigned records, not only the caller's own", async () => {
+      await listCall({ includeDeleted: "3" }, { curatorScope: true });
+
+      expect(mockManager.getAll.mock.calls[0][4]).toEqual({ isDeleted: true, status: "draft" });
     });
   });
 });
