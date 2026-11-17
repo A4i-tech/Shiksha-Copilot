@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import hashlib
 from io import BytesIO
 import os
@@ -240,7 +241,8 @@ class LibreOffice:
         finally:
             # don't leave a hung/orphaned soffice behind (a corrupt document can hang it)
             if proc.returncode is None:
-                proc.kill()
+                with contextlib.suppress(ProcessLookupError):  # exited between the check and the kill
+                    proc.kill()
                 await proc.wait()
         code = proc.returncode or 0
         if code != 0: raise ConversionFailed("soffice exited with code %d: %s" % (code, stderr.decode().strip()))
