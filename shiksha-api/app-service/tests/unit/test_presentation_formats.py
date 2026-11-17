@@ -8,6 +8,7 @@ import zipfile
 from contextlib import asynccontextmanager
 
 import aiofiles
+import pymupdf
 import pytest
 from fastapi import UploadFile
 from pptx import Presentation
@@ -36,6 +37,12 @@ def make_pptx(text: str) -> bytes:
     buf = io.BytesIO()
     prs.save(buf)
     return buf.getvalue()
+
+
+def make_pdf(text: str) -> bytes:
+    with pymupdf.open() as doc:
+        doc.new_page().insert_text((72, 72), text)
+        return doc.tobytes()
 
 
 def make_docx() -> bytes:
@@ -219,6 +226,10 @@ class TestUploadMimeDetection:
     async def test_docx_accepted(self, storage):
         name, mime = await save_file_with_hash(storage, self.upload(make_docx(), "book.docx"), "book.docx", ALLOWED_MIMES, 1024, 10_000_000)
         assert mime == DOCX and name.endswith(".docx")
+
+    async def test_pdf_accepted(self, storage):
+        name, mime = await save_file_with_hash(storage, self.upload(make_pdf("t"), "book.pdf"), "book.pdf", ALLOWED_MIMES, 1024, 10_000_000)
+        assert mime == PDF and name.endswith(".pdf")
 
     async def test_unsupported_binary_rejected(self, storage):
         png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
