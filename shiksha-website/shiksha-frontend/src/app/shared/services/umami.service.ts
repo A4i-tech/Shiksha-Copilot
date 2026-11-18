@@ -22,7 +22,7 @@ export class UmamiService {
       });
   }
 
-  private injectScript({ umamiUrl, umamiWebsiteId }: UmamiConfig): void {
+  private injectScript({ umamiUrl, umamiWebsiteId, umamiRecorder }: UmamiConfig): void {
     const script = document.createElement('script');
     script.defer = true;
     script.src = `${umamiUrl}/script.js`;
@@ -35,6 +35,12 @@ export class UmamiService {
       this.queue = [];
     };
     document.head.appendChild(script);
+    if (!umamiRecorder) return;
+    const recorder = document.createElement('script');
+    recorder.defer = true;
+    recorder.src = `${umamiUrl}/recorder.js`;
+    recorder.setAttribute('data-website-id', umamiWebsiteId);
+    document.head.appendChild(recorder);
   }
 
   identifyUser(user: UmamiUser): void {

@@ -8,9 +8,9 @@ const { isSupersetConfigured, runAnalyticsSql } = require("../helper/superset.he
 const LAST_SYNC_SQL = "SELECT value FROM etl_metadata WHERE key = 'etl_last_sync'";
 
 router.get("/analytics/config", (req, res) => {
-  const { UMAMI_URL, UMAMI_WEBSITE_ID } = process.env;
+  const { UMAMI_URL, UMAMI_WEBSITE_ID, UMAMI_RECORDER } = process.env;
   if (!UMAMI_URL || !UMAMI_WEBSITE_ID) return res.status(404).json({ error: "Umami is not configured" });
-  res.json({ umamiUrl: UMAMI_URL, umamiWebsiteId: UMAMI_WEBSITE_ID });
+  res.json({ umamiUrl: UMAMI_URL, umamiWebsiteId: UMAMI_WEBSITE_ID, umamiRecorder: UMAMI_RECORDER === "true" });
 });
 
 router.get("/analytics/sync-status", isAuthenticated, requirePermission("analytics.view"), async (req, res) => {

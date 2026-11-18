@@ -24,7 +24,17 @@ describe("GET /api/analytics/config", () => {
     const res = await request(app).get("/api/analytics/config");
 
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ umamiUrl: "https://umami.test", umamiWebsiteId: "site-1" });
+    expect(res.body).toEqual({ umamiUrl: "https://umami.test", umamiWebsiteId: "site-1", umamiRecorder: false });
+  });
+
+  it("returns umamiRecorder true only when UMAMI_RECORDER is \"true\"", async () => {
+    process.env.UMAMI_URL = "https://umami.test";
+    process.env.UMAMI_WEBSITE_ID = "site-1";
+    process.env.UMAMI_RECORDER = "true";
+
+    const res = await request(app).get("/api/analytics/config");
+
+    expect(res.body.umamiRecorder).toBe(true);
   });
 
   it("returns 404 when either value is unset", async () => {

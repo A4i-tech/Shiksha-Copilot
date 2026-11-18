@@ -38,4 +38,5 @@ export type UmamiEventData = Record<string, string | number | boolean>;
 export interface UmamiConfig {
   umamiUrl: string;
   umamiWebsiteId: string;
+  umamiRecorder: boolean;
 }
