@@ -61,10 +61,12 @@ class TestAppConfiguration:
             parse_origins("not-a-url")
 
     def test_parse_origins_rejects_non_exact_origin(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="https://a.com/"):
             parse_origins("https://a.com/")
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=r"\*"):
             parse_origins("*")
+        with pytest.raises(ValueError, match="https://A.com"):
+            parse_origins("https://A.com")
 
     def test_app_includes_chat_router(self):
         """Test that chat router is included."""
