@@ -297,17 +297,6 @@
             Save as draft
           </button>
 
-          <button
-            type="button"
-            class="btn-primary h-9 w-full sm:w-auto"
-            [disabled]="isSaving"
-            (click)="save('under_review')"
-          >
-            <div class="flex items-center justify-center gap-2">
-              <span>{{ isSaving ? 'Saving...' : 'Ready for review' }}</span>
-              <img src="assets/icons/check.svg" alt="" />
-            </div>
-          </button>
         </ng-container>
 
         <ng-template #editAction>
@@ -321,6 +310,17 @@
               <span>{{ isSaving ? 'Saving...' : (curatorMode ? ('Save as draft' | translate) : 'Save changes') }}</span>
               <img src="assets/icons/check.svg" alt="" />
             </div>
+          </button>
+
+          <button
+            *ngIf="curatorMode && !isReadonly"
+            type="button"
+            class="btn-primary h-9 w-full sm:w-auto"
+            data-testid="send-for-review-btn"
+            [disabled]="isSaving"
+            (click)="save('under_review')"
+          >
+            {{ 'Send for review' | translate }}
           </button>
         </ng-template>
       </div>
