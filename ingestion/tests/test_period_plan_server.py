@@ -349,20 +349,6 @@ def test_workbook_upload_runs_the_named_flow_and_returns_the_plans(conn):
     assert conn.posted == []
 
 
-def test_webhook_is_opt_in_for_a_batch_run(conn):
-    call(
-        "POST",
-        f"{PIPELINES}/period_plan",
-        form=upload(PARAMS | {"webhook": True}),
-        wait=True,
-    )
-    assert {p.status for p in conn.posted} == {
-        "PENDING",
-        "RUNNING",
-        "COMPLETED",
-    }
-
-
 def test_run_that_fails_reports_the_reason_in_status(conn):
     status, data = call(
         "POST",

@@ -144,7 +144,6 @@ def graph(conn=None, **kw):
             **CONFIG,
             "conn": conn,
             "model": "m",
-            "webhook": True,
             "force_mode": "",
             "concurrency": 1,
             "retrieve": {"embed_model": "e"},

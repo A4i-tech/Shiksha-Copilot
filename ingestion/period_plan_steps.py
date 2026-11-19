@@ -539,7 +539,6 @@ class SectionGraph(BaseModel, Step):
     prompts: Prompts
     retrieve: QdrantRetrieve
     conn: InstanceOf[Connections] | None = Field(default=None, exclude=True)
-    webhook: bool = True
     force_mode: Literal["rag", "gpt"] | None = None
     concurrency: int = 1
 
@@ -902,11 +901,9 @@ class SectionGraph(BaseModel, Step):
                 )
         gate = asyncio.Semaphore(self.concurrency)
 
-        post_status = self.conn.post_status if self.webhook else no_status
-
         async def one(inp: LessonPlanGenerationInput) -> PlanResult:
             async with gate:
-                return await self.plan(inp, post_status)
+                return await self.plan(inp, self.conn.post_status)
 
         results = await asyncio.gather(*(one(inp) for inp in inputs))
         ctx.metadata["lesson_plans"] = failed | {
@@ -932,7 +929,7 @@ class PeriodRow(BaseModel):
 
     chapter_number: int | float | str | None
     chapter_title: str | None
-    period: int | float | str | None
+    period: int | None
     topic: str | None
     learning_outcomes: str | None
 
@@ -1032,7 +1029,7 @@ class XlsxChapters(BaseModel, Step):
                 "topic_groups": [
                     group
                     for _, group in sorted(
-                        groups.items(), key=lambda kv: order(kv[0])
+                        groups.items(), key=lambda kv: (kv[0] is None, kv[0] or 0)
                     )
                     if group["topics"]
                 ],
