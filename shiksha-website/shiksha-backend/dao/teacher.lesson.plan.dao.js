@@ -23,14 +23,14 @@ class TeacherLessonPlanDao extends BaseDao {
 		return result;
 	}
 
-	async updatePlan(planId, data) {
+	async updatePlan(planId, data, onlyIf = {}) {
 		let update = {
 			...data
 		};
 
 		let options = { new: true };
 
-		return await TeacherLessonPlan.findByIdAndUpdate(planId, update, options);
+		return await TeacherLessonPlan.findOneAndUpdate({ _id: planId, ...onlyIf }, update, options);
 	}
 
 	async getByTeacher(teacherId, filters) {
