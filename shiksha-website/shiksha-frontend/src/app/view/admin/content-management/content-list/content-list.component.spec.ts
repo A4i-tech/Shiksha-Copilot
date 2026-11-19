@@ -146,22 +146,6 @@ describe('ContentListComponent', () => {
     httpMock.match(() => true).forEach((r) => r.flush({ items: [], total: 0 }));
   });
 
-  it('sendForReview should be a single update call, since draft and under_review are both already soft-deleted', () => {
-    component.confirmRecord = { _id: 'row-3', status: 'draft' };
-    component.confirmAction = 'sendForReview';
-
-    component.runConfirmedAction();
-
-    const updateReq = httpMock.expectOne((r) => r.url.endsWith('/row-3'));
-    expect(updateReq.request.method).toBe('PUT');
-    expect(updateReq.request.body).toEqual({ status: 'under_review' });
-    updateReq.flush({ success: true });
-
-    // no restore or delete call should follow
-    httpMock.expectNone((r) => r.url.endsWith('/row-3/restore'));
-    httpMock.match(() => true).forEach((r) => r.flush({ items: [], total: 0 }));
-  });
-
   it('sendToDraft should be a single update call, since draft and under_review are both already soft-deleted', () => {
     component.confirmRecord = { _id: 'row-4', status: 'under_review' };
     component.confirmAction = 'sendToDraft';

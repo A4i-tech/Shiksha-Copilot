@@ -3,7 +3,7 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { Subscription, of, switchMap } from 'rxjs';
+import { EMPTY, Subscription, catchError, of, switchMap } from 'rxjs';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { DropdownComponent } from 'src/app/shared/components/dropdown/dropdown.component';
 import { DropDownConfig } from 'src/app/shared/interfaces/dropdown.interface';
@@ -232,17 +232,21 @@ export class ContentEditComponent implements OnInit, OnDestroy {
 
     if (!body) return;
 
-    if (!Object.keys(body).length) {
+    // A curator sends the whole chapter for review. The server rejects a status field on a record.
+    const submitChapter = this.curatorMode && targetStatus === CONTENT_STATUS.UNDER_REVIEW;
+    const unchanged = !Object.keys(body).length;
+
+    if (unchanged && !submitChapter) {
       this.utilityService.showError('No field has changed.');
       return;
     }
 
     this.isSaving = true;
 
-    const request = this.isCreate
+    const saved = this.isCreate
       ? this.contentService.create(this.config.segment, body, this.curatorMode).pipe(
           switchMap((res: any) => {
-            if (targetStatus === CONTENT_STATUS.DRAFT) return of(res);
+            if (targetStatus === CONTENT_STATUS.DRAFT || this.curatorMode) return of(res);
 
             const id = res?.data?.insertedIds?.[0];
             if (!id) throw new Error('The record was created but its ID was not returned.');
@@ -252,7 +256,21 @@ export class ContentEditComponent implements OnInit, OnDestroy {
             });
           })
         )
-      : this.contentService.update(this.config.segment, this.recordId, body, this.curatorMode);
+      : unchanged
+        ? of(null)
+        : this.contentService.update(this.config.segment, this.recordId, body, this.curatorMode);
+
+    const request = submitChapter
+      ? saved.pipe(
+          switchMap(() => this.contentService.submit(this.chapterId)),
+          catchError((err: any) => {
+            // The record is already saved as a draft, so leave the form to avoid a duplicate on retry.
+            this.utilityService.handleError(err);
+            this.leave();
+            return EMPTY;
+          })
+        )
+      : saved;
 
     request.subscribe({
       next: (res: any) => {

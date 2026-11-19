@@ -204,7 +204,7 @@ describe('ContentEditComponent (curator mode)', () => {
     httpMock.verify();
   });
 
-  it('hides the fields that the chapter owns and shows one Save as draft button', () => {
+  it('hides the fields that the chapter owns and shows Save as draft and Send for review buttons', () => {
     setup('new');
     flushChapter('draft');
     fixture.detectChanges();
@@ -216,7 +216,7 @@ describe('ContentEditComponent (curator mode)', () => {
     const buttons = Array.from<HTMLElement>(fixture.nativeElement.querySelectorAll('form button')).map((button) =>
       button.textContent!.trim()
     );
-    expect(buttons).toEqual(['Cancel', 'Save as draft']);
+    expect(buttons).toEqual(['Cancel', 'Save as draft', 'Send for review']);
   });
 
   it('shows one summary line of the chapter and no admin copy', () => {
@@ -241,6 +241,41 @@ describe('ContentEditComponent (curator mode)', () => {
     expect(req.request.method).toBe('POST');
     expect(req.request.body.chapterId).toBe('ch-1');
     req.flush({ success: true });
+  });
+
+  it('Send for review saves the record, then submits the chapter', () => {
+    setup('new');
+    flushChapter('draft');
+    component.formValues['name'] = 'Plan one';
+    component.formValues['semester'] = '1';
+
+    component.save('under_review');
+
+    const create = httpMock.expectOne((r) => r.url.endsWith('/curator/content/lesson-plans'));
+    expect(create.request.body.status).toBeUndefined();
+    create.flush({ data: { insertedIds: ['lp-9'] } });
+
+    const submit = httpMock.expectOne((r) => r.url.endsWith('/curator/content/chapters/ch-1/submit'));
+    expect(submit.request.method).toBe('POST');
+    submit.flush({ message: 'sent' });
+  });
+
+  it('leaves the form and shows the error when the chapter submit fails after the draft is saved', () => {
+    setup('new');
+    const errorSpy = spyOn(TestBed.inject(ToastrService), 'error');
+    flushChapter('draft');
+    component.formValues['name'] = 'Plan one';
+    component.formValues['semester'] = '1';
+
+    component.save('under_review');
+
+    httpMock.expectOne((r) => r.url.endsWith('/curator/content/lesson-plans')).flush({ data: { insertedIds: ['lp-9'] } });
+    httpMock
+      .expectOne((r) => r.url.endsWith('/curator/content/chapters/ch-1/submit'))
+      .flush({ message: 'Add a lesson plan for every subtopic.' }, { status: 400, statusText: 'Bad Request' });
+
+    expect(errorSpy).toHaveBeenCalled();
+    expect(TestBed.inject(Router).navigate).toHaveBeenCalledWith(['/curation/chapters', 'ch-1']);
   });
 
   it('goes back to the chapter page when the record is not in the list of the chapter', () => {
