@@ -1,6 +1,7 @@
 const PQueue = require('p-queue').default;
 const QuestionBankCacheSummary = require('../models/question.bank.cache.summary.model');
 const QuestionBankCache = require("../models/question.bank.cache.model.js");
+const logger = require("../config/loggers");
 const {
   fixObjectIdsInArray,
 } = require("../helper/question.bank.cache.helper");
@@ -149,8 +150,65 @@ const addCacheJob = async (jobData) => {
   return job;
 };
 
+const JOB_FIELDS = {
+  notFoundQuestions: "notFoundQuestions",
+  processedCache: "processedCache",
+  unitLevel: "unitLevel",
+  newResQuestions: "aiQuestionsForCache",
+};
+
+const toCacheJob = (summary) => ({
+  ...Object.fromEntries(Object.entries(JOB_FIELDS).map(([key, field]) => [key, summary[field]])),
+  cacheSummaryId: summary._id.toString(),
+});
+
+const PENDING_FILTER = { isCacheUpdated: false, inProgress: false };
+
+const RETRY_BATCH_SIZE = Number(process.env.CACHE_RETRY_BATCH_SIZE ?? 20);
+if (!Number.isInteger(RETRY_BATCH_SIZE) || RETRY_BATCH_SIZE < 1) {
+  throw new Error(
+    `CACHE_RETRY_BATCH_SIZE is "${process.env.CACHE_RETRY_BATCH_SIZE}". Set it to a whole number of 1 or more, or remove it to use 20.`
+  );
+}
+
+const requeueFailedJobs = async () => {
+  let lastId = null;
+  let rejected = 0;
+
+  for (;;) {
+    const filter = { ...PENDING_FILTER };
+    if (lastId) filter._id = { $gt: lastId };
+
+    const batch = await QuestionBankCacheSummary.find(filter)
+      .select(Object.values(JOB_FIELDS).join(" "))
+      .sort({ _id: 1 })
+      .limit(RETRY_BATCH_SIZE)
+      .lean();
+
+    if (!batch.length) break;
+
+    const results = await Promise.allSettled(batch.map((job) => addCacheJob(toCacheJob(job))));
+    results.forEach((result, i) => {
+      if (result.status !== "rejected") return;
+      rejected += 1;
+      logger.error("Cache retry job failed", {
+        cacheSummaryId: batch[i]._id.toString(),
+        message: result.reason?.message,
+        stack: result.reason?.stack,
+      });
+    });
+
+    lastId = batch[batch.length - 1]._id;
+  }
+
+  logger.info("Cache retry sweep finished", { rejected });
+};
+
 module.exports = {
   addCacheJob,
   buildCacheAdditions,
   updateQuestionBankCache,
+  requeueFailedJobs,
+  toCacheJob,
+  PENDING_FILTER,
 };
