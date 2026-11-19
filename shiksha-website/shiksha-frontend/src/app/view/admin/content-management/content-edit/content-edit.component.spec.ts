@@ -260,6 +260,24 @@ describe('ContentEditComponent (curator mode)', () => {
     submit.flush({ message: 'sent' });
   });
 
+  it('leaves the form and shows the error when the chapter submit fails after the draft is saved', () => {
+    setup('new');
+    const errorSpy = spyOn(TestBed.inject(ToastrService), 'error');
+    flushChapter('draft');
+    component.formValues['name'] = 'Plan one';
+    component.formValues['semester'] = '1';
+
+    component.save('under_review');
+
+    httpMock.expectOne((r) => r.url.endsWith('/curator/content/lesson-plans')).flush({ data: { insertedIds: ['lp-9'] } });
+    httpMock
+      .expectOne((r) => r.url.endsWith('/curator/content/chapters/ch-1/submit'))
+      .flush({ message: 'Add a lesson plan for every subtopic.' }, { status: 400, statusText: 'Bad Request' });
+
+    expect(errorSpy).toHaveBeenCalled();
+    expect(TestBed.inject(Router).navigate).toHaveBeenCalledWith(['/curation/chapters', 'ch-1']);
+  });
+
   it('goes back to the chapter page when the record is not in the list of the chapter', () => {
     setup('lp-gone');
     const errorSpy = spyOn(TestBed.inject(ToastrService), 'error');
