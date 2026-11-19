@@ -120,7 +120,7 @@ Send a workbook (or a PDF) and name the flow in the URL. The service runs that y
 
 The pipeline route is off until you set `PIPELINE_API_KEY`. Send the key in the `x-api-key` header.
 An unknown flow returns `404`. An unknown parameter returns `400` and lists the valid ones.
-A batch run posts no webhook status. Add `"webhook": true` to `params` to turn it on.
+A batch run posts no webhook status.
 
 ```bash
 curl -H "x-api-key: $PIPELINE_API_KEY" -X POST http://localhost:8080/api/v2/pipelines/period_plan   -F "file=@Social LOs.xlsx" -F 'params={"grade": "6", "subject": "social", "workflow_template": {...}}'

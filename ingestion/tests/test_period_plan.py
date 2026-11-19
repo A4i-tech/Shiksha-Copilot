@@ -470,13 +470,6 @@ def test_webhook_timestamps_are_utc(conn):
     assert conn.posted[0].timestamp.endswith("+00:00")
 
 
-def test_webhook_off_posts_nothing(conn):
-    ctx = SimpleNamespace(metadata={"payloads": [payload([section("a")])]})
-    asyncio.run(graph(conn, webhook=False).run(ctx))
-    assert ctx.metadata["lesson_plans"]["plan-1"].status == "completed"
-    assert conn.posted == []
-
-
 def test_a_validation_error_does_not_echo_the_request():
     secret = "teacher-secret-42"
     with pytest.raises(ValidationError) as e:
@@ -571,10 +564,9 @@ def test_yaml_config_builds_the_registered_steps():
     )
     step = pipeline.steps[-1]
     assert isinstance(step, steps.SectionGraph)
-    assert (step.model, step.force_mode, step.webhook, step.concurrency) == (
+    assert (step.model, step.force_mode, step.concurrency) == (
         "gpt-x",
         "gpt",
-        True,
         1,
     )
     assert (

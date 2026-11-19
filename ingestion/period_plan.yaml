@@ -95,10 +95,6 @@ parameters:
       enum: ["", rag, gpt]
       default: ""
       description: Generate every section in this mode. Leave empty to use each section's own mode.
-    webhook:
-      type: boolean
-      default: true
-      description: Post PENDING, RUNNING, COMPLETED and FAILED status to WEBHOOK_URL
     concurrency:
       type: integer
       minimum: 1
@@ -444,7 +440,6 @@ steps:
     description: Generate one lesson plan per payload from the section dependency graph
     config:
       model: "${.config.model}"
-      webhook: "${.config.webhook}"
       force_mode: "${.config.force_mode}"
       concurrency: "${.config.concurrency}"
       retrieve:

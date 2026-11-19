@@ -237,6 +237,15 @@ class TeacherLessonPlanManager extends BaseManager {
 		}
 	}
 
+	async _createPlan(data, lesson) {
+		try {
+			return await this.dao.create(data);
+		} catch (error) {
+			await this.masterLessonDao.delete(lesson._id);
+			throw error;
+		}
+	}
+
 	async generateContent(teacherId, payload) {
 		const regenerationCount = await this.regeneratedCount(teacherId);
 		if(regenerationCount >= REGENERATION_LIMIT){
@@ -268,9 +277,7 @@ class TeacherLessonPlanManager extends BaseManager {
 			instanceId: result.data.instance_id,
 		};
 
-		let newTeacherLessonPlan = await this.dao.create(
-			teacherLessonPlanData
-		);
+		let newTeacherLessonPlan = await this._createPlan(teacherLessonPlanData, lesson);
 
 		if (!newTeacherLessonPlan) {
 			throw new Error("Failed to create teacher lesson plan");
@@ -456,7 +463,7 @@ class TeacherLessonPlanManager extends BaseManager {
 				instanceId: result.data.instance_id,
 			};
 
-			await this.dao.create(newTeacherLessonPlanData);
+			await this._createPlan(newTeacherLessonPlanData, lesson);
 			await this.lessonFeedbackDao.create({
 				...feedbackPayload,
 				teacherId: teacherId,
@@ -510,8 +517,8 @@ class TeacherLessonPlanManager extends BaseManager {
 
 		const { instance_id , status, output } = webhookData;
 
-		if (!instance_id) {
-			throw new AppError("instance_id is required", 400);
+		if (!instance_id || !status) {
+			throw new AppError("instance_id and status are required", 400);
 		}
 		const state = String(status).toLowerCase();
 
@@ -534,16 +541,20 @@ class TeacherLessonPlanManager extends BaseManager {
 				existingLessonPlan.lessonId
 			);
 
-			const lessonPlanTemplate = await this.lessonPlanTemplateDao.getById(masterLessonPlan.templateId);
+			const lessonPlanTemplate = masterLessonPlan
+				&& await this.lessonPlanTemplateDao.getById(masterLessonPlan.templateId);
 			if (!lessonPlanTemplate) {
 				failure = "The lesson plan template was not found. Retry the generation.";
+				update = { status: "failed", error: failure };
+			} else if (!Array.isArray(output?.sections)) {
+				failure = "The workflow returned no sections. Retry the generation.";
 				update = { status: "failed", error: failure };
 			} else {
 				const sections = formatSections(output.sections,lessonPlanTemplate.sections);
 
 				await this.masterLessonDao.update({ id: masterLessonPlan._id, sections });
 				update.sections = sections;
-				if (regeneratedLog) update.isCompleted = true;
+				if (existingLessonPlan.isGenerated) update.isCompleted = true;
 			}
 		} else if (typeof output === "string") {
 			update.error = output;

@@ -255,10 +255,10 @@ describe("TeacherLessonPlanManager", () => {
     });
 
     it("should autosave a regenerated plan when the run completes", async () => {
-      mockTeacherLessonPlanDao.getOne.mockResolvedValue({ _id: "plan-1", lessonId: "lesson-1" });
+      mockTeacherLessonPlanDao.getOne.mockResolvedValue({ _id: "plan-1", lessonId: "lesson-1", isGenerated: true });
       mockMasterLessonDao.getById.mockResolvedValue({ _id: "lesson-1", templateId: "tpl-1" });
       mockTemplateDao.getById.mockResolvedValue({ sections: [{ id: "s1", outputFormat: "plain_text" }] });
-      mockRegeneratedDao.getOne.mockResolvedValue({ _id: "log-1" });
+      mockRegeneratedDao.getOne.mockResolvedValue(null);
 
       await manager.processWebhookData({
         instance_id: "i-1",
@@ -271,6 +271,43 @@ describe("TeacherLessonPlanManager", () => {
         expect.objectContaining({ status: "completed", isCompleted: true }),
         {}
       );
+    });
+
+    it("should mark the plan failed and throw 400 when the master lesson is missing", async () => {
+      mockTeacherLessonPlanDao.getOne.mockResolvedValue({ _id: "plan-1", lessonId: "lesson-1" });
+      mockMasterLessonDao.getById.mockResolvedValue(null);
+
+      await expect(
+        manager.processWebhookData({ instance_id: "i-1", status: "completed", output: { sections: [] } })
+      ).rejects.toMatchObject({ name: "AppError", statusCode: 400 });
+      expect(mockTeacherLessonPlanDao.updatePlan).toHaveBeenCalledWith(
+        "plan-1",
+        expect.objectContaining({ status: "failed" }),
+        {}
+      );
+    });
+
+    it("should mark the plan failed and throw 400 when a completed run has no output", async () => {
+      mockTeacherLessonPlanDao.getOne.mockResolvedValue({ _id: "plan-1", lessonId: "lesson-1" });
+      mockMasterLessonDao.getById.mockResolvedValue({ _id: "lesson-1", templateId: "tpl-1" });
+      mockTemplateDao.getById.mockResolvedValue({ sections: [] });
+
+      await expect(
+        manager.processWebhookData({ instance_id: "i-1", status: "completed", output: null })
+      ).rejects.toMatchObject({ name: "AppError", statusCode: 400 });
+      expect(mockTeacherLessonPlanDao.updatePlan).toHaveBeenCalledWith(
+        "plan-1",
+        expect.objectContaining({ status: "failed" }),
+        {}
+      );
+    });
+
+    it("should throw 400 without writing when status is missing", async () => {
+      await expect(manager.processWebhookData({ instance_id: "i-1" })).rejects.toMatchObject({
+        name: "AppError",
+        statusCode: 400,
+      });
+      expect(mockTeacherLessonPlanDao.updatePlan).not.toHaveBeenCalled();
     });
 
     it("should not mark a failed run as saved and should store the failure text", async () => {
@@ -511,6 +548,22 @@ describe("TeacherLessonPlanManager", () => {
       postToCopilotBot.mockRejectedValue(new Error("bot down"));
 
       await expect(manager.generateContent("teacher-123", { lessonId: "lesson-123" })).rejects.toThrow("bot down");
+      expect(mockMasterLessonDao.delete).toHaveBeenCalledWith("new-1");
+    });
+
+    it("should delete the new master lesson when saving the teacher plan fails", async () => {
+      mockTeacherLessonPlanDao.getRegeneratedLessonPlansCount.mockResolvedValue(0);
+      mockMasterLessonDao.getById.mockResolvedValue({ _id: "lesson-123", templateId: "tpl-1", chapterId: "c1", name: "L" });
+      mockTemplateDao.getById.mockResolvedValue({ sections: [] });
+      mockChapterDao.getById.mockResolvedValue({ _id: "c1", subjectId: "s1", topics: "Algebra" });
+      mockSubjectDao.getById.mockResolvedValue({ name: "Maths", subjectName: "Maths" });
+      mockRegeneratedDao.getOne.mockResolvedValue(null);
+      mockMasterLessonDao.create.mockResolvedValue({ _id: "new-1" });
+      mockMasterLessonDao.delete = jest.fn();
+      postToCopilotBot.mockResolvedValue({ data: { instance_id: "i-1" } });
+      mockTeacherLessonPlanDao.create.mockRejectedValue(new Error("db down"));
+
+      await expect(manager.generateContent("teacher-123", { lessonId: "lesson-123" })).rejects.toThrow("db down");
       expect(mockMasterLessonDao.delete).toHaveBeenCalledWith("new-1");
     });
 

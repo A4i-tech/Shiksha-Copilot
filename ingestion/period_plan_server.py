@@ -1,4 +1,5 @@
 import asyncio
+import copy
 import hmac
 import json
 import logging
@@ -220,14 +221,14 @@ async def run_pipeline(request: web.Request) -> web.Response:
             400,
         ) from e
     properties = runner.FLOWS[flow]
-    if "webhook" in properties:
-        params.setdefault("webhook", False)
+    batch_conn = copy.copy(request.app[GRAPH].conn)
+    batch_conn.post_status = steps.no_status
     try:
         pipeline = runner.build_pipeline(
             flow,
             {k: runner.coerce(properties, k, v) for k, v in params.items()},
             upload.filename,
-            request.app[GRAPH].conn,
+            batch_conn,
         )
     except ValueError as e:
         raise fail(str(e), 400) from e
