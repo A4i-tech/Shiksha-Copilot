@@ -334,7 +334,7 @@ describe("BaseController", () => {
       );
     });
 
-    it("includeDeleted=3 returns only the caller's own drafts when the entity has a status field", async () => {
+    it("includeDeleted=3 returns every draft, not only the caller's, when the entity has a status field", async () => {
       const contentController = new BaseController(mockManager, undefined, true);
       const req = createMockRequest({
         query: { includeDeleted: "3" },
@@ -351,7 +351,7 @@ describe("BaseController", () => {
         NaN,
         {},
         { createdAt: -1 },
-        { isDeleted: true, status: "draft", createdBy: "admin-1" },
+        { isDeleted: true, status: "draft" },
         "admin-1"
       );
     });
@@ -521,7 +521,7 @@ describe("BaseController", () => {
       undefined: {},
       0: { isDeleted: { $ne: true } },
       2: { isDeleted: true, status: { $nin: ["draft", "under_review"] } },
-      3: { isDeleted: true, status: "draft", createdBy: ADMIN_ID },
+      3: { isDeleted: true, status: "draft" },
       4: { isDeleted: true, status: "under_review" },
     };
     const ASSIGNED = { assigned: { $ne: null }, unassigned: null };

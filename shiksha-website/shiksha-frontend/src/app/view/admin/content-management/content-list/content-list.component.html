@@ -363,14 +363,6 @@
         </div>
       </button>
     </li>
-    <li *ngIf="recordState === '3'" class="h-10 mb-2 hover:bg-shade-80 cursor-pointer" role="none">
-      <button type="button" class="block w-full h-full text-left px-4 py-2 text-sm text-content" role="menuitem" (click)="openConfirm('sendForReview', record)">
-        <div class="flex items-center">
-          <img class="ms-2 me-3 w-5 invert" src="assets/icons/check.svg" alt="" />
-          <span>Send for review</span>
-        </div>
-      </button>
-    </li>
     <li *ngIf="recordState === '4'" class="h-10 hover:bg-shade-80 cursor-pointer" role="none">
       <button type="button" class="block w-full h-full text-left px-4 py-2 text-sm text-content" role="menuitem" (click)="openConfirm('approve', record)">
         <div class="flex items-center">

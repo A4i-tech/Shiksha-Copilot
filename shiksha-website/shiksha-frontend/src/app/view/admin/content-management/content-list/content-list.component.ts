@@ -33,7 +33,6 @@ const APPROVE_CHAPTER_BODY =
 type ConfirmAction =
   | 'restore'
   | 'approve'
-  | 'sendForReview'
   | 'sendToDraft'
   | 'assign'
   | 'unassign'
@@ -49,13 +48,9 @@ const CONFIRM_MODAL_COPY: { [key in ConfirmAction]: { title: string; body: strin
     title: 'Approve',
     body: 'The record is marked approved and becomes visible to teachers and students.',
   },
-  sendForReview: {
-    title: 'Send for review',
-    body: 'The record moves to Ready for review, visible to every admin who can approve it.',
-  },
   sendToDraft: {
     title: 'Send back to draft',
-    body: 'The record goes back to draft, visible only to the admin who created it.',
+    body: 'The record goes back to draft, visible to every admin.',
   },
   assign: {
     title: 'Assign',
@@ -166,7 +161,7 @@ export class ContentListComponent implements OnInit, OnDestroy {
   }
 
   private localizeEntities(): void {
-    this.entities = CONTENT_ENTITIES.map((entity) => localizeEntity(entity, this.translateService));
+    this.entities = CONTENT_ENTITIES.filter(({ key }) => key !== 'questions').map((entity) => localizeEntity(entity, this.translateService));
   }
 
   ngOnInit(): void {
@@ -174,7 +169,7 @@ export class ContentListComponent implements OnInit, OnDestroy {
       this.route.paramMap.subscribe((params) => {
         const entity = getContentEntityConfig(params.get('entity'));
 
-        if (!entity) {
+        if (!entity || entity.key === 'questions') {
           this.router.navigate(['/content-management/chapters']);
           return;
         }
@@ -427,11 +422,6 @@ export class ContentListComponent implements OnInit, OnDestroy {
       case 'approve':
         request = this.contentService.approve(segment, id);
         successMessage = `${this.config.singular} approved successfully`;
-        break;
-      case 'sendForReview':
-        // draft -> under_review: both stay soft-deleted, only status moves.
-        request = this.contentService.update(segment, id, { status: CONTENT_STATUS.UNDER_REVIEW });
-        successMessage = `${this.config.singular} sent for review`;
         break;
       case 'sendToDraft':
         // under_review -> draft: both stay soft-deleted, only status moves.
