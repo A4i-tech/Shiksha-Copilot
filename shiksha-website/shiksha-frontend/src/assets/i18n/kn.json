@@ -940,7 +940,7 @@
   "Add period plan": "ಪಿರಿಯಡ್ ಯೋಜನೆ ಸೇರಿಸಿ",
   "Add lesson resource": "ಪಾಠ ಸಂಪನ್ಮೂಲ ಸೇರಿಸಿ",
   "Add question": "ಪ್ರಶ್ನೆ ಸೇರಿಸಿ",
-  "Pick one of your assigned chapters. The curation form opens for it.": "ನಿಮಗೆ ನಿಯೋಜಿಸಿದ ಅಧ್ಯಾಯಗಳಲ್ಲಿ ಒಂದನ್ನು ಆಯ್ಕೆಮಾಡಿ. ಅದಕ್ಕೆ ಕ್ಯುರೇಶನ್ ಫಾರ್ಮ್ ತೆರೆಯುತ್ತದೆ.",
+  "Pick one of your assigned chapters, then the subtopic to write.": "ನಿಮಗೆ ನಿಯೋಜಿಸಿದ ಅಧ್ಯಾಯಗಳಲ್ಲಿ ಒಂದನ್ನು ಆಯ್ಕೆಮಾಡಿ, ನಂತರ ಬರೆಯಲು ಉಪವಿಷಯವನ್ನು ಆಯ್ಕೆಮಾಡಿ.",
   "Search content": "ವಿಷಯವನ್ನು ಹುಡುಕಿ",
   "Under review": "ಪರಿಶೀಲನೆಯಲ್ಲಿದೆ",
   "Save as draft": "ಡ್ರಾಫ್ಟ್ ಆಗಿ ಉಳಿಸಿ",
@@ -954,5 +954,10 @@
   "See which subtopics still need a lesson plan, and submit a complete chapter for approval": "ಯಾವ ಉಪವಿಷಯಗಳಿಗೆ ಇನ್ನೂ ಪಾಠ ಯೋಜನೆ ಬೇಕು ಎಂದು ನೋಡಿ, ಪೂರ್ಣ ಅಧ್ಯಾಯವನ್ನು ಅನುಮೋದನೆಗೆ ಸಲ್ಲಿಸಿ",
   "See which subtopics still need a period plan, and submit a complete chapter for approval": "ಯಾವ ಉಪವಿಷಯಗಳಿಗೆ ಇನ್ನೂ ಪಿರಿಯಡ್ ಯೋಜನೆ ಬೇಕು ಎಂದು ನೋಡಿ, ಪೂರ್ಣ ಅಧ್ಯಾಯವನ್ನು ಅನುಮೋದನೆಗೆ ಸಲ್ಲಿಸಿ",
   "The chapters that an admin assigned to you. Open a chapter to write its content and send it for approval.": "ನಿರ್ವಾಹಕರು ನಿಮಗೆ ನಿಯೋಜಿಸಿದ ಅಧ್ಯಾಯಗಳು. ವಿಷಯ ಬರೆಯಲು ಮತ್ತು ಅನುಮೋದನೆಗೆ ಕಳುಹಿಸಲು ಅಧ್ಯಾಯವನ್ನು ತೆರೆಯಿರಿ.",
-  "{{done}} of {{total}} subtopics done": "{{total}} ಉಪವಿಷಯಗಳಲ್ಲಿ {{done}} ಪೂರ್ಣಗೊಂಡಿವೆ"
+  "{{done}} of {{total}} subtopics done": "{{total}} ಉಪವಿಷಯಗಳಲ್ಲಿ {{done}} ಪೂರ್ಣಗೊಂಡಿವೆ",
+  "Subtopic": "ಉಪವಿಷಯ",
+  "Add another": "ಇನ್ನೊಂದನ್ನು ಸೇರಿಸಿ",
+  "Video title": "ವೀಡಿಯೊ ಶೀರ್ಷಿಕೆ",
+  "Video link": "ವೀಡಿಯೊ ಲಿಂಕ್",
+  "Add video": "ವೀಡಿಯೊ ಸೇರಿಸಿ"
 }

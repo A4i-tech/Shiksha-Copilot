@@ -11,6 +11,7 @@ import {
   CURATOR_HIDDEN_FIELDS,
   ContentEntityConfig,
   ContentField,
+  ContentFieldType,
   ContentSelectOption,
   getContentEntityConfig,
   localizeEntity,
@@ -19,6 +20,8 @@ import { ContentManagementService, CurationChapter } from '../content-management
 import { ChapterPickerComponent } from '../chapter-picker/chapter-picker.component';
 import { CONTENT_STATUS } from '../content-status.constants';
 import { UmamiService } from 'src/app/shared/services/umami.service';
+import { TreeFieldComponent } from 'src/app/shared/components/tree-field/tree-field.component';
+import { blankSections, filledSections, hasText } from 'src/app/shared/utility/section-content.util';
 
 /** the fixed A-D option row set an MCQ answer type needs, matching McqOption in question_paper.py */
 const MCQ_OPTION_LABELS = ['A', 'B', 'C', 'D'];
@@ -27,7 +30,7 @@ const MCQ_OPTION_LABELS = ['A', 'B', 'C', 'D'];
   selector: 'app-content-edit',
   templateUrl: './content-edit.component.html',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, ChapterPickerComponent, DropdownComponent, TranslateModule],
+  imports: [CommonModule, FormsModule, RouterModule, ChapterPickerComponent, DropdownComponent, TranslateModule, TreeFieldComponent],
 })
 export class ContentEditComponent implements OnInit, OnDestroy {
   config!: ContentEntityConfig;
@@ -40,6 +43,9 @@ export class ContentEditComponent implements OnInit, OnDestroy {
   curatorMode = false;
   chapterId = '';
   chapter?: CurationChapter;
+  subTopic = '';
+  private templateId?: string;
+  isTemplateLoading = false;
 
   /** form value of each field, as the control shows it */
   formValues: { [field: string]: any } = {};
@@ -88,7 +94,10 @@ export class ContentEditComponent implements OnInit, OnDestroy {
         this.config = localizeEntity(entity, this.translateService);
         this.recordId = id;
         this.isCreate = id === 'new';
-        if (this.curatorMode) this.chapterId = params.get('chapterId')!;
+        if (this.curatorMode) {
+          this.chapterId = params.get('chapterId')!;
+          this.subTopic = this.route.snapshot.queryParamMap.get('subTopic') ?? '';
+        }
 
         if (entity.fields.some((field) => field.type === 'subject-select')) {
           this.loadSubjectOptions();
@@ -176,10 +185,16 @@ export class ContentEditComponent implements OnInit, OnDestroy {
           this.router.navigate(chapter ? ['/curation/chapters', this.chapterId] : ['/curation']);
           return;
         }
+        if (this.isCreate && this.hasSubTopic && !this.subTopic) {
+          this.router.navigate([this.selectionUrl]);
+          return;
+        }
         this.chapter = chapter;
         this.record = record;
         this.isReadonly = chapter.status !== CONTENT_STATUS.DRAFT;
+        if (!this.isCreate && this.hasSubTopic) this.subTopic = record.subTopics.join(' | ');
         this.fillForm(this.record);
+        if (this.hasSubTopic && !record[this.sectionsField]?.length) this.loadSectionTemplate(chapter);
       },
       error: (err: any) => {
         this.isLoading = false;
@@ -188,8 +203,52 @@ export class ContentEditComponent implements OnInit, OnDestroy {
     });
   }
 
+  private get isPlan(): boolean {
+    return this.config.key === 'lesson-plans';
+  }
+
+  get hasSubTopic(): boolean {
+    return this.isPlan || this.config.key === 'resources';
+  }
+
+  private get sectionsField(): string {
+    return this.isPlan ? 'sections' : 'resources';
+  }
+
+  private get selectionUrl(): string {
+    return this.isPlan ? '/curation/lesson-plan' : '/curation/lesson-resources';
+  }
+
+  private loadSectionTemplate(chapter: CurationChapter): void {
+    this.isTemplateLoading = true;
+    this.subscriptions.push(
+      this.contentService.getSectionTemplate(chapter, this.isPlan ? 'lesson_plan' : 'lesson_resource').subscribe({
+        next: (template) => {
+          this.isTemplateLoading = false;
+          if (!template) {
+            const { board, medium, standard, subject } = chapter;
+            this.utilityService.showError(
+              `No template exists for ${board}, ${medium}, class ${standard}, ${subject[0].subjectName}. Ask an admin to add one, then open this form again.`
+            );
+            return;
+          }
+          this.templateId = template._id;
+          this.formValues[this.sectionsField] = blankSections(template.sections);
+        },
+        error: (err: any) => {
+          this.isTemplateLoading = false;
+          this.utilityService.handleError(err);
+        },
+      })
+    );
+  }
+
+  fieldType(field: ContentField): ContentFieldType {
+    return (this.curatorMode && field.curatorType) || field.type;
+  }
+
   isDropdownField(field: ContentField): boolean {
-    return field.type === 'select' || field.type === 'subject-select';
+    return this.fieldType(field) === 'select' || this.fieldType(field) === 'subject-select';
   }
 
   dropdownConfig(field: ContentField): DropDownConfig {
@@ -215,13 +274,16 @@ export class ContentEditComponent implements OnInit, OnDestroy {
   }
 
   save(targetStatus: typeof CONTENT_STATUS.DRAFT | typeof CONTENT_STATUS.UNDER_REVIEW = CONTENT_STATUS.DRAFT): void {
-    if (this.isReadonly) return;
+    if (this.isReadonly || this.isTemplateLoading) return;
 
     const body = this.isCreate
       ? this.buildCreateBody()
       : this.buildChangedBody();
 
-    if (body && this.curatorMode && this.isCreate) body['chapterId'] = this.chapterId;
+    if (body && this.curatorMode && this.isCreate) {
+      body['chapterId'] = this.chapterId;
+      if (this.hasSubTopic) Object.assign(body, this.subTopicFields());
+    }
 
     if (Object.keys(this.fieldErrors).length) {
       this.utilityService.showError(
@@ -297,6 +359,18 @@ export class ContentEditComponent implements OnInit, OnDestroy {
     });
   }
 
+  // Same name pattern as the generation pipeline.
+  private subTopicFields(): { [key: string]: any } {
+    const { subject, board, standard, topics } = this.chapter!;
+    const name = `${subject[0].subjectName}-${board} Class${standard} ${topics}`;
+    return {
+      [this.isPlan ? 'name' : 'lessonName']: name,
+      subTopics: [this.subTopic],
+      isAll: false,
+      templateId: this.templateId,
+    };
+  }
+
   // The backend runs the same check as the bulk upload, so this sends the values as they are.
   private buildCreateBody(): { [key: string]: any } | null {
     const body: { [key: string]: any } = {};
@@ -338,7 +412,8 @@ export class ContentEditComponent implements OnInit, OnDestroy {
   }
 
   cancel(): void {
-    this.leave();
+    if (this.curatorMode && this.isCreate && this.hasSubTopic) this.router.navigate([this.selectionUrl]);
+    else this.leave();
   }
 
   private leave(): void {
@@ -350,7 +425,7 @@ export class ContentEditComponent implements OnInit, OnDestroy {
   onFieldChange(field: ContentField, value: any): void {
     this.formValues[field.field] = value;
 
-    if (field.type !== 'json') {
+    if (this.fieldType(field) !== 'json') {
       delete this.fieldErrors[field.field];
       return;
     }
@@ -382,27 +457,30 @@ export class ContentEditComponent implements OnInit, OnDestroy {
   }
 
   private toControlValue(field: ContentField, value: any): any {
-    if (field.type === 'boolean') return value === true;
+    const type = this.fieldType(field);
+    if (type === 'boolean') return value === true;
+
+    if (type === 'sections' || type === 'videos') return structuredClone(value ?? []);
 
     if (value === null || value === undefined) return '';
 
-    if (field.type === 'list') {
+    if (type === 'list') {
       return Array.isArray(value) ? value.join('\n') : `${value}`;
     }
 
-    if (field.type === 'json') {
+    if (type === 'json') {
       return JSON.stringify(value, null, 2);
     }
 
-    if (field.type === 'question-content') {
+    if (type === 'question-content') {
       return this.parseQuestionContent(value);
     }
 
-    if (field.type === 'mcq-options') {
+    if (type === 'mcq-options') {
       return this.parseMcqOptions(value);
     }
 
-    if (field.type === 'chapter-reference') {
+    if (type === 'chapter-reference') {
       return { chapterNumber: value?.chapterNumber ?? '', title: value?.title ?? '' };
     }
 
@@ -438,7 +516,11 @@ export class ContentEditComponent implements OnInit, OnDestroy {
   private toRecordValue(field: ContentField): any {
     const raw = this.formValues[field.field];
 
-    switch (field.type) {
+    switch (this.fieldType(field)) {
+      case 'sections':
+        return filledSections(raw);
+      case 'videos':
+        return raw.filter((video: any) => hasText(video.url));
       case 'boolean':
         return raw === true;
       case 'number':
@@ -504,10 +586,12 @@ export class ContentEditComponent implements OnInit, OnDestroy {
 
   // A record that never had this field must not count as changed when the control is empty.
   private emptyOf(field: ContentField): any {
-    switch (field.type) {
+    switch (this.fieldType(field)) {
       case 'boolean':
         return false;
       case 'list':
+      case 'sections':
+      case 'videos':
         return [];
       case 'number':
         return null;

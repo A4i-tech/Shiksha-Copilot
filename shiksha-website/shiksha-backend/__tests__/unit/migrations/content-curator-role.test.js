@@ -5,8 +5,8 @@ const { CONTENT_CURATOR_ROLE_ID } = require("../../../constants/content-status")
 describe("Content Curator builtin role", () => {
   const curator = builtinRoles.find((role) => role.name === "Content Curator");
 
-  it("uses the fixed role id and the GLOBAL scope", () => {
-    expect(curator).toMatchObject({ _id: "7368696b7368615f63637572", scopeType: "GLOBAL", isSystem: true });
+  it("uses the fixed role id and the UNBOUND scope, so an admin with global assign rights can give it to any user", () => {
+    expect(curator).toMatchObject({ _id: "7368696b7368615f63637572", scopeType: "UNBOUND", isSystem: true });
     expect(curator._id).toBe(CONTENT_CURATOR_ROLE_ID);
   });
 
@@ -14,8 +14,8 @@ describe("Content Curator builtin role", () => {
     expect(curator.permissions).toEqual(["content.curate", "content.view"]);
   });
 
-  it("holds only permissions the GLOBAL scope allows", () => {
-    expect(curator.permissions.filter((permission) => !isPermissionAllowed(permission, "GLOBAL"))).toEqual([]);
+  it("holds only permissions the UNBOUND scope allows", () => {
+    expect(curator.permissions.filter((permission) => !isPermissionAllowed(permission, "UNBOUND"))).toEqual([]);
   });
 
   it("holds no admin content permission, so it cannot reach the admin routes or approve", () => {

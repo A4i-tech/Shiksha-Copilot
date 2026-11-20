@@ -38,7 +38,9 @@ export type ContentFieldType =
   | 'chapter-select'
   | 'question-content'
   | 'mcq-options'
-  | 'chapter-reference';
+  | 'chapter-reference'
+  | 'sections'
+  | 'videos';
 
 export interface ContentSelectOption {
   value: string;
@@ -90,8 +92,12 @@ export const ANSWER_TYPE_OPTIONS: ContentSelectOption[] = [
   { value: 'GRAMMAR_EDITING', label: 'Grammar: Identify and correct the error' },
 ];
 
-// The backend copies these fields from the chapter, so a curator does not type them.
-export const CURATOR_HIDDEN_FIELDS = ['chapterId', 'chapter', 'class', 'board', 'medium', 'subject'];
+// The chapter, the form, or the generation pipeline owns these fields.
+export const CURATOR_HIDDEN_FIELDS = [
+  'chapterId', 'chapter', 'class', 'board', 'medium', 'subject',
+  'name', 'lessonName', 'subTopics', 'isAll',
+  'instructionSet', 'checkList', 'documents', 'interactOutput', 'extractedResources', 'additionalResources',
+];
 
 const TITLE_BY_SEGMENT: { [segment: string]: (record: any) => string } = {
   'lesson-plans': (record) => record.name,
@@ -122,6 +128,8 @@ export interface ContentField {
   requiredOnCreate?: boolean;
   /** options for type 'select' */
   options?: ContentSelectOption[];
+  /** the content-curator form shows this control in place of `type` */
+  curatorType?: ContentFieldType;
   /** the field only shows while another field holds one of these values */
   visibleWhen?: { field: string; values: string[] };
 }
@@ -234,11 +242,11 @@ export const CONTENT_ENTITIES: ContentEntityConfig[] = [
       { field: 'subject', label: 'Subject', type: 'text', requiredOnCreate: true, placeholder: 'Enter subject, e.g. Science' },
       { field: 'teachingModel', label: 'Teaching model', type: 'list', placeholder: 'One teaching model per line' },
       { field: 'subTopics', label: 'Subtopics', type: 'list', placeholder: 'One subtopic per line' },
-      { field: 'learningOutcomes', label: 'Learning outcomes', type: 'json' },
+      { field: 'learningOutcomes', label: 'Learning outcomes', type: 'json', curatorType: 'list', placeholder: 'One outcome per line' },
       { field: 'instructionSet', label: 'Instruction set', type: 'json' },
-      { field: 'sections', label: 'Sections', type: 'json' },
+      { field: 'sections', label: 'Sections', type: 'json', curatorType: 'sections' },
       { field: 'checkList', label: 'Checklist', type: 'json' },
-      { field: 'videos', label: 'Videos', type: 'json' },
+      { field: 'videos', label: 'Videos', type: 'json', curatorType: 'videos' },
       { field: 'documents', label: 'Documents', type: 'json' },
       { field: 'interactOutput', label: 'Interact output', type: 'json' },
       {
@@ -280,8 +288,8 @@ export const CONTENT_ENTITIES: ContentEntityConfig[] = [
       { field: 'semester', label: 'Semester', type: 'text', requiredOnCreate: true, placeholder: 'Enter semester' },
       { field: 'subject', label: 'Subject', type: 'text', placeholder: 'Enter subject, e.g. Science' },
       { field: 'subTopics', label: 'Subtopics', type: 'list', placeholder: 'One subtopic per line' },
-      { field: 'learningOutcomes', label: 'Learning outcomes', type: 'json' },
-      { field: 'resources', label: 'Resources', type: 'json' },
+      { field: 'learningOutcomes', label: 'Learning outcomes', type: 'json', curatorType: 'list', placeholder: 'One outcome per line' },
+      { field: 'resources', label: 'Resources', type: 'json', curatorType: 'sections' },
       {
         field: 'additionalResources',
         label: 'Additional resources',

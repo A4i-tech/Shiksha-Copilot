@@ -19,6 +19,10 @@
         {{ chapter.topics }} · {{ chapter.board }} · {{ chapter.medium }} · {{ 'Class' | translate }} {{ chapter.standard }} · {{ chapter.subject[0].subjectName }}
       </p>
 
+      <p *ngIf="curatorMode && subTopic" class="mb-6 text-sm text-content" data-testid="subtopic-details">
+        <span class="font-semibold">{{ 'Subtopic' | translate }}:</span> {{ subTopic }}
+      </p>
+
       <p class="text-sm text-content-60 mb-4" *ngIf="!isCreate && !curatorMode">
         Record id: {{ recordId }}
       </p>
@@ -76,7 +80,7 @@
         <div
           *ngFor="let field of visibleFields"
           [ngClass]="{
-            'md:col-span-2': field.type === 'json' || field.type === 'textarea' || field.type === 'question-content' || field.type === 'mcq-options'
+            'md:col-span-2': ['json', 'textarea', 'question-content', 'mcq-options', 'sections', 'videos'].includes(fieldType(field))
           }"
         >
           <label class="form-control-label" [attr.for]="'field-' + field.field" *ngIf="!isDropdownField(field)">
@@ -84,7 +88,7 @@
             <span *ngIf="field.requiredOnCreate && isCreate" class="text-[16px] text-error">*</span>
           </label>
 
-          <ng-container [ngSwitch]="field.type">
+          <ng-container [ngSwitch]="fieldType(field)">
             <input
               *ngSwitchCase="'text'"
               type="text"
@@ -203,6 +207,22 @@
               (ngModelChange)="onFieldChange(field, $event)"
             ></app-dropdown>
 
+            <div *ngSwitchCase="'sections'" class="space-y-6">
+              <div *ngFor="let section of formValues[field.field]" [attr.data-testid]="'section-' + section.id">
+                <h3 class="text-base font-semibold text-content mb-2">{{ section.title }}</h3>
+                <app-tree-field [parent]="section" key="content"></app-tree-field>
+              </div>
+            </div>
+
+            <div *ngSwitchCase="'videos'" class="space-y-2">
+              <div *ngFor="let video of formValues[field.field]; let i = index" class="flex flex-col sm:flex-row gap-2">
+                <input type="text" class="form-control sm:w-1/3" [name]="field.field + '-title-' + i" [placeholder]="'Video title' | translate" [(ngModel)]="video.title" />
+                <input type="url" class="form-control flex-1" [name]="field.field + '-url-' + i" [placeholder]="'Video link' | translate" [(ngModel)]="video.url" />
+                <button type="button" class="btn-outline-primary h-9" (click)="formValues[field.field].splice(i, 1)">{{ 'Remove' | translate }}</button>
+              </div>
+              <button type="button" class="btn-outline-primary h-9" (click)="formValues[field.field].push({ title: '', url: '', selected: true })">{{ 'Add video' | translate }}</button>
+            </div>
+
             <div *ngSwitchCase="'mcq-options'" class="space-y-2">
               <div
                 *ngFor="let option of formValues[field.field]; let i = index"
@@ -281,6 +301,7 @@
       <div class="flex flex-col sm:flex-row justify-end mt-9 gap-2">
         <button
           type="button"
+          data-testid="cancel-btn"
           class="btn-outline-primary h-9 w-full sm:w-[74px]"
           (click)="cancel()"
         >
@@ -291,7 +312,7 @@
           <button
             type="button"
             class="btn-outline-primary h-9 w-full sm:w-auto"
-            [disabled]="isSaving"
+            [disabled]="isSaving || isTemplateLoading"
             (click)="save('draft')"
           >
             Save as draft
@@ -304,7 +325,7 @@
             *ngIf="!isReadonly"
             type="submit"
             class="btn-primary h-9 w-full sm:w-auto"
-            [disabled]="isSaving"
+            [disabled]="isSaving || isTemplateLoading"
           >
             <div class="flex items-center justify-center gap-2">
               <span>{{ isSaving ? 'Saving...' : (curatorMode ? ('Save as draft' | translate) : 'Save changes') }}</span>
@@ -317,7 +338,7 @@
             type="button"
             class="btn-primary h-9 w-full sm:w-auto"
             data-testid="send-for-review-btn"
-            [disabled]="isSaving"
+            [disabled]="isSaving || isTemplateLoading"
             (click)="save('under_review')"
           >
             {{ 'Send for review' | translate }}

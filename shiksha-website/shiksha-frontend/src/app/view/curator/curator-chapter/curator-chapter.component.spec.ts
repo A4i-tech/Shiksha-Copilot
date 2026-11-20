@@ -162,7 +162,7 @@ describe('CuratorChapterComponent', () => {
     it('names each Add link by its content type', () => {
       loadChapter('draft', [['Push']]);
 
-      const labels = Array.from<HTMLElement>(fixture.nativeElement.querySelectorAll('a[href$="/new"]')).map((link) =>
+      const labels = Array.from<HTMLElement>(fixture.nativeElement.querySelectorAll('a[aria-label^="Add "]')).map((link) =>
         link.getAttribute('aria-label')
       );
       expect(labels).toEqual(['Add lesson plan', 'Add lesson resource', 'Add question']);

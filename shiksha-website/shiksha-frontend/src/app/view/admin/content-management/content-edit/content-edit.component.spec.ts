@@ -159,6 +159,9 @@ describe('ContentEditComponent (curator mode)', () => {
   let httpMock: HttpTestingController;
 
   const routeParams: { [key: string]: string } = { entity: 'lesson-plans', chapterId: 'ch-1' };
+  let query: { [key: string]: string };
+
+  beforeEach(() => (query = { subTopic: 'Push' }));
 
   function setup(recordId: string) {
     TestBed.configureTestingModule({
@@ -174,7 +177,7 @@ describe('ContentEditComponent (curator mode)', () => {
         {
           provide: ActivatedRoute,
           useValue: {
-            snapshot: { data: { curatorMode: true } },
+            snapshot: { data: { curatorMode: true }, queryParamMap: { get: (key: string) => query[key] ?? null } },
             paramMap: of({ get: (key: string) => (key === 'id' ? recordId : routeParams[key]) }),
           },
         },
@@ -200,6 +203,12 @@ describe('ContentEditComponent (curator mode)', () => {
     });
   }
 
+  const template = { _id: 'tpl-1', name: 'Subtopic plan', sections: [{ id: 'engage', title: 'Engage', outputFormat: 'plain_text' }] };
+
+  function flushTemplate(templates: object[] = [template]) {
+    httpMock.expectOne((r) => r.url.endsWith('/lesson-plan-template/list')).flush({ data: templates });
+  }
+
   afterEach(() => {
     httpMock.verify();
   });
@@ -207,45 +216,86 @@ describe('ContentEditComponent (curator mode)', () => {
   it('hides the fields that the chapter owns and shows Save as draft and Send for review buttons', () => {
     setup('new');
     flushChapter('draft');
+    flushTemplate();
     fixture.detectChanges();
 
     const fields = component.visibleFields.map((field) => field.field);
-    ['chapterId', 'class', 'board', 'medium', 'subject'].forEach((field) => expect(fields).not.toContain(field));
-    ['name', 'semester', 'teachingModel', 'subTopics', 'sections'].forEach((field) => expect(fields).toContain(field));
-
-    const buttons = Array.from<HTMLElement>(fixture.nativeElement.querySelectorAll('form button')).map((button) =>
-      button.textContent!.trim()
+    ['chapterId', 'class', 'board', 'medium', 'subject', 'name', 'subTopics', 'checkList'].forEach((field) =>
+      expect(fields).not.toContain(field)
     );
-    expect(buttons).toEqual(['Cancel', 'Save as draft', 'Send for review']);
+    ['semester', 'teachingModel', 'learningOutcomes', 'sections', 'videos'].forEach((field) => expect(fields).toContain(field));
+
+    const page: HTMLElement = fixture.nativeElement;
+    expect(page.querySelector('[data-testid="cancel-btn"]')).not.toBeNull();
+    expect(page.querySelector('button[type="submit"]')!.textContent).toContain('Save as draft');
+    expect(page.querySelector('[data-testid="send-for-review-btn"]')!.textContent).toContain('Send for review');
   });
 
   it('shows one summary line of the chapter and no admin copy', () => {
     setup('new');
     flushChapter('draft');
+    flushTemplate();
     fixture.detectChanges();
 
     const details: string = fixture.nativeElement.querySelector('[data-testid="chapter-details"]').textContent;
     ['Forces', 'CBSE', 'english', 'Class 8', 'Science'].forEach((text) => expect(details).toContain(text));
     expect(fixture.nativeElement.textContent).not.toContain('passes the same check');
+    expect(fixture.nativeElement.querySelector('[data-testid="subtopic-details"]').textContent).toContain('Push');
+  });
+
+  it('goes back to the selection screen when a new plan has no subtopic', () => {
+    query = {};
+    setup('new');
+    flushChapter('draft');
+
+    expect(TestBed.inject(Router).navigate).toHaveBeenCalledWith(['/curation/lesson-plan']);
   });
 
   it('adds the chapter of the route to a new record and sends it to the curator route', () => {
     setup('new');
     flushChapter('draft');
-    component.formValues['name'] = 'Plan one';
+    flushTemplate();
     component.formValues['semester'] = '1';
+    component.formValues['sections'][0].content = 'Ask why a puddle dries.';
 
     component.save();
 
     const req = httpMock.expectOne((r) => r.url.endsWith('/curator/content/lesson-plans'));
     expect(req.request.method).toBe('POST');
     expect(req.request.body.chapterId).toBe('ch-1');
+    expect(req.request.body.subTopics).toEqual(['Push']);
+    expect(req.request.body.isAll).toBe(false);
+    expect(req.request.body.name).toBe('Science-CBSE Class8 Forces');
+    expect(req.request.body.templateId).toBe('tpl-1');
+    expect(req.request.body.sections).toEqual([{ id: 'engage', title: 'Engage', outputFormat: 'plain_text', content: 'Ask why a puddle dries.' }]);
     req.flush({ success: true });
+  });
+
+  it('holds Save until the template arrives, then fills the sections', () => {
+    setup('new');
+    flushChapter('draft');
+    component.formValues['semester'] = '1';
+
+    component.save();
+    httpMock.expectNone((r) => r.url.endsWith('/curator/content/lesson-plans'));
+
+    flushTemplate();
+    expect(component.formValues['sections'].map((section: any) => section.id)).toEqual(['engage']);
+  });
+
+  it('shows an error that names the chapter when no template exists', () => {
+    setup('new');
+    const errorSpy = spyOn(TestBed.inject(ToastrService), 'error');
+    flushChapter('draft');
+    flushTemplate([]);
+
+    expect(errorSpy.calls.mostRecent().args[0]).toContain('CBSE, english, class 8, Science');
   });
 
   it('Send for review saves the record, then submits the chapter', () => {
     setup('new');
     flushChapter('draft');
+    flushTemplate();
     component.formValues['name'] = 'Plan one';
     component.formValues['semester'] = '1';
 
@@ -264,6 +314,7 @@ describe('ContentEditComponent (curator mode)', () => {
     setup('new');
     const errorSpy = spyOn(TestBed.inject(ToastrService), 'error');
     flushChapter('draft');
+    flushTemplate();
     component.formValues['name'] = 'Plan one';
     component.formValues['semester'] = '1';
 
@@ -295,7 +346,8 @@ describe('ContentEditComponent (curator mode)', () => {
     const recordReq = httpMock.expectOne((r) => r.url.endsWith('/curator/content/lesson-plans'));
     expect(recordReq.request.params.get('includeDeleted')).toBe('4');
     expect(recordReq.request.params.get('filter[_id]')).toBe('lp-1');
-    recordReq.flush({ data: { results: [{ _id: 'lp-1', status: 'under_review', name: 'Plan one' }] } });
+    recordReq.flush({ data: { results: [{ _id: 'lp-1', status: 'under_review', name: 'Plan one', subTopics: ['Push'] }] } });
+    flushTemplate();
     fixture.detectChanges();
 
     expect(component.isReadonly).toBeTrue();

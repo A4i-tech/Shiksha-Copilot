@@ -3,6 +3,8 @@ import { Injectable } from '@angular/core';
 import { Observable, forkJoin, map, of, switchMap, tap } from 'rxjs';
 import { BaseRestService } from 'src/app/core/services/base-rest.service';
 import { environment } from 'src/environments/environment';
+import { ContentGenerationService } from '../../user/content-generation/content-generation.service';
+import { SectionTemplate } from 'src/app/shared/utility/section-content.util';
 import { LIST_TAB_BY_STATUS } from './content-status.constants';
 
 export interface Curator {
@@ -46,7 +48,7 @@ export class ContentManagementService extends BaseRestService {
    * class constructor
    * @param http
    */
-  constructor(http: HttpClient) {
+  constructor(http: HttpClient, private contentGenerationService: ContentGenerationService) {
     super(http);
     this.setUri('admin/content');
   }
@@ -63,6 +65,20 @@ export class ContentManagementService extends BaseRestService {
 
   private url(curatorMode: boolean): string {
     return curatorMode ? `${environment.apiUrl}/curator/content/` : this.getUrl();
+  }
+
+  // A subtopic template wins over a chapter one.
+  getSectionTemplate(chapter: CurationChapter, type: 'lesson_plan' | 'lesson_resource'): Observable<{ _id: string; sections: SectionTemplate[] } | undefined> {
+    const params = new HttpParams()
+      .set('filter[boards]', chapter.board)
+      .set('filter[mediums]', chapter.medium)
+      .set('filter[classes]', chapter.standard)
+      .set('filter[subjects]', chapter.subject[0].subjectName)
+      .set('filter[type]', type);
+
+    return this.contentGenerationService.getTemplates(params).pipe(
+      map((res: any) => (res.data as any[]).find((template) => /subtopic/i.test(template.name)) ?? res.data[0])
+    );
   }
 
   listByStatus(segment: string, status: string, filters?: { [key: string]: any }): Observable<any> {

@@ -61,7 +61,7 @@
 										[dropDownCtrl]="convertToFormControl(f['topics'])" [dropDownValues]="topicsDropdownOptions"
 										[config]="topicsDropdownconfig" [submitted]="submitted"></app-dropdown>
 							</div>
-							<div class="grid lg:grid-cols-1 gap-4 mt-7" *ngIf="!curatorMode">
+							<div class="grid lg:grid-cols-1 gap-4 mt-7">
 									<app-dropdown (valueChange)="onsubTopicSelected($event)"
 										[dropDownCtrl]="convertToFormControl(f['subtopics'])"
 										[dropDownValues]="subtopicsDropdownOptions" [config]="subtopicsDropdownconfig"
@@ -69,7 +69,7 @@
 							</div>                
 							<div *ngIf="curatorMode" class="px-4 py-2 bg-primary-50 rounded mt-7 flex gap-2 items-start">
 								<img class="w-5" src="assets/icons/info-primary.svg" alt="">
-								<p class="text-content text-sm md:text-base">{{'Pick one of your assigned chapters. The curation form opens for it.' | translate}}</p>
+								<p class="text-content text-sm md:text-base">{{'Pick one of your assigned chapters, then the subtopic to write.' | translate}}</p>
 							</div>
 					</div>
 					<ng-container *ngIf="!curatorMode">

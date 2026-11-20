@@ -441,12 +441,13 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
   }
 
   onTopicSelected(val: any) {
-    if (this.curatorMode) {
-      if (val) this.router.navigate(['/curation/chapters', val._id, this.getLessonType()?.type === 'plan' ? 'lesson-plans' : 'resources', 'new']);
-      return;
-    }
     this.chapterId = val?._id;
     this.resetTopicChange();
+
+    if (this.curatorMode) {
+      if (val) this.subtopicsDropdownOptions = val.subTopics.map((name: string) => ({ label: name, value: name }));
+      return;
+    }
 
     let subTopicSubscriber;
 
@@ -517,6 +518,13 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
   }
 
   onsubTopicSelected(val: any): void {
+    if (this.curatorMode) {
+      if (val) {
+        const segment = this.getLessonType()?.type === 'plan' ? 'lesson-plans' : 'resources';
+        this.router.navigate(['/curation/chapters', this.chapterId, segment, 'new'], { queryParams: { subTopic: val.value } });
+      }
+      return;
+    }
     this.selectedSubtopic = val;
     this.learningOutcomes = val.learningOutcomes;
     this.initialLearningOutcomes = structuredClone(this.learningOutcomes);

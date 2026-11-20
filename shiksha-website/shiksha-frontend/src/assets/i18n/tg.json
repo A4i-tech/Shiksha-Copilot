@@ -993,7 +993,7 @@
   "Add period plan": "పీరియడ్ ప్రణాళికను జోడించండి",
   "Add lesson resource": "పాఠ వనరును జోడించండి",
   "Add question": "ప్రశ్నను జోడించండి",
-  "Pick one of your assigned chapters. The curation form opens for it.": "మీకు కేటాయించిన అధ్యాయాలలో ఒకదాన్ని ఎంచుకోండి. దానికి క్యురేషన్ ఫారం తెరుచుకుంటుంది.",
+  "Pick one of your assigned chapters, then the subtopic to write.": "మీకు కేటాయించిన అధ్యాయాలలో ఒకదాన్ని ఎంచుకోండి, ఆపై రాయవలసిన ఉపాంశాన్ని ఎంచుకోండి.",
   "Search content": "విషయాన్ని వెతకండి",
   "Under review": "సమీక్షలో ఉంది",
   "Save as draft": "డ్రాఫ్ట్‌గా సేవ్ చేయండి",
@@ -1007,5 +1007,10 @@
   "See which subtopics still need a lesson plan, and submit a complete chapter for approval": "ఏ ఉపాంశాలకు ఇంకా పాఠ ప్రణాళిక కావాలో చూడండి, పూర్తయిన అధ్యాయాన్ని ఆమోదానికి సమర్పించండి",
   "See which subtopics still need a period plan, and submit a complete chapter for approval": "ఏ ఉపాంశాలకు ఇంకా పీరియడ్ ప్రణాళిక కావాలో చూడండి, పూర్తయిన అధ్యాయాన్ని ఆమోదానికి సమర్పించండి",
   "The chapters that an admin assigned to you. Open a chapter to write its content and send it for approval.": "అడ్మిన్ మీకు కేటాయించిన అధ్యాయాలు. విషయం రాయడానికి మరియు ఆమోదానికి పంపడానికి అధ్యాయాన్ని తెరవండి.",
-  "{{done}} of {{total}} subtopics done": "{{total}} ఉపాంశాలలో {{done}} పూర్తయ్యాయి"
+  "{{done}} of {{total}} subtopics done": "{{total}} ఉపాంశాలలో {{done}} పూర్తయ్యాయి",
+  "Subtopic": "ఉపాంశం",
+  "Add another": "మరొకటి జోడించండి",
+  "Video title": "వీడియో శీర్షిక",
+  "Video link": "వీడియో లింక్",
+  "Add video": "వీడియో జోడించండి"
 }

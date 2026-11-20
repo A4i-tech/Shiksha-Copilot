@@ -24,7 +24,7 @@ export class CuratorChapterComponent implements OnInit, OnDestroy {
   pending: CurationChapter[] = [];
   returned: CurationChapter[] = [];
   submitted: CurationChapter[] = [];
-  children: { segment: string; label: string; addLabel: string; records: any[] }[] = [];
+  children: { segment: string; label: string; addLabel: string; selectionUrl?: string; records: any[] }[] = [];
   subTopics: { name: string; done: boolean }[] = [];
   isLoading = false;
   isSubmitting = false;
@@ -126,8 +126,8 @@ export class CuratorChapterComponent implements OnInit, OnDestroy {
           }
           this.chapter = chapter;
           this.children = [
-            { segment: 'lesson-plans', label: 'Lesson plans', addLabel: 'Add lesson plan', records: lists[0] },
-            { segment: 'resources', label: 'Lesson resources', addLabel: 'Add lesson resource', records: lists[1] },
+            { segment: 'lesson-plans', label: 'Lesson plans', addLabel: 'Add lesson plan', selectionUrl: '/curation/lesson-plan', records: lists[0] },
+            { segment: 'resources', label: 'Lesson resources', addLabel: 'Add lesson resource', selectionUrl: '/curation/lesson-resources', records: lists[1] },
             { segment: 'questions', label: 'Questions', addLabel: 'Add question', records: lists[2] },
           ];
           const covered = new Set(lists[0].flatMap((plan: any) => plan.subTopics).map(normalize));
