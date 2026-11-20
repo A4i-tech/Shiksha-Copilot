@@ -93,14 +93,25 @@ class NatsBroker:
                 max_bytes=512 * 1024**2,
             )
             try:
-                await js.stream_info(self.stream)
+                info = await js.stream_info(self.stream)
             except NotFoundError:
                 await js.add_stream(config)
             else:
+                # Retention cannot change after creation, so update_stream cannot fix it.
+                if info.config.retention != config.retention:
+                    raise RuntimeError(
+                        f"Stream {self.stream} has retention {info.config.retention}, needs {config.retention}. "
+                        f"Delete the stream and restart the worker, or recreate it with retention workqueue."
+                    )
                 try:
                     await js.update_stream(config)
                 except Exception as exc:
                     logger.warning("Keeping existing stream %s config: %s", self.stream, exc)
+                    if not info.config.allow_msg_schedules:
+                        raise RuntimeError(
+                            f"Stream {self.stream} has allow_msg_schedules off and could not be updated: {exc}. "
+                            f"Enable allow_msg_schedules on the stream, or grant the worker stream update rights."
+                        ) from exc
             for queue in self.queues:
                 name = self._consumer(queue)
                 await js.add_consumer(

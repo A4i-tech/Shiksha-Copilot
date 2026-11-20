@@ -12,6 +12,8 @@ from app.messaging.broker import LockLost
 from app.messaging.consumer import PermanentError, RetryAfter, run_consumer
 from app.messaging.memory import MemoryBroker
 from app.messaging.message import JobMessage
+from nats.js.api import RetentionPolicy
+
 from app.messaging.nats_broker import NatsBroker
 
 QUEUE = "jobs"
@@ -381,5 +383,21 @@ async def test_nats_connect_refuses_a_server_older_than_2_12(monkeypatch):
     nc = SimpleNamespace(connected_server_version=SimpleNamespace(major=2, minor=10), close=AsyncMock())
     monkeypatch.setattr("app.messaging.nats_broker.nats.connect", AsyncMock(return_value=nc))
     with pytest.raises(RuntimeError, match="too old"):
+        await NatsBroker("nats://x", queues=["q"]).connect()
+    nc.close.assert_awaited()
+
+
+@pytest.mark.parametrize("retention, schedules, update_fails, match", [
+    (RetentionPolicy.LIMITS, True, False, "retention"),
+    (RetentionPolicy.WORK_QUEUE, False, True, "allow_msg_schedules"),
+])
+async def test_nats_connect_refuses_a_stream_that_cannot_hold_delayed_retries(monkeypatch, retention, schedules, update_fails, match):
+    js = SimpleNamespace(
+        stream_info=AsyncMock(return_value=SimpleNamespace(config=SimpleNamespace(retention=retention, allow_msg_schedules=schedules))),
+        update_stream=AsyncMock(side_effect=RuntimeError("no rights") if update_fails else None),
+    )
+    nc = SimpleNamespace(connected_server_version=SimpleNamespace(major=2, minor=12), jetstream=lambda: js, close=AsyncMock())
+    monkeypatch.setattr("app.messaging.nats_broker.nats.connect", AsyncMock(return_value=nc))
+    with pytest.raises(RuntimeError, match=match):
         await NatsBroker("nats://x", queues=["q"]).connect()
     nc.close.assert_awaited()

@@ -3,18 +3,20 @@ import logging
 import time
 import uuid
 from collections.abc import Callable
+from pathlib import Path
 
 from app.config import settings
 from app.messaging.consumer import Handler, run_consumer
 from app.messaging.message import JobMessage
 from app.messaging.nats_broker import NatsBroker
-from app.services.presentation.job import JobManager, lease_owner
+from app.services.presentation.job import FenceLost, JobManager, lease_owner
 from app.services.presentation.service import PresentationService
 
 logger = logging.getLogger(__name__)
 
 JOBS_QUEUE = "pres.jobs"
 CANCEL_SUBJECT = "pres.cancel"
+LIVENESS_FILE = Path("/tmp/worker-alive")
 
 
 def make_broker() -> NatsBroker:
@@ -78,7 +80,9 @@ def make_handler(service: PresentationService, broker) -> Handler:
             except asyncio.CancelledError:
                 if hit:
                     await service.jobs.delete(job)
-                elif not lost:
+                elif lost:
+                    raise FenceLost(f"Fence lost on job {job_id}")
+                else:
                     raise
             finally:
                 watch.cancel()
@@ -129,16 +133,26 @@ async def reconcile(broker, jobs: JobManager, every: float, older_than: float) -
         await asyncio.sleep(every)
 
 
+async def _touch_liveness(every: float) -> None:
+    while True:
+        LIVENESS_FILE.touch()
+        await asyncio.sleep(every)
+
+
 async def run_jobs(service: PresentationService, broker, stop: asyncio.Event) -> None:
-    await run_consumer(
-        broker,
-        JOBS_QUEUE,
-        make_handler(service, broker),
-        stop=stop,
-        heartbeat_every=settings.pres_ack_wait_seconds / 3,
-        drain_timeout=settings.pres_drain_seconds,
-        alive=worker_alive(service.jobs),
-    )
+    liveness = asyncio.create_task(_touch_liveness(settings.pres_ack_wait_seconds / 3))
+    try:
+        await run_consumer(
+            broker,
+            JOBS_QUEUE,
+            make_handler(service, broker),
+            stop=stop,
+            heartbeat_every=settings.pres_ack_wait_seconds / 3,
+            drain_timeout=settings.pres_drain_seconds,
+            alive=worker_alive(service.jobs),
+        )
+    finally:
+        liveness.cancel()
 
 
 def worker_alive(jobs: JobManager) -> Callable[[], bool]:
