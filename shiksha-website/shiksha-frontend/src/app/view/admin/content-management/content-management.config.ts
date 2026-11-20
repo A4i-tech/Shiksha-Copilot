@@ -42,6 +42,12 @@ export type ContentFieldType =
   | 'sections'
   | 'videos';
 
+export interface LessonVideo {
+  title: string;
+  url: string;
+  selected: boolean;
+}
+
 export interface ContentSelectOption {
   value: string;
   label: string;
@@ -92,7 +98,6 @@ export const ANSWER_TYPE_OPTIONS: ContentSelectOption[] = [
   { value: 'GRAMMAR_EDITING', label: 'Grammar: Identify and correct the error' },
 ];
 
-// The chapter, the form, or the generation pipeline owns these fields.
 export const CURATOR_HIDDEN_FIELDS = [
   'chapterId', 'chapter', 'class', 'board', 'medium', 'subject',
   'name', 'lessonName', 'subTopics', 'isAll',
@@ -128,8 +133,7 @@ export interface ContentField {
   requiredOnCreate?: boolean;
   /** options for type 'select' */
   options?: ContentSelectOption[];
-  /** the content-curator form shows this control in place of `type` */
-  curatorType?: ContentFieldType;
+  curatorType?: Extract<ContentFieldType, 'list' | 'sections' | 'videos'>;
   /** the field only shows while another field holds one of these values */
   visibleWhen?: { field: string; values: string[] };
 }

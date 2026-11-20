@@ -80,7 +80,7 @@
         <div
           *ngFor="let field of visibleFields"
           [ngClass]="{
-            'md:col-span-2': ['json', 'textarea', 'question-content', 'mcq-options', 'sections', 'videos'].includes(fieldType(field))
+            'md:col-span-2': isWideField(field)
           }"
         >
           <label class="form-control-label" [attr.for]="'field-' + field.field" *ngIf="!isDropdownField(field)">
@@ -210,7 +210,7 @@
             <div *ngSwitchCase="'sections'" class="space-y-6">
               <div *ngFor="let section of formValues[field.field]" [attr.data-testid]="'section-' + section.id">
                 <h3 class="text-base font-semibold text-content mb-2">{{ section.title }}</h3>
-                <app-tree-field [parent]="section" key="content"></app-tree-field>
+                <app-section-editor [section]="section"></app-section-editor>
               </div>
             </div>
 
@@ -218,9 +218,9 @@
               <div *ngFor="let video of formValues[field.field]; let i = index" class="flex flex-col sm:flex-row gap-2">
                 <input type="text" class="form-control sm:w-1/3" [name]="field.field + '-title-' + i" [placeholder]="'Video title' | translate" [(ngModel)]="video.title" />
                 <input type="url" class="form-control flex-1" [name]="field.field + '-url-' + i" [placeholder]="'Video link' | translate" [(ngModel)]="video.url" />
-                <button type="button" class="btn-outline-primary h-9" (click)="formValues[field.field].splice(i, 1)">{{ 'Remove' | translate }}</button>
+                <button type="button" class="btn-outline-primary h-9" (click)="removeVideo(field, i)">{{ 'Remove' | translate }}</button>
               </div>
-              <button type="button" class="btn-outline-primary h-9" (click)="formValues[field.field].push({ title: '', url: '', selected: true })">{{ 'Add video' | translate }}</button>
+              <button type="button" class="btn-outline-primary h-9" (click)="addVideo(field)">{{ 'Add video' | translate }}</button>
             </div>
 
             <div *ngSwitchCase="'mcq-options'" class="space-y-2">
@@ -312,7 +312,7 @@
           <button
             type="button"
             class="btn-outline-primary h-9 w-full sm:w-auto"
-            [disabled]="isSaving || isTemplateLoading"
+            [disabled]="isSaving || templatePending"
             (click)="save('draft')"
           >
             Save as draft
@@ -325,7 +325,7 @@
             *ngIf="!isReadonly"
             type="submit"
             class="btn-primary h-9 w-full sm:w-auto"
-            [disabled]="isSaving || isTemplateLoading"
+            [disabled]="isSaving || templatePending"
           >
             <div class="flex items-center justify-center gap-2">
               <span>{{ isSaving ? 'Saving...' : (curatorMode ? ('Save as draft' | translate) : 'Save changes') }}</span>
@@ -338,7 +338,7 @@
             type="button"
             class="btn-primary h-9 w-full sm:w-auto"
             data-testid="send-for-review-btn"
-            [disabled]="isSaving || isTemplateLoading"
+            [disabled]="isSaving || templatePending"
             (click)="save('under_review')"
           >
             {{ 'Send for review' | translate }}

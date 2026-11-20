@@ -1,21 +1,80 @@
-// Keyed by template outputFormat.
-const DIFFICULTIES = ['beginner', 'intermediate', 'advanced'];
+export type SectionFormat = 'plain_text' | 'json_5E_checklist' | 'json_1' | 'json_2' | 'json_3';
+export type Difficulty = 'beginner' | 'intermediate' | 'advanced';
+export type Phase = 'engage' | 'explore' | 'explain' | 'elaborate' | 'evaluate';
 
-const SKELETONS: { [format: string]: () => any } = {
-  plain_text: () => '',
-  json_5E_checklist: () =>
-    Object.fromEntries(['engage', 'explore', 'explain', 'elaborate', 'evaluate'].map((phase) => [phase, { activity: '', materials: '' }])),
-  json_1: () =>
-    DIFFICULTIES.map((difficulty) => ({
-      difficulty,
-      content: [
-        { type: 'MCQs', questions: [{ question: '', options: ['', '', '', ''] }] },
-        { type: 'assessment', questions: [{ question: '' }] },
-      ],
-    })),
-  json_2: () => DIFFICULTIES.map((difficulty) => ({ difficulty, content: [{ title: '', question: '', description: '' }] })),
-  json_3: () => [{ id: 'activity_1', title: '', preparation: '', required_materials: '', obtaining_materials: '', recap: '' }],
-};
+export interface Mcq {
+  question: string;
+  options: string[];
+}
+export interface McqGroup {
+  type: 'MCQs';
+  questions: Mcq[];
+}
+export interface AssessmentQuestion {
+  question: string;
+}
+export interface AssessmentGroup {
+  type: 'assessment';
+  questions: AssessmentQuestion[];
+}
+export interface Scenario {
+  title: string;
+  question: string;
+  description: string;
+}
+export interface Activity {
+  id: string;
+  title: string;
+  preparation: string;
+  required_materials: string;
+  obtaining_materials: string;
+  recap: string;
+}
+export interface PhaseContent {
+  activity: string;
+  materials: string;
+}
+export interface QuestionBankLevel {
+  difficulty: Difficulty;
+  content: (McqGroup | AssessmentGroup)[];
+}
+export interface ScenarioLevel {
+  difficulty: Difficulty;
+  content: Scenario[];
+}
+
+interface SectionBase {
+  id: string;
+  title: string;
+}
+export interface PlainTextSection extends SectionBase {
+  outputFormat: 'plain_text';
+  content: string;
+}
+export interface ChecklistSection extends SectionBase {
+  outputFormat: 'json_5E_checklist';
+  content: Record<Phase, PhaseContent>;
+}
+export interface QuestionBankSection extends SectionBase {
+  outputFormat: 'json_1';
+  content: QuestionBankLevel[];
+}
+export interface ScenarioSection extends SectionBase {
+  outputFormat: 'json_2';
+  content: ScenarioLevel[];
+}
+export interface ActivitySection extends SectionBase {
+  outputFormat: 'json_3';
+  content: Activity[];
+}
+export type Section = PlainTextSection | ChecklistSection | QuestionBankSection | ScenarioSection | ActivitySection;
+
+export interface LessonPlanTemplate {
+  _id: string;
+  name: string;
+  workFlowId: string;
+  sections: SectionTemplate[];
+}
 
 export interface SectionTemplate {
   id: string;
@@ -23,33 +82,112 @@ export interface SectionTemplate {
   outputFormat: string;
 }
 
-export function blankSections(templateSections: SectionTemplate[]): any[] {
-  return templateSections
-    .filter((section) => SKELETONS[section.outputFormat])
-    .map(({ id, title, outputFormat }) => ({ id, title, outputFormat, content: SKELETONS[outputFormat]() }));
+export const DIFFICULTIES: Difficulty[] = ['beginner', 'intermediate', 'advanced'];
+export const PHASES: Phase[] = ['engage', 'explore', 'explain', 'elaborate', 'evaluate'];
+
+const hasText = (value: string): boolean => value.trim() !== '';
+const anyText = (...values: string[]): boolean => values.some(hasText);
+
+export const blankMcq = (): Mcq => ({ question: '', options: ['', '', '', ''] });
+export const blankAssessmentQuestion = (): AssessmentQuestion => ({ question: '' });
+export const blankScenario = (): Scenario => ({ title: '', question: '', description: '' });
+export function blankActivity(existing: Activity[]): Activity {
+  const highest = Math.max(0, ...existing.map((activity) => Number(activity.id.replace('activity_', ''))));
+  return { id: `activity_${highest + 1}`, title: '', preparation: '', required_materials: '', obtaining_materials: '', recap: '' };
 }
 
-// Keys that name a fixed group of the content. A list whose items carry one never grows.
-export const GROUP_KEYS = ['difficulty', 'type'];
-// Slot keys are never curator text.
-export const SLOT_KEYS = ['id', ...GROUP_KEYS];
-
-export const isObject = (value: any) => value !== null && typeof value === 'object' && !Array.isArray(value);
-
-export function hasText(value: any): boolean {
-  if (typeof value === 'string') return value.trim() !== '';
-  if (Array.isArray(value)) return value.some(hasText);
-  if (isObject(value)) return Object.entries(value).some(([key, item]) => !SLOT_KEYS.includes(key) && hasText(item));
-  return false;
+export function blankSection(template: SectionTemplate): Section {
+  const { id, title } = template;
+  switch (template.outputFormat) {
+    case 'plain_text':
+      return { id, title, outputFormat: 'plain_text', content: '' };
+    case 'json_5E_checklist':
+      return {
+        id,
+        title,
+        outputFormat: 'json_5E_checklist',
+        content: {
+          engage: { activity: '', materials: '' },
+          explore: { activity: '', materials: '' },
+          explain: { activity: '', materials: '' },
+          elaborate: { activity: '', materials: '' },
+          evaluate: { activity: '', materials: '' },
+        },
+      };
+    case 'json_1':
+      return {
+        id,
+        title,
+        outputFormat: 'json_1',
+        content: DIFFICULTIES.map((difficulty) => ({
+          difficulty,
+          content: [
+            { type: 'MCQs', questions: [blankMcq()] },
+            { type: 'assessment', questions: [blankAssessmentQuestion()] },
+          ],
+        })),
+      };
+    case 'json_2':
+      return {
+        id,
+        title,
+        outputFormat: 'json_2',
+        content: DIFFICULTIES.map((difficulty) => ({ difficulty, content: [blankScenario()] })),
+      };
+    case 'json_3':
+      return { id, title, outputFormat: 'json_3', content: [blankActivity([])] };
+    default:
+      throw new Error(`Unsupported section format "${template.outputFormat}".`);
+  }
 }
 
-// Drops blank objects from a list. Strings stay, so the A-D option slots keep their place.
-function prune(value: any): any {
-  if (Array.isArray(value)) return value.filter((item) => !isObject(item) || hasText(item)).map(prune);
-  if (isObject(value)) return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, prune(item)]));
-  return value;
+export const blankSections = (templates: SectionTemplate[]): Section[] => templates.map(blankSection);
+
+const filledMcqs = (questions: Mcq[]) => questions.filter((item) => anyText(item.question, ...item.options));
+const filledAssessments = (questions: AssessmentQuestion[]) => questions.filter((item) => anyText(item.question));
+
+function filledQuestionBank(levels: QuestionBankLevel[]): QuestionBankLevel[] {
+  return levels
+    .map((level) => ({
+      ...level,
+      content: level.content
+        .map((group) =>
+          group.type === 'MCQs' ? { ...group, questions: filledMcqs(group.questions) } : { ...group, questions: filledAssessments(group.questions) }
+        )
+        .filter((group) => group.questions.length > 0),
+    }))
+    .filter((level) => level.content.length > 0);
 }
 
-export function filledSections(sections: any[]): any[] {
-  return sections.filter((section) => hasText(section.content)).map((section) => ({ ...section, content: prune(section.content) }));
+function filledScenarios(levels: ScenarioLevel[]): ScenarioLevel[] {
+  return levels
+    .map((level) => ({ ...level, content: level.content.filter((item) => anyText(item.title, item.question, item.description)) }))
+    .filter((level) => level.content.length > 0);
 }
+
+const filledActivities = (activities: Activity[]) =>
+  activities.filter((item) => anyText(item.title, item.preparation, item.required_materials, item.obtaining_materials, item.recap));
+
+function filledSection(section: Section): Section | undefined {
+  switch (section.outputFormat) {
+    case 'plain_text':
+      return hasText(section.content) ? section : undefined;
+    case 'json_5E_checklist':
+      return PHASES.some((phase) => anyText(section.content[phase].activity, section.content[phase].materials)) ? section : undefined;
+    case 'json_1': {
+      const content = filledQuestionBank(section.content);
+      return content.length ? { ...section, content } : undefined;
+    }
+    case 'json_2': {
+      const content = filledScenarios(section.content);
+      return content.length ? { ...section, content } : undefined;
+    }
+    case 'json_3': {
+      const content = filledActivities(section.content);
+      return content.length ? { ...section, content } : undefined;
+    }
+  }
+}
+
+export const filledSections = (sections: Section[]): Section[] =>
+  sections.map(filledSection).filter((section): section is Section => section !== undefined);

@@ -11,6 +11,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { TranslateModule } from '@ngx-translate/core';
 import { of } from 'rxjs';
 
+import { CURATOR_HIDDEN_FIELDS } from '../content-management.config';
 import { ContentEditComponent } from './content-edit.component';
 
 describe('ContentEditComponent', () => {
@@ -203,13 +204,14 @@ describe('ContentEditComponent (curator mode)', () => {
     });
   }
 
-  const template = { _id: 'tpl-1', name: 'Subtopic plan', sections: [{ id: 'engage', title: 'Engage', outputFormat: 'plain_text' }] };
+  const template = { _id: 'tpl-1', name: 'Subtopic plan', workFlowId: 'x-subtopic-plan', sections: [{ id: 'engage', title: 'Engage', outputFormat: 'plain_text' }] };
 
   function flushTemplate(templates: object[] = [template]) {
     httpMock.expectOne((r) => r.url.endsWith('/lesson-plan-template/list')).flush({ data: templates });
   }
 
   afterEach(() => {
+    routeParams['entity'] = 'lesson-plans';
     httpMock.verify();
   });
 
@@ -220,9 +222,7 @@ describe('ContentEditComponent (curator mode)', () => {
     fixture.detectChanges();
 
     const fields = component.visibleFields.map((field) => field.field);
-    ['chapterId', 'class', 'board', 'medium', 'subject', 'name', 'subTopics', 'checkList'].forEach((field) =>
-      expect(fields).not.toContain(field)
-    );
+    CURATOR_HIDDEN_FIELDS.forEach((field) => expect(fields).not.toContain(field));
     ['semester', 'teachingModel', 'learningOutcomes', 'sections', 'videos'].forEach((field) => expect(fields).toContain(field));
 
     const page: HTMLElement = fixture.nativeElement;
@@ -271,16 +271,130 @@ describe('ContentEditComponent (curator mode)', () => {
     req.flush({ success: true });
   });
 
-  it('holds Save until the template arrives, then fills the sections', () => {
+  function saveButtons(): HTMLButtonElement[] {
+    return ['button[type="submit"]', '[data-testid="send-for-review-btn"]'].map(
+      (selector) => fixture.nativeElement.querySelector(selector) as HTMLButtonElement
+    );
+  }
+
+  it('keeps Save and Send for review disabled until the template arrives', () => {
     setup('new');
     flushChapter('draft');
-    component.formValues['semester'] = '1';
-
-    component.save();
-    httpMock.expectNone((r) => r.url.endsWith('/curator/content/lesson-plans'));
+    fixture.detectChanges();
+    expect(saveButtons().every((button) => button.disabled)).toBeTrue();
 
     flushTemplate();
+    fixture.detectChanges();
+
+    expect(saveButtons().every((button) => !button.disabled)).toBeTrue();
     expect(component.formValues['sections'].map((section: any) => section.id)).toEqual(['engage']);
+  });
+
+  function readyNewPlan() {
+    setup('new');
+    flushChapter('draft');
+    flushTemplate();
+    component.formValues['semester'] = '1';
+    fixture.detectChanges();
+  }
+
+  const page = (): HTMLElement => fixture.nativeElement;
+  const buttonLabelled = (label: string): HTMLButtonElement =>
+    Array.from(page().querySelectorAll('button')).find((button) => button.textContent!.trim() === label)!;
+  const videoRows = () => page().querySelectorAll('input[type="url"]').length;
+  const submit = () => {
+    (page().querySelector('button[type="submit"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+  };
+
+  it('refuses a video that has a title and no link', () => {
+    readyNewPlan();
+    component.formValues['videos'] = [{ title: 'Push demo', url: '', selected: true }];
+
+    submit();
+
+    httpMock.expectNone((r) => r.url.endsWith('/curator/content/lesson-plans'));
+    expect(page().querySelector('#error-videos')!.textContent).toBe('Add a link to every video, or remove the row.');
+  });
+
+  it('saves only the video rows that are not blank', () => {
+    readyNewPlan();
+    const good = { title: 'Push demo', url: 'https://example.com/v', selected: true };
+    component.formValues['videos'] = [{ title: '', url: '', selected: true }, good];
+
+    submit();
+
+    const req = httpMock.expectOne((r) => r.url.endsWith('/curator/content/lesson-plans'));
+    expect(req.request.body.videos).toEqual([good]);
+    req.flush({ success: true });
+  });
+
+  it('adds and removes a video row with the buttons', () => {
+    readyNewPlan();
+    expect(videoRows()).toBe(0);
+
+    buttonLabelled('Add video').click();
+    fixture.detectChanges();
+    expect(videoRows()).toBe(1);
+
+    buttonLabelled('Remove').click();
+    fixture.detectChanges();
+    expect(videoRows()).toBe(0);
+  });
+
+  it('names the format and keeps Save off when a template section has an unsupported format', () => {
+    setup('new');
+    const errorSpy = spyOn(TestBed.inject(ToastrService), 'error');
+    flushChapter('draft');
+    flushTemplate([{ ...template, sections: [{ id: 'x', title: 'X', outputFormat: 'json_9' }] }]);
+    fixture.detectChanges();
+
+    expect(errorSpy.calls.mostRecent().args[0]).toContain('json_9');
+    expect(saveButtons().every((button) => button.disabled)).toBeTrue();
+  });
+
+  it('sends a new plan with a subtopic back to the selection screen on Cancel', () => {
+    readyNewPlan();
+
+    (page().querySelector('[data-testid="cancel-btn"]') as HTMLButtonElement).click();
+
+    expect(TestBed.inject(Router).navigate).toHaveBeenCalledWith(['/curation/lesson-plan']);
+  });
+
+  it('creates a resource plan on the resources route with lessonName and the filled section', () => {
+    routeParams['entity'] = 'resources';
+    setup('new');
+    flushChapter('draft');
+    flushTemplate();
+    component.formValues['semester'] = '1';
+    component.formValues['resources'][0].content = 'Bring a ball.';
+
+    component.save();
+
+    const req = httpMock.expectOne((r) => r.url.endsWith('/curator/content/resources'));
+    const body = req.request.body;
+    expect(req.request.method).toBe('POST');
+    expect(body.lessonName).toBe('Science-CBSE Class8 Forces');
+    expect(body.name).toBeUndefined();
+    expect(body.subTopics).toEqual(['Push']);
+    expect(body.isAll).toBe(false);
+    expect(body.templateId).toBe('tpl-1');
+    expect(body.resources).toEqual([{ id: 'engage', title: 'Engage', outputFormat: 'plain_text', content: 'Bring a ball.' }]);
+    req.flush({ success: true });
+  });
+
+  it('splits the learning outcomes the curator types into one per line', async () => {
+    readyNewPlan();
+    await fixture.whenStable();
+    const box = page().querySelector('#field-learningOutcomes') as HTMLTextAreaElement;
+    box.value = 'a\nb';
+    box.dispatchEvent(new Event('input'));
+
+    submit();
+
+    const req = httpMock.expectOne((r) => r.url.endsWith('/curator/content/lesson-plans'));
+    expect(req.request.body.learningOutcomes).toEqual(['a', 'b']);
+    req.flush({ success: true });
   });
 
   it('shows an error that names the chapter when no template exists', () => {
@@ -289,7 +403,10 @@ describe('ContentEditComponent (curator mode)', () => {
     flushChapter('draft');
     flushTemplate([]);
 
+    fixture.detectChanges();
+
     expect(errorSpy.calls.mostRecent().args[0]).toContain('CBSE, english, class 8, Science');
+    expect(saveButtons().every((button) => button.disabled)).toBeTrue();
   });
 
   it('Send for review saves the record, then submits the chapter', () => {
@@ -338,6 +455,16 @@ describe('ContentEditComponent (curator mode)', () => {
     expect(errorSpy).toHaveBeenCalled();
     expect(TestBed.inject(Router).navigate).toHaveBeenCalledWith(['/curation/chapters', 'ch-1']);
     expect(component.record).toBeNull();
+  });
+
+  it('does not request the template for a record that already has sections', () => {
+    setup('lp-1');
+    flushChapter('draft');
+    httpMock
+      .expectOne((r) => r.url.endsWith('/curator/content/lesson-plans'))
+      .flush({ data: { results: [{ _id: 'lp-1', status: 'draft', subTopics: ['Push'], sections: [{ id: 'engage', title: 'Engage', outputFormat: 'plain_text', content: 'x' }] }] } });
+
+    httpMock.expectNone((r) => r.url.endsWith('/lesson-plan-template/list'));
   });
 
   it('is read-only when the chapter is under review', () => {
