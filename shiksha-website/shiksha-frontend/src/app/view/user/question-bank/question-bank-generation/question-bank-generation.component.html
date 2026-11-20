@@ -124,9 +124,9 @@
               </div>
               <div class="flex flex-wrap items-center justify-between gap-2 border-t px-3 py-2 min-h-[56px]" *ngFor="let objective of questionBankObjectives">
                 <span class="inline-flex min-w-0 flex-1 items-center gap-1 text-sm">
-                  {{ objective.name }}
-                  <button type="button" *ngIf="objective.description" class="p-1" [attr.aria-expanded]="openObjectiveInfo === objective.name"
-                    [attr.aria-label]="objective.description" (click)="openObjectiveInfo = openObjectiveInfo === objective.name ? '' : objective.name">
+                  {{ objective.objective | translate }}
+                  <button type="button" *ngIf="objective.description" class="p-1" [attr.aria-expanded]="openObjectiveInfo === objective.objective"
+                    [attr.aria-label]="objective.description | translate" (click)="openObjectiveInfo = openObjectiveInfo === objective.objective ? '' : objective.objective">
                     <img src="assets/icons/info-primary.svg" class="w-4 h-4" alt="" />
                   </button>
                 </span>
@@ -135,11 +135,11 @@
                   <button type="button" class="h-11 w-9 shrink-0 border rounded text-lg" [attr.aria-label]="'Decrease' | translate" (click)="stepObjective(objective, -5)">−</button>
                   <input type="number" inputmode="numeric" min="0" max="100" step="1"
                     class="h-11 w-14 border-2 rounded text-center" [class.border-error]="totalPercentage !== 100"
-                    [attr.aria-label]="objective.name" [ngModel]="objective.percentageDistribution"
+                    [attr.aria-label]="objective.objective | translate" [ngModel]="objective.percentageDistribution"
                     [ngModelOptions]="{ standalone: true }" (ngModelChange)="setObjective(objective, $event)" />
                   <button type="button" class="h-11 w-9 shrink-0 border rounded text-lg" [attr.aria-label]="'Increase' | translate" (click)="stepObjective(objective, 5)">+</button>
                 </span>
-                <p *ngIf="openObjectiveInfo === objective.name" class="basis-full text-xs">{{ objective.description }}</p>
+                <p *ngIf="openObjectiveInfo === objective.objective" class="basis-full text-xs">{{ objective.description | translate }}</p>
               </div>
               <div class="flex justify-between border-t px-3 py-3 text-sm font-bold" [class.text-error]="totalPercentage !== 100" data-testid="objectives-total">
                 <span>{{ 'Total' | translate }}</span>
@@ -266,7 +266,6 @@
           <app-question-bank-blue-print [currentStep]="4" [totalSteps]="4" [fullWidth]="true"
             [finalSelectedQuestions]="finalSelectedQuestions" [examName]="f.examinationName.value"
             [totalMarks]="totalMarks" [selectedQuestionsMarks]="selectedQuestionsMarks"
-            [objectiveLabels]="objectiveLabels"
             (questionsReorder)="onPreviewReorder($event)">
           </app-question-bank-blue-print>
         </div>
