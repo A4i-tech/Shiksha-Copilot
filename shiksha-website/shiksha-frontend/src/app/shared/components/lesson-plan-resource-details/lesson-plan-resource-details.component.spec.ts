@@ -1,6 +1,7 @@
 import { DatePipe } from '@angular/common';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { ActivatedRoute, Router } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
 import { NgIdleModule } from '@ng-idle/core';
 import { TranslateModule } from '@ngx-translate/core';
@@ -47,5 +48,42 @@ describe('LessonPlanResourceDetailsComponent (curator chapters)', () => {
       'ICSE|8|Science',
       'CBSE|8|Maths',
     ]);
+  });
+});
+
+describe('LessonPlanResourceDetailsComponent (curator mode)', () => {
+  let component: LessonPlanResourceDetailsComponent;
+  let navigateSpy: jasmine.Spy;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [
+        RouterTestingModule,
+        HttpClientTestingModule,
+        ToastrModule.forRoot(),
+        TranslateModule.forRoot(),
+        NgIdleModule.forRoot(),
+        LessonPlanResourceDetailsComponent,
+      ],
+      providers: [DatePipe, { provide: ActivatedRoute, useValue: { snapshot: { data: { curatorMode: true } } } }],
+    });
+    navigateSpy = spyOn(TestBed.inject(Router), 'navigate');
+    component = TestBed.createComponent(LessonPlanResourceDetailsComponent).componentInstance;
+    component['lessonType'] = '/curation/lesson-plan';
+    component.initializeForm();
+    component.onTopicSelected({ _id: 'c1', subTopics: ['A', 'B'] });
+  });
+
+  it('lists the subtopics of the chosen chapter as options', () => {
+    expect(component.subtopicsDropdownOptions).toEqual([
+      { label: 'A', value: 'A' },
+      { label: 'B', value: 'B' },
+    ]);
+  });
+
+  it('opens the new plan form of the chosen subtopic', () => {
+    component.onsubTopicSelected({ value: 'A' });
+
+    expect(navigateSpy).toHaveBeenCalledWith(['/curation/chapters', 'c1', 'lesson-plans', 'new'], { queryParams: { subTopic: 'A' } });
   });
 });

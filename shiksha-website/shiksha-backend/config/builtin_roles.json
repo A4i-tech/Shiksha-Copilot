@@ -49,7 +49,7 @@
     "name": "Content Curator",
     "description": "Writes lesson plans, resources, and questions for assigned chapters and submits them for admin review.",
     "permissions": ["content.curate", "content.view"],
-    "scopeType": "GLOBAL",
+    "scopeType": "UNBOUND",
     "isSystem": true,
     "isDeleted": false
   }

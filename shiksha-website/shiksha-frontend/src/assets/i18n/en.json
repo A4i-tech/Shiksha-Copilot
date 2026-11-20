@@ -1397,7 +1397,7 @@
   ],
   "Add lesson resource": "Add lesson resource",
   "Add question": "Add question",
-  "Pick one of your assigned chapters. The curation form opens for it.": "Pick one of your assigned chapters. The curation form opens for it.",
+  "Pick one of your assigned chapters, then the subtopic to write.": "Pick one of your assigned chapters, then the subtopic to write.",
   "Search content": "Search content",
   "Under review": "Under review",
   "Save as draft": "Save as draft",
@@ -1421,5 +1421,10 @@
     "See which subtopics still need a lesson plan, and submit a complete chapter for approval"
   ],
   "The chapters that an admin assigned to you. Open a chapter to write its content and send it for approval.": "The chapters that an admin assigned to you. Open a chapter to write its content and send it for approval.",
-  "{{done}} of {{total}} subtopics done": "{{done}} of {{total}} subtopics done"
+  "{{done}} of {{total}} subtopics done": "{{done}} of {{total}} subtopics done",
+  "Subtopic": "Subtopic",
+  "Add another": "Add another",
+  "Video title": "Video title",
+  "Video link": "Video link",
+  "Add video": "Add video"
 }

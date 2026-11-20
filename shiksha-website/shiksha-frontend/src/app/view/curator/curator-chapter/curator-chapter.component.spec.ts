@@ -156,16 +156,23 @@ describe('CuratorChapterComponent', () => {
       loadChapter('under_review', [['Push', 'Pull']]);
 
       expect(submitButton().getAttribute('aria-disabled')).toBe('true');
-      expect(fixture.nativeElement.querySelector('a[href$="/new"]')).toBeNull();
+      expect(fixture.nativeElement.querySelector('a[aria-label^="Add "]')).toBeNull();
     });
 
     it('names each Add link by its content type', () => {
       loadChapter('draft', [['Push']]);
 
-      const labels = Array.from<HTMLElement>(fixture.nativeElement.querySelectorAll('a[href$="/new"]')).map((link) =>
+      const labels = Array.from<HTMLElement>(fixture.nativeElement.querySelectorAll('a[aria-label^="Add "]')).map((link) =>
         link.getAttribute('aria-label')
       );
       expect(labels).toEqual(['Add lesson plan', 'Add lesson resource', 'Add question']);
+
+      const hrefs = Array.from<HTMLElement>(fixture.nativeElement.querySelectorAll('a[aria-label^="Add "]')).map((link) =>
+        link.getAttribute('href')
+      );
+      expect(hrefs[0]).toBe('/curation/lesson-plan');
+      expect(hrefs[1]).toBe('/curation/lesson-resources');
+      expect(hrefs[2]!.endsWith('/questions/new')).toBeTrue();
     });
 
     it('titles a record by its segment, and a question by its text parts', () => {
