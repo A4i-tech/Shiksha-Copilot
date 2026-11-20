@@ -6,10 +6,17 @@ const MasterLessonController = require("../controllers/master.lesson.controller.
 const {
 	validateMasterLessonCreate,
 } = require("../validations/master.lesson.validation.js");
+const { intersectFilters } = require("../helper/scope.helper.js");
 const jsonUploadMiddleware = require("../middlewares/jsonUploadMiddleware.js");
 
 
 const masterLessonController = new MasterLessonController();
+
+// Regenerated lessons are per-teacher copies, never listed.
+const hideRegeneratedLessons = (req, res, next) => {
+	req.query.filter = intersectFilters(req.query.filter, { isRegenerated: { $ne: true } });
+	next();
+};
 
 router.post(
 	"/master-lesson/create",
@@ -22,6 +29,7 @@ router.post(
 router.get(
 	"/master-lesson/list",
 	isAuthenticated,
+	hideRegeneratedLessons,
 	asyncMiddleware(masterLessonController.getAll.bind(masterLessonController))
 );
 

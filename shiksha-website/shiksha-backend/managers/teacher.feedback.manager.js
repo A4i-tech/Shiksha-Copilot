@@ -1,6 +1,7 @@
 const BaseManager = require("./base.manager");
 const TeacherResourceFeedbackDao = require("../dao/teacher.feedback.dao");
 const formatApiReponse = require("../helper/response");
+const { getScopedFeedback, updateScopedFeedback } = require("../helper/training.scope.helper");
 
 /** @extends {BaseManager<TeacherResourceFeedbackDao>} */
 class TeacherResourceFeedbackManager extends BaseManager {
@@ -52,15 +53,12 @@ class TeacherResourceFeedbackManager extends BaseManager {
 		);
 	}
 
-	async update(id, updates) {
-		const updatedFeedback = await this.dao.update(
-			id,
-			updates
-		);
-		if (!updatedFeedback) {
-			return formatApiReponse(false, "Feedback not found", null);
-		}
-		return formatApiReponse(true, "", updatedFeedback);
+	getById(req) {
+		return getScopedFeedback(this.dao, req);
+	}
+
+	update(id, updates, permissions) {
+		return updateScopedFeedback(this.dao, id, updates, permissions);
 	}
 }
 
