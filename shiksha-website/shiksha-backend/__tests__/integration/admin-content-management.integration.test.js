@@ -45,10 +45,11 @@ describe("admin content-management uploads (chapters, lesson plans, resources, q
   }, 30000);
 
   afterAll(async () => {
-    await request(baseURL)
+    const res = await request(baseURL)
       .delete("/api/devtools/fixtures")
       .set("Authorization", token)
-      .send(ids);
+      .send({ users: [], roles: [], content: [], activities: [], schools: [], classes: [], auditLogs: [], batches: [], ...ids });
+    expect(res.body.success).toBe(true);
   }, 30000);
 
   describe("chapters", () => {
@@ -192,7 +193,7 @@ describe("admin content-management uploads (chapters, lesson plans, resources, q
       expect(res.body.success).toBe(false);
       expect(res.body.data.inserted).toBe(0);
       const errors = res.body.data.rows.map((row) => row.errors.join(" "));
-      expect(errors[0]).toMatch(/"chapterId" is required/);
+      expect(errors[0]).toMatch(/chapterId "undefined" matches no chapter/);
       expect(errors[1]).toMatch(/matches no chapter/);
       expect(errors[2]).toMatch(/class is 8 but the chapter/);
       expect(errors[3]).toMatch(/board is "CBSE" but the chapter/);

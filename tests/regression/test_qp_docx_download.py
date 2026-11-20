@@ -9,7 +9,7 @@ from playwright.sync_api import expect
 
 BASE_URL = os.getenv("FRONTEND_URL")
 API_URL = os.getenv("BACKEND_URL") or (f"{BASE_URL}/api" if BASE_URL else None)
-assert API_URL, "Set BACKEND_URL or FRONTEND_URL so the tests can reach the API."
+pytestmark = pytest.mark.skipif(not API_URL, reason="Set BACKEND_URL or FRONTEND_URL so the tests can reach the API.")
 
 
 def _api_get(page, path: str):

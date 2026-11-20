@@ -48,7 +48,7 @@ describeQP("question paper: save, read, list and scope", () => {
     const res = await as(owner)("get", "/api/question-bank/list");
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
-    expect(JSON.stringify(res.body.data)).toContain(paperId);
+    expect(res.body.data.results.some((p) => String(p._id) === paperId)).toBe(true);
   });
 
   test("another teacher cannot read the paper", async () => {
@@ -62,7 +62,7 @@ describeQP("question paper: save, read, list and scope", () => {
   test("another teacher list does not contain the paper", async () => {
     const res = await as(other)("get", "/api/question-bank/list");
     expect(res.status).toBe(200);
-    expect(JSON.stringify(res.body.data)).not.toContain(paperId);
+    expect(res.body.data.results.some((p) => String(p._id) === paperId)).toBe(false);
   });
 
   test("another teacher cannot write feedback on the paper", async () => {
