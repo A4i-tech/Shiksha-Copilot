@@ -265,7 +265,7 @@ async def test_fence_watch_survives_a_failed_check():
     assert run.cancelled()
 
 
-async def test_lost_fence_does_not_ack_so_the_delivery_is_redelivered(monkeypatch):
+async def test_lost_fence_acks_the_delivery_instead_of_redelivering(monkeypatch):
     monkeypatch.setattr("app.services.presentation.consumer.settings.pres_ack_wait_seconds", 0.06)
     job = make_job()
     jobs, broker = FakeJobs(claimed=job, held=False), MemoryBroker(ack_wait=0.3)
@@ -276,7 +276,7 @@ async def test_lost_fence_does_not_ack_so_the_delivery_is_redelivered(monkeypatc
     await until(lambda: any(e[0] == "release" for e in jobs.events))
     await asyncio.sleep(0.5)
     await stop(task)
-    assert [e[0] for e in jobs.events].count("claim") >= 2
+    assert [e[0] for e in jobs.events].count("claim") == 1
 
 
 class CancelJobs:

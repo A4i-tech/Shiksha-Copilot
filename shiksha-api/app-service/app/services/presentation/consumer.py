@@ -9,7 +9,7 @@ from app.config import settings
 from app.messaging.consumer import Handler, run_consumer
 from app.messaging.message import JobMessage
 from app.messaging.nats_broker import NatsBroker
-from app.services.presentation.job import FenceLost, JobManager, lease_owner
+from app.services.presentation.job import JobManager, lease_owner
 from app.services.presentation.service import PresentationService
 
 logger = logging.getLogger(__name__)
@@ -80,9 +80,7 @@ def make_handler(service: PresentationService, broker) -> Handler:
             except asyncio.CancelledError:
                 if hit:
                     await service.jobs.delete(job)
-                elif lost:
-                    raise FenceLost(f"Fence lost on job {job_id}")
-                else:
+                elif not lost:
                     raise
             finally:
                 watch.cancel()
