@@ -95,6 +95,30 @@ async def test_in_progress_prevents_redelivery(broker):
     assert await broker.fetch(queue, 0.5) is None
 
 
+async def test_stale_delivery_left_unacked_does_not_loop_or_drop_the_job(broker):
+    queue = broker.test_queue
+    await broker.publish(queue, job(), msg_id="m1")
+    await broker.fetch(queue, 3)
+    holder = await broker.fetch(queue, 6)
+    assert holder.num_delivered == 2
+    watcher = asyncio.create_task(broker.fetch(queue, 4.5))
+    for _ in range(10):
+        await asyncio.sleep(0.5)
+        await holder.in_progress()
+    assert await watcher is None
+    assert await stream_messages(broker) == 1
+
+
+async def test_stale_ack_settles_the_message_for_the_current_holder(broker):
+    queue = broker.test_queue
+    await broker.publish(queue, job(), msg_id="m1")
+    stale = await broker.fetch(queue, 3)
+    holder = await broker.fetch(queue, 6)
+    await stale.ack()
+    assert await stream_messages(broker) == 0
+    assert holder.num_delivered == 2
+
+
 async def test_dead_letter_after_max_deliver_is_removed_from_stream(broker):
     queue = broker.test_queue
     dead = broker.dead_letters(queue)

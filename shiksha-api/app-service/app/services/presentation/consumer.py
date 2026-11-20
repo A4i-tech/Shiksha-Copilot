@@ -6,6 +6,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from app.config import settings
+from app.messaging.broker import LockLost
 from app.messaging.consumer import Handler, run_consumer
 from app.messaging.message import JobMessage
 from app.messaging.nats_broker import NatsBroker
@@ -80,7 +81,9 @@ def make_handler(service: PresentationService, broker) -> Handler:
             except asyncio.CancelledError:
                 if hit:
                     await service.jobs.delete(job)
-                elif not lost:
+                elif lost:
+                    raise LockLost(f"Job {job_id} fence was taken by another delivery")
+                else:
                     raise
             finally:
                 watch.cancel()
