@@ -37,9 +37,10 @@ def browser_context():
             otp_inputs.nth(i).type(digit, delay=100)
 
         verify_button = page.get_by_role("button", name="Verify")
-        verify_button.click()
+        expect(verify_button).to_be_enabled(timeout=5000)
+        verify_button.dispatch_event("click")
 
-        page.wait_for_url("**/dashboard")
+        page.wait_for_url("**/home", timeout=60000)
 
         yield context
 

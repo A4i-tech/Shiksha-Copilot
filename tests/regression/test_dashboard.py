@@ -1,5 +1,8 @@
-import pytest
 import os
+import re
+
+import pytest
+from playwright.sync_api import expect
 from page_objects.dashboard_page import DashboardPage
 
 BASE_URL = os.getenv("FRONTEND_URL")
@@ -13,14 +16,13 @@ def dashboard(logged_in_page):
 
 def test_dashboard_initial_rendering(dashboard, step):
     """Regression: Verify critical dashboard components render correctly."""
-    from playwright.sync_api import expect
-    
     with step("Check Welcome Section"):
         expect(dashboard.welcome_header).to_contain_text("Hi")
         expect(dashboard.teacher_toolkit_subtitle).to_be_visible()
     
     with step("Check Main Landing Card"):
-        expect(dashboard.landing_card_title).to_contain_text("Lesson Plan Generation")
+        # The label depends on the account state.
+        expect(dashboard.landing_card_title).to_contain_text(re.compile("Period Plan Generation|Lesson Plan Generation"))
         expect(dashboard.generate_lesson_plan_btn).to_be_visible()
     
     with step("Check Analytics and Calendar"):
@@ -31,9 +33,6 @@ def test_dashboard_initial_rendering(dashboard, step):
 
 def test_navigation_to_content_generation(dashboard, logged_in_page, step):
     """Regression: Verify the Generate button redirects to the correct sub-route."""
-    from playwright.sync_api import expect
-    import re
-    
     with step("Click Generate Lesson Plan"):
         dashboard.click_generate_lesson_plan()
     
@@ -48,8 +47,6 @@ def test_navigation_to_content_generation(dashboard, logged_in_page, step):
 
 def test_calendar_month_navigation(dashboard, step):
     """Regression: Verify calendar month navigation updates the display month."""
-    from playwright.sync_api import expect
-    
     with step("Get Initial Month"):
         initial_month = dashboard.current_month_display.text_content()
     
@@ -63,14 +60,11 @@ def test_calendar_month_navigation(dashboard, step):
 
 def test_schedule_navigation(dashboard, logged_in_page, step):
     """Regression: Verify the My Schedule button redirects correctly."""
-    from playwright.sync_api import expect
-    import re
-    
     with step("Click My Schedule"):
         dashboard.click_my_schedule()
     
     with step("Verify Redirection to Schedule"):
-        expect(logged_in_page).to_have_url(re.compile(r"user/schedule"))
+        expect(logged_in_page).to_have_url(re.compile(r"#/schedule$"))
     
     with step("Navigate Back to Dashboard"):
         dashboard.load(BASE_URL)

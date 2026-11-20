@@ -1,7 +1,8 @@
 import os
+import re
 import pytest
 from dotenv import load_dotenv
-from playwright.sync_api import sync_playwright, expect
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError, sync_playwright, expect
 
 load_dotenv()
 
@@ -29,17 +30,21 @@ def browser_context():
 
         page.get_by_role("button", name="Continue").click()
 
-        # ng-otp-input hides actual inputs — wait for attachment, focus via JS, fire keyboard events
         otp_inputs = page.locator("input.otp-input")
-        otp_inputs.first.wait_for(state="attached", timeout=15000)
-        otp_inputs.first.evaluate("el => el.focus()")
-        page.keyboard.type(USER_OTP, delay=100)
+        expect(otp_inputs).to_have_count(4)
+        for i, digit in enumerate(USER_OTP):
+            otp_inputs.nth(i).click()
+            otp_inputs.nth(i).type(digit, delay=100)
 
         verify_button = page.get_by_role("button", name="Verify")
         expect(verify_button).to_be_enabled(timeout=5000)
         verify_button.dispatch_event("click")
 
-        page.wait_for_url("**/home", timeout=60000)
+        try:
+            page.wait_for_url(re.compile(r"#/(dashboard|home)$"), timeout=60000)
+        except PlaywrightTimeoutError:
+            toasts = page.locator(".toast-message").all_inner_texts()
+            raise AssertionError(f"Login did not reach /dashboard or /home. URL: {page.url}. Toasts: {toasts}") from None
 
         yield context
 

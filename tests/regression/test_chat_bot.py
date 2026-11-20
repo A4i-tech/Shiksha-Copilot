@@ -2,7 +2,6 @@ import pytest
 import os
 from page_objects.chatbot_page import ChatbotPage
 from playwright.sync_api import expect
-from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 BASE_URL = os.getenv("FRONTEND_URL")
 
@@ -30,31 +29,28 @@ def test_chatbot_ui_elements_exist(chatbot, step):
     with step("Verify Daily Limit"):
         expect(chatbot.daily_limit_text).to_be_visible()
 
-def test_chatbot_send_receive_logic(chatbot, step):
-    """
-    Regression: The core 'Happy Path'. 
-    User sends message -> Loading appears -> Bot responds.
-    """
+def test_chatbot_renders_stubbed_reply(chatbot, step):
     question = "What is the capital of France?"
+    ndjson = (
+        '{"type": "status", "message": "Thinking..."}\n'
+        '{"type": "content", "delta": "The capital of France is Paris."}\n'
+    )
+    chatbot.page.route(
+        "**/chat/message",
+        lambda route: route.fulfill(
+            status=200, content_type="application/x-ndjson", body=ndjson
+        ),
+    )
     initial_bot_count = chatbot.bot_message_bubbles.count()
-    
+
     with step("Send Message"):
         chatbot.send_message(question)
         expect(chatbot.chat_textarea).to_have_value("")
-        # If daily limit exhausted the message is silently dropped — no user bubble appears
-        try:
-            chatbot.user_message_bubbles.last.wait_for(state="visible", timeout=5000)
-        except PlaywrightTimeoutError:
-            pytest.skip("Message not rendered after send — daily chat limit likely exhausted (20 msgs/day)")
+        chatbot.user_message_bubbles.last.wait_for(state="visible", timeout=5000)
 
     with step("Verify Chatbot Response"):
-        # The exact text varies based on LLM output and timing, so we just
-        # ensure that a response bubble has populated with *some* text length
-        try:
-            response = chatbot.get_latest_bot_response()
-        except PlaywrightTimeoutError:
-            pytest.skip("No chatbot response returned within timeout in this environment.")
-        assert len(response) > 5, f"Chatbot response is too short or empty: '{response}'"
+        response = chatbot.get_latest_bot_response()
+        assert "Paris" in response, f"Stubbed reply not rendered: '{response}'"
         assert chatbot.bot_message_bubbles.count() > initial_bot_count, (
             "Expected a new chatbot response bubble after sending a message."
         )

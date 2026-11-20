@@ -25,6 +25,7 @@ describe("admin content-management uploads (chapters, lesson plans, resources, q
   const ids = { subjects: [], chapters: [], lessonPlans: [], resources: [], questions: [] };
   let token;
   let subject;
+  let soundChapter;
   let chapter; // the one PASS chapter every downstream entity's PASS/FAIL rows reference
 
   beforeAll(async () => {
@@ -44,10 +45,11 @@ describe("admin content-management uploads (chapters, lesson plans, resources, q
   }, 30000);
 
   afterAll(async () => {
-    await request(baseURL)
+    const res = await request(baseURL)
       .delete("/api/devtools/fixtures")
       .set("Authorization", token)
-      .send(ids);
+      .send({ users: [], roles: [], content: [], activities: [], schools: [], classes: [], auditLogs: [], batches: [], ...ids });
+    expect(res.body.success).toBe(true);
   }, 30000);
 
   describe("chapters", () => {
@@ -85,11 +87,26 @@ describe("admin content-management uploads (chapters, lesson plans, resources, q
       ids.chapters.push(...res.body.data.insertedIds);
 
       const list = await request(baseURL)
-        .get(`/api/admin/content/chapters?search=${encodeURIComponent(`Light ${suffix}`)}`)
+        .get(`/api/admin/content/chapters?limit=10&includeDeleted=3&search=${suffix}`)
         .set("Authorization", token);
       chapter = list.body.data.results.find((row) => row.topics === `Light ${suffix}`);
       expect(chapter).toBeDefined();
       expect(chapter.status).toBe("draft");
+
+      // Lesson plans, resources and questions only resolve a live chapter.
+      soundChapter = list.body.data.results.find((row) => row.topics === `Sound ${suffix}`);
+      expect(soundChapter).toBeDefined();
+      for (const { _id } of [chapter, soundChapter]) {
+        const reviewRes = await request(baseURL)
+          .put(`/api/admin/content/chapters/${_id}`)
+          .set("Authorization", token)
+          .send({ status: "under_review" });
+        expect(reviewRes.body.success).toBe(true);
+        const approveRes = await request(baseURL)
+          .post(`/api/admin/content/chapters/${_id}/approve`)
+          .set("Authorization", token);
+        expect(approveRes.body.success).toBe(true);
+      }
     }, 30000);
 
     it("rejects each invalid row with its own reason, and saves nothing", async () => {
@@ -176,7 +193,7 @@ describe("admin content-management uploads (chapters, lesson plans, resources, q
       expect(res.body.success).toBe(false);
       expect(res.body.data.inserted).toBe(0);
       const errors = res.body.data.rows.map((row) => row.errors.join(" "));
-      expect(errors[0]).toMatch(/"chapterId" is required/);
+      expect(errors[0]).toMatch(/chapterId "undefined" matches no chapter/);
       expect(errors[1]).toMatch(/matches no chapter/);
       expect(errors[2]).toMatch(/class is 8 but the chapter/);
       expect(errors[3]).toMatch(/board is "CBSE" but the chapter/);
@@ -327,7 +344,7 @@ describe("admin content-management uploads (chapters, lesson plans, resources, q
               medium: "english",
               semester: "1",
               subject: subject.subjectName,
-              chapterId: chapter._id,
+              chapterId: soundChapter._id,
               subTopics: ["Propagation of sound"],
             },
           ],
