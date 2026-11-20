@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 import pytest
 
 from app.config import settings
-from app.messaging.broker import DeadLetter
+from app.messaging.broker import DeadLetter, LockLost
 from app.messaging.consumer import run_consumer
 from app.messaging.memory import MemoryBroker
 from app.messaging.message import JobMessage
@@ -265,18 +265,13 @@ async def test_fence_watch_survives_a_failed_check():
     assert run.cancelled()
 
 
-async def test_lost_fence_acks_the_delivery_instead_of_redelivering(monkeypatch):
+async def test_lost_fence_raises_lock_lost_so_the_delivery_is_not_acked(monkeypatch):
     monkeypatch.setattr("app.services.presentation.consumer.settings.pres_ack_wait_seconds", 0.06)
     job = make_job()
-    jobs, broker = FakeJobs(claimed=job, held=False), MemoryBroker(ack_wait=0.3)
-    service = FakeService(jobs, run=asyncio.Event().wait)
-    await pc.publish_job(broker, jobs, job, msg_id=f"{job.id}:0")
-    stopping = asyncio.Event()
-    task = asyncio.create_task(run_consumer(broker, pc.JOBS_QUEUE, pc.make_handler(service, broker), stop=stopping, heartbeat_every=10, alive=lambda: True, fetch_timeout=0.02))
-    await until(lambda: any(e[0] == "release" for e in jobs.events))
-    await asyncio.sleep(0.5)
-    await stop(task)
-    assert [e[0] for e in jobs.events].count("claim") == 1
+    jobs = FakeJobs(claimed=job, held=False)
+    handle = pc.make_handler(FakeService(jobs, run=asyncio.Event().wait), MemoryBroker())
+    with pytest.raises(LockLost):
+        await asyncio.wait_for(handle(message(job), "f1"), 2)
 
 
 class CancelJobs:
