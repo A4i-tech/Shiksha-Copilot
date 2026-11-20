@@ -4,6 +4,7 @@ const formatApiReponse = require("../helper/response");
 const AppError = require("../helper/app.error");
 const School = require("../models/school.model");
 const { readableSchools, isResourceAllowed } = require("../helper/scope.helper");
+const { hasGlobalPermission } = require("../helper/permission.helper");
 
 const NOT_FOUND = "Record not found. Refresh the page and try again.";
 const OUT_OF_SCOPE = "This class belongs to a school outside your scope. Choose a class from your own school.";
@@ -31,6 +32,11 @@ class ClassManager extends BaseManager {
 	}
 
 	async assertCanWrite(permissions, schoolId) {
+		if (!schoolId) {
+			// classes saved before the school_id fix have no school
+			if (hasGlobalPermission(permissions, "content.manage")) return;
+			throw new AppError(OUT_OF_SCOPE, 403);
+		}
 		const school = await School.findById(schoolId).lean();
 		if (!school) throw new AppError("The selected school does not exist. Select an existing school and save again.", 400);
 		if (!isResourceAllowed(permissions, "content.manage", school)) throw new AppError(OUT_OF_SCOPE, 403);

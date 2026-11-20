@@ -147,6 +147,21 @@ describe("ClassManager", () => {
       expect(result.success).toBe(true);
     });
 
+    it("lets a GLOBAL grant update and delete a class with no school", async () => {
+      mockClassDao.getById.mockResolvedValue({ _id: "class1" });
+      mockClassDao.update.mockResolvedValue({ _id: "class1" });
+      mockClassDao.delete.mockResolvedValue({ _id: "class1" });
+      expect((await classManager.updateClass("class1", { start: 1 }, GLOBAL)).success).toBe(true);
+      await classManager.delete({ params: { id: "class1" }, permissions: GLOBAL });
+      expect(mockClassDao.delete).toHaveBeenCalled();
+    });
+
+    it("blocks a SCHOOL-scoped grant from updating a class with no school", async () => {
+      mockClassDao.getById.mockResolvedValue({ _id: "class1" });
+      await expect(classManager.updateClass("class1", { start: 1 }, schoolGrants("content.manage", SCHOOL_A))).rejects.toMatchObject({ statusCode: 403 });
+      expect(mockClassDao.update).not.toHaveBeenCalled();
+    });
+
     it("blocks reading another school's class by id", async () => {
       School.exists.mockResolvedValue(null);
       const req = { params: { id: "class1" }, permissions: schoolGrants("school.read", SCHOOL_A) };
