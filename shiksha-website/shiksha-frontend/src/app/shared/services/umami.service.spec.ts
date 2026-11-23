@@ -13,11 +13,12 @@ describe('UmamiService', () => {
     return document.head.querySelector<HTMLScriptElement>('script[src$="/script.js"]')!;
   }
 
-  function loadTracker() {
+  function loadTracker(umamiRecorder = false) {
     service.loadTracker();
     http.expectOne(`${environment.apiUrl}/analytics/config`).flush({
       umamiUrl: 'https://umami.test',
       umamiWebsiteId: 'site-1',
+      umamiRecorder,
     });
   }
 
@@ -53,6 +54,15 @@ describe('UmamiService', () => {
     expect(window.umami?.track).toHaveBeenCalledTimes(2);
     expect(window.umami?.track).toHaveBeenCalledWith('a', {});
     expect(window.umami?.track).toHaveBeenCalledWith('b', { n: 1 });
+  });
+
+  it('injects recorder.js only when umamiRecorder is true', () => {
+    const recorder = () => document.head.querySelector('script[src$="/recorder.js"]');
+    loadTracker(false);
+    expect(recorder()).toBeNull();
+
+    loadTracker(true);
+    expect(recorder()?.getAttribute('data-website-id')).toBe('site-1');
   });
 
   it('calls track() directly once the script has loaded', () => {

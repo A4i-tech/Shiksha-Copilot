@@ -52,6 +52,11 @@ jobs:
           curl -sSL https://install.python-poetry.org | python3 -
           export PATH="$HOME/.local/bin:$PATH"
 
+      - name: Install LibreOffice (needed by document conversion tests)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libreoffice-writer libreoffice-impress
+
       - name: Run unit tests (before build)
         working-directory: shiksha-api/app-service
         env:

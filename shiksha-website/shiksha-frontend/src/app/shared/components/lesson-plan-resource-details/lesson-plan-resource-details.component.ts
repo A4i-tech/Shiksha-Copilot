@@ -8,7 +8,7 @@ import {
   ReactiveFormsModule,
   FormsModule,
 } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { ContentGenerationService } from 'src/app/view/user/content-generation/content-generation.service';
 import { DropDownConfig } from '../../interfaces/dropdown.interface';
@@ -20,6 +20,7 @@ import { Observable } from 'rxjs';
 import { DeleteDetailComponent, DeleteDetailConfig } from '../delete-detail/delete-detail.component';
 import { HttpParams } from '@angular/common/http';
 import { HasPermissionDirective } from 'src/app/core/directives/has-permission.directive';
+import { CURATION_URL } from 'src/app/view/curator/curation-routes';
 import { IdleService } from '../../services/idle.service';
 
 export interface LessonTypeConfig {
@@ -185,7 +186,11 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
       type: 'resource',
       inspectUrl: '/content-generation/inspect/resource-plan',
     },
+    [CURATION_URL.lessonPlan]: { type: 'plan', inspectUrl: '/curation' },
+    [CURATION_URL.lessonResources]: { type: 'resource', inspectUrl: '/curation' },
   };
+
+  readonly curatorMode: boolean;
 
   learningOutcomes: any;
   combinedLearningOutcomes: any;
@@ -211,20 +216,47 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
     public modalService: ModalService,
     private contentGenService: ContentGenerationService,
     private router: Router,
+    private route: ActivatedRoute,
     private utilityservice: UtilityService,
     private translateService:TranslateService,
     private idleService:IdleService
   ) {
     this.lessonType = this.router.url;
+    this.curatorMode = this.route.snapshot.data['curatorMode'] === true;
   }
 
   ngOnInit(): void {
     this.initializeForm();
+    this.submitBtnTxt = this.getLessonType()?.type === 'plan' ? 'Generate Lesson Plan':'Generate Lesson Resources'
+
+    if (this.curatorMode) {
+      this.contentGenService.getTopicsSubtopics(undefined, undefined, undefined, undefined, true).subscribe({
+        next: (res: any) => this.getBoardsList(this.curatorClasses(res.data.results)),
+        error: (err) => this.utilityservice.handleError(err),
+      });
+      return;
+    }
+
     const data: string = localStorage.getItem('userData') ?? '';
     const loggedInUser = JSON.parse(data);
-    this.getBoardsList(loggedInUser);
-    this.submitBtnTxt = this.getLessonType()?.type === 'plan' ? 'Generate Lesson Plan':'Generate Lesson Resources'
+    this.getBoardsList(loggedInUser.profiles.teacher.classes);
     this.getRegenrationLimit()
+  }
+
+  // A curator has no teacher classes, so the assigned chapters give the board, medium, class, and subject options.
+  private curatorClasses(chapters: any[]): any[] {
+    const items = new Map<string, any>();
+    chapters.forEach((chapter) => {
+      const subject = chapter.subject[0].subjectName;
+      items.set(`${chapter.board}|${chapter.medium}|${chapter.standard}|${subject}`, {
+        board: chapter.board,
+        medium: chapter.medium,
+        class: chapter.standard,
+        subject,
+        name: subject,
+      });
+    });
+    return [...items.values()];
   }
 
   getRegenrationLimit(){
@@ -244,6 +276,10 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
   }
 
   getTemplates(){
+    if (this.curatorMode) {
+      this.getTopicsSubtopicsOptions();
+      return;
+    }
     let {board,medium,subject} = this.lessonForm.value;
     let params = new HttpParams()
     params = params.set('filter[boards]', board);
@@ -286,9 +322,9 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
 
   }
 
-  getBoardsList(userDetails: any) {
+  getBoardsList(classes: any[]) {
     let classList = [];
-    classList = this.utilityservice.formatResponse(userDetails.profiles.teacher.classes);
+    classList = this.utilityservice.formatResponse(classes);
     this.boardDropdownOptions = classList;
 
     if (classList.length === 1) {
@@ -409,6 +445,11 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
     this.chapterId = val?._id;
     this.resetTopicChange();
 
+    if (this.curatorMode) {
+      if (val) this.subtopicsDropdownOptions = val.subTopics.map((name: string) => ({ label: name, value: name }));
+      return;
+    }
+
     let subTopicSubscriber;
 
     const reqBody = {
@@ -478,6 +519,13 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
   }
 
   onsubTopicSelected(val: any): void {
+    if (this.curatorMode) {
+      if (val) {
+        const segment = this.getLessonType()?.type === 'plan' ? 'lesson-plans' : 'resources';
+        this.router.navigate(['/curation/chapters', this.chapterId, segment, 'new'], { queryParams: { subTopic: val.value } });
+      }
+      return;
+    }
     this.selectedSubtopic = val;
     this.learningOutcomes = val.learningOutcomes;
     this.initialLearningOutcomes = structuredClone(this.learningOutcomes);
@@ -535,7 +583,8 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
         this.lessonForm.get('board')?.value,
         this.lessonForm.get('medium')?.value,
         this.lessonForm.get('class')?.value,
-        this.lessonForm.get('subject')?.value
+        this.lessonForm.get('subject')?.value,
+        this.curatorMode
       )
       .subscribe({
         next: (res: any) => {
@@ -789,7 +838,7 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
   }
 
   backNavigation() {
-    this.router.navigate(['/content-generation']);
+    this.router.navigate([this.curatorMode ? '/curation' : '/content-generation']);
   }
 
   confirm(value: string) {

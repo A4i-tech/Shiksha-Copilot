@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import hashlib
 from io import BytesIO
 import os
@@ -180,7 +181,7 @@ async def resolve_image(image: str, is_url: bool, storage: Storage | None = None
         return BytesIO(await resp.read())
 
 
-async def save_file_with_hash(storage: Storage, file: UploadFile, filename: str, allowed_mimes: set[str], chunk_size: int, max_size: int) -> tuple[str, str]:
+async def save_file_with_hash(storage: Storage, file: UploadFile, filename: str, allowed_mimes: dict[str, str], chunk_size: int, max_size: int) -> tuple[str, str]:
     suffix = pathlib.Path(filename).suffix.lower()
     sha256 = hashlib.sha256()
     total = 0
@@ -196,7 +197,9 @@ async def save_file_with_hash(storage: Storage, file: UploadFile, filename: str,
         await f.seek(0)
         path = pathlib.Path(str(f.name))
         mime = await asyncio.to_thread(magic.from_file, path, mime=True)
-        if mime not in allowed_mimes: raise ValueError("Unexpected mime (%s)" % mime)
+        if mime not in allowed_mimes:
+            labels = list(allowed_mimes.values())
+            raise ValueError("This file type is not supported. Upload a " + ", ".join(labels[:-1]) + " or " + labels[-1] + " file.")
 
         final_name = f"{sha256.hexdigest()}{suffix}"
         await f.seek(0)
@@ -217,6 +220,10 @@ def randomize_url(url: str, counter: int) -> str:
     return data.scheme + "://" + _DUMMY_CDN + "/" + local_unique_id(counter) + pathlib.Path(data.path).suffix
 
 
+class ConversionFailed(RuntimeError):
+    """soffice ran but rejected the document."""
+
+
 LibreOfficeOutputFormat = Literal["pdf", "html", "odp", "ppt", "pptx"]
 class LibreOffice:
 
@@ -227,20 +234,30 @@ class LibreOffice:
         if self.path is None: raise RuntimeError("soffice executable not found in PATH")
         default_args = ["--headless", "--nologo", "--nofirststartwizard", "--nodefault", "--norestore"]
         proc = await asyncio.create_subprocess_exec(self.path, *default_args, *args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-        stdout, stderr = await proc.communicate()
+        try:
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), settings.pres_soffice_timeout)
+        except asyncio.TimeoutError as e:
+            raise RuntimeError("soffice timed out after %ds" % settings.pres_soffice_timeout) from e
+        finally:
+            # don't leave a hung/orphaned soffice behind (a corrupt document can hang it)
+            if proc.returncode is None:
+                with contextlib.suppress(ProcessLookupError):  # exited between the check and the kill
+                    proc.kill()
+                await proc.wait()
         code = proc.returncode or 0
-        if code != 0: raise RuntimeError(stderr.decode())
+        if code != 0: raise ConversionFailed("soffice exited with code %d: %s" % (code, stderr.decode().strip()))
         return stdout
 
-    async def convert(self, data: IO[bytes], output_format: LibreOfficeOutputFormat) -> bytes:
+    async def convert(self, data: IO[bytes], output_format: LibreOfficeOutputFormat, input_suffix: str = ".pptx") -> bytes:
         with tempfile.TemporaryDirectory() as profile, tempfile.TemporaryDirectory() as tmp:
             tmpdir = pathlib.Path(tmp)
-            in_path = tmpdir / "input.pptx"
+            in_path = tmpdir / ("input" + input_suffix)
             async with aiofiles.open(in_path, "wb") as f:
                 await f.write(data.read())
             await self._call("-env:UserInstallation=file://" + profile, "--convert-to", output_format, "--outdir", str(tmpdir), str(in_path))
 
             # soffice creates 'input.xyz'
             out_path = tmpdir / ("input.%s" % output_format)
+            if not out_path.exists(): raise RuntimeError("soffice produced no %s output for %s input" % (output_format, input_suffix))
             async with aiofiles.open(out_path, "rb") as f:
                 return await f.read()

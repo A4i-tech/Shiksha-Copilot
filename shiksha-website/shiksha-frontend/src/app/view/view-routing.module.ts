@@ -12,6 +12,8 @@ import { ChatbotComponent } from './user/chatbot/chatbot.component';
 import { ContentActivityComponent } from './admin/content-activity/content-activity.component';
 import { ViewLessonPlanComponent } from './admin/view-lesson-plan/view-lesson-plan.component';
 import { LandingComponent } from './landing.component';
+
+import { CURATION_PATH } from './curator/curation-routes';
 import { RoleManagementComponent } from './admin/role-management/role-management.component';
 
 const routes: Routes = [
@@ -125,6 +127,50 @@ const routes: Routes = [
         path: 'content-management/:entity',
         loadComponent: () => import('./admin/content-management/content-list/content-list.component').then((c) => c.ContentListComponent),
         data: { permissions: ['admin.ingest'] },
+        canActivate: [PermissionGuard],
+      },
+      {
+        path: 'curation',
+        loadComponent: () => import('./curator/curator-content-list/curator-content-list.component').then((c) => c.CuratorContentListComponent),
+        data: { permissions: ['content.curate'] },
+        canActivate: [PermissionGuard],
+      },
+      {
+        path: 'curation/chapters',
+        loadComponent: () => import('./curator/curator-chapter/curator-chapter.component').then((c) => c.CuratorChapterComponent),
+        data: { permissions: ['content.curate'] },
+        canActivate: [PermissionGuard],
+      },
+      {
+        path: CURATION_PATH.lessonPlan,
+        loadComponent: () =>
+          import('../shared/components/lesson-plan-resource-details/lesson-plan-resource-details.component').then((c) => c.LessonPlanResourceDetailsComponent),
+        data: { permissions: ['content.curate'], curatorMode: true },
+        canActivate: [PermissionGuard],
+      },
+      {
+        path: CURATION_PATH.lessonResources,
+        loadComponent: () =>
+          import('../shared/components/lesson-plan-resource-details/lesson-plan-resource-details.component').then((c) => c.LessonPlanResourceDetailsComponent),
+        data: { permissions: ['content.curate'], curatorMode: true },
+        canActivate: [PermissionGuard],
+      },
+      {
+        path: 'curation/chapters/:chapterId/:entity/new',
+        loadComponent: () => import('./admin/content-management/content-edit/content-edit.component').then((c) => c.ContentEditComponent),
+        data: { permissions: ['content.curate'], curatorMode: true },
+        canActivate: [PermissionGuard],
+      },
+      {
+        path: 'curation/chapters/:chapterId/:entity/:id/edit',
+        loadComponent: () => import('./admin/content-management/content-edit/content-edit.component').then((c) => c.ContentEditComponent),
+        data: { permissions: ['content.curate'], curatorMode: true },
+        canActivate: [PermissionGuard],
+      },
+      {
+        path: 'curation/chapters/:chapterId',
+        loadComponent: () => import('./curator/curator-chapter/curator-chapter.component').then((c) => c.CuratorChapterComponent),
+        data: { permissions: ['content.curate'] },
         canActivate: [PermissionGuard],
       },
       {

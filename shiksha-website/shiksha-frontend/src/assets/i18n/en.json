@@ -27,7 +27,10 @@
     "Taluk"
   ],
   "Enter Taluk": [
-    { "rule": "state == 'Telangana'", "value": "Enter Mandal" },
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Enter Mandal"
+    },
     "Enter Taluk"
   ],
   "Mandal": "Mandal",
@@ -585,8 +588,6 @@
   "Draft Exists": "Draft Exists",
   "LEARNING OUTCOMES": "LEARNING OUTCOMES",
   "5E Table": "5E Table",
-  "5E Table Docx": "5E Table Docx",
-  "5E Table PDF": "5E Table PDF",
   "Leave your comments here": "Leave your comments here",
   "Chatbot": "Chatbot",
   "The lesson objectives provided are clear, appropriate, measurable, and aligned with the curriculum.": "The lesson objectives provided are clear, appropriate, measurable, and aligned with the curriculum.",
@@ -706,7 +707,6 @@
   "Blueprint": "Blueprint",
   "Question paper + Answer Key": "Question paper + Answer Key",
   "Download": "Download",
-  "file": "file",
   "Loading...": "Loading...",
   "Saving...": "Saving...",
   "Generating edits...": "Generating edits...",
@@ -721,37 +721,85 @@
   "Short Answer Questions": "Short Answer Questions",
   "Long Answer Questions": "Long Answer Questions",
   "Knowledge": [
-    { "rule": "board == 'BSE-TG' && subject in ['Physics', 'Biology', 'Science', 'Social', 'Social Science']", "value": "Understanding" },
-    { "rule": "board == 'BSE-TG' && subject in ['Math', 'Mathematics']", "value": "Problem solving" },
+    {
+      "rule": "board == 'BSE-TG' && subject in ['Physics', 'Biology', 'Science', 'Social', 'Social Science']",
+      "value": "Understanding"
+    },
+    {
+      "rule": "board == 'BSE-TG' && subject in ['Math', 'Mathematics']",
+      "value": "Problem solving"
+    },
     "Knowledge"
   ],
   "Knowledge description": [
-    { "rule": "board == 'BSE-TG' && subject in ['Physics', 'Biology', 'Science', 'Social', 'Social Science']", "value": "Conceptual Understanding" },
-    { "rule": "board == 'BSE-TG' && subject in ['Math', 'Mathematics']", "value": "Problem solving" },
+    {
+      "rule": "board == 'BSE-TG' && subject in ['Physics', 'Biology', 'Science', 'Social', 'Social Science']",
+      "value": "Conceptual Understanding"
+    },
+    {
+      "rule": "board == 'BSE-TG' && subject in ['Math', 'Mathematics']",
+      "value": "Problem solving"
+    },
     "Knowledge"
   ],
   "Understanding": [
-    { "rule": "board == 'BSE-TG' && subject in ['Physics', 'Biology', 'Science']", "value": "Questioning" },
-    { "rule": "board == 'BSE-TG' && subject in ['Social', 'Social Science']", "value": "Interpretation" },
-    { "rule": "board == 'BSE-TG' && subject in ['Math', 'Mathematics']", "value": "Reasoning" },
+    {
+      "rule": "board == 'BSE-TG' && subject in ['Physics', 'Biology', 'Science']",
+      "value": "Questioning"
+    },
+    {
+      "rule": "board == 'BSE-TG' && subject in ['Social', 'Social Science']",
+      "value": "Interpretation"
+    },
+    {
+      "rule": "board == 'BSE-TG' && subject in ['Math', 'Mathematics']",
+      "value": "Reasoning"
+    },
     "Understanding"
   ],
   "Understanding description": [
-    { "rule": "board == 'BSE-TG' && subject in ['Physics', 'Biology', 'Science']", "value": "Asking questions and making hypothesis" },
-    { "rule": "board == 'BSE-TG' && subject in ['Social', 'Social Science']", "value": "Reading the text, understanding and interpretation" },
-    { "rule": "board == 'BSE-TG' && subject in ['Math', 'Mathematics']", "value": "Reasoning proof" },
+    {
+      "rule": "board == 'BSE-TG' && subject in ['Physics', 'Biology', 'Science']",
+      "value": "Asking questions and making hypothesis"
+    },
+    {
+      "rule": "board == 'BSE-TG' && subject in ['Social', 'Social Science']",
+      "value": "Reading the text, understanding and interpretation"
+    },
+    {
+      "rule": "board == 'BSE-TG' && subject in ['Math', 'Mathematics']",
+      "value": "Reasoning proof"
+    },
     "Understanding"
   ],
   "Application": [
-    { "rule": "board == 'BSE-TG' && subject in ['Physics', 'Biology', 'Science']", "value": "Experimentation" },
-    { "rule": "board == 'BSE-TG' && subject in ['Social', 'Social Science']", "value": "Info skills" },
-    { "rule": "board == 'BSE-TG' && subject in ['Math', 'Mathematics']", "value": "Communication" },
+    {
+      "rule": "board == 'BSE-TG' && subject in ['Physics', 'Biology', 'Science']",
+      "value": "Experimentation"
+    },
+    {
+      "rule": "board == 'BSE-TG' && subject in ['Social', 'Social Science']",
+      "value": "Info skills"
+    },
+    {
+      "rule": "board == 'BSE-TG' && subject in ['Math', 'Mathematics']",
+      "value": "Communication"
+    },
     "Application"
   ],
   "Application description": [
-    { "rule": "board == 'BSE-TG' && subject in ['Physics', 'Biology', 'Science']", "value": "Experimentation and field investigation" },
-    { "rule": "board == 'BSE-TG' && subject in ['Social', 'Social Science']", "value": "Information skills" },
-    { "rule": "board == 'BSE-TG' && subject in ['Math', 'Mathematics']", "value": "Communication" },
+    {
+      "rule": "board == 'BSE-TG' && subject in ['Physics', 'Biology', 'Science']",
+      "value": "Experimentation and field investigation"
+    },
+    {
+      "rule": "board == 'BSE-TG' && subject in ['Social', 'Social Science']",
+      "value": "Information skills"
+    },
+    {
+      "rule": "board == 'BSE-TG' && subject in ['Math', 'Mathematics']",
+      "value": "Communication"
+    },
     "Application"
   ],
   "Skill": "Skill",
@@ -763,15 +811,33 @@
   "Appreciation": "Appreciation",
   "Appreciation description": "Appreciation",
   "Higher order thinking": [
-    { "rule": "board == 'BSE-TG' && subject in ['Physics', 'Biology', 'Science']", "value": "Info skills" },
-    { "rule": "board == 'BSE-TG' && subject in ['Social', 'Social Science']", "value": "Reflection" },
-    { "rule": "board == 'BSE-TG' && subject in ['Math', 'Mathematics']", "value": "Connections" },
+    {
+      "rule": "board == 'BSE-TG' && subject in ['Physics', 'Biology', 'Science']",
+      "value": "Info skills"
+    },
+    {
+      "rule": "board == 'BSE-TG' && subject in ['Social', 'Social Science']",
+      "value": "Reflection"
+    },
+    {
+      "rule": "board == 'BSE-TG' && subject in ['Math', 'Mathematics']",
+      "value": "Connections"
+    },
     "Higher order thinking"
   ],
   "Higher order thinking description": [
-    { "rule": "board == 'BSE-TG' && subject in ['Physics', 'Biology', 'Science']", "value": "Information skills and Projects" },
-    { "rule": "board == 'BSE-TG' && subject in ['Social', 'Social Science']", "value": "Reflection on contemporary issues and questioning" },
-    { "rule": "board == 'BSE-TG' && subject in ['Math', 'Mathematics']", "value": "Connections" },
+    {
+      "rule": "board == 'BSE-TG' && subject in ['Physics', 'Biology', 'Science']",
+      "value": "Information skills and Projects"
+    },
+    {
+      "rule": "board == 'BSE-TG' && subject in ['Social', 'Social Science']",
+      "value": "Reflection on contemporary issues and questioning"
+    },
+    {
+      "rule": "board == 'BSE-TG' && subject in ['Math', 'Mathematics']",
+      "value": "Connections"
+    },
     "Higher order thinking"
   ],
   "AI Questions": "AI Questions",
@@ -953,6 +1019,32 @@
   "User": "User",
   "Phone Number": "Phone Number",
   "Export": "Export",
+  "Export CSV": "Export CSV",
+  "Assigned": "Assigned",
+  "Not assigned": "Not assigned",
+  "Assign to curator": "Assign to curator",
+  "Unassign": "Unassign",
+  "Request changes": "Request changes",
+  "Assigned curator": "Assigned curator",
+  "Curator": "Curator",
+  "Select a curator": "Select a curator",
+  "Comment for the curator": "Comment for the curator",
+  "Curation": "Curation",
+  "Admin review comment": "Admin review comment",
+  "Assignment history": "Assignment history",
+  "Assigned at": "Assigned at",
+  "Unassigned at": "Unassigned at",
+  "Current": "Current",
+  "Ready for review": "Ready for review",
+  "Approved": "Approved",
+  "Chapter assigned successfully": "Chapter assigned successfully",
+  "Chapter unassigned successfully": "Chapter unassigned successfully",
+  "Chapter sent back to its curator": "Chapter sent back to its curator",
+  "Assign": "Assign",
+  "Request changes on": "Request changes on",
+  "Pick the curator who writes the content for this chapter. A curator sees only the chapters assigned to them.": "Pick the curator who writes the content for this chapter. A curator sees only the chapters assigned to them.",
+  "The chapter has no curator after this. The drafts that the curator saved stay.": "The chapter has no curator after this. The drafts that the curator saved stay.",
+  "The chapter goes back to its curator as a draft. Tell the curator what to change.": "The chapter goes back to its curator as a draft. Tell the curator what to change.",
   "Role assignments": "Role assignments",
   "Role": "Role",
   "Select role": "Select role",
@@ -1058,7 +1150,10 @@
   "Select Zone": "Select Zone",
   "Select District": "Select District",
   "Select Taluk": [
-    { "rule": "state == 'Telangana'", "value": "Select Mandal" },
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Select Mandal"
+    },
     "Select Taluk"
   ],
   "Select School": "Select School",
@@ -1326,11 +1421,91 @@
   "Total is {{total}}%. Add {{diff}}% more so it adds up to 100%.": "Total is {{total}}%. Add {{diff}}% more so it adds up to 100%.",
   "Total is {{total}}%. Remove {{diff}}% so it adds up to 100%.": "Total is {{total}}%. Remove {{diff}}% so it adds up to 100%.",
   "Objectives Weightage adds up to {{total}}%. Make it 100% to continue.": "Objectives Weightage adds up to {{total}}%. Make it 100% to continue.",
+  "Content Curation": "Content Curation",
+  "Curate Lesson Plan": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Curate Period Plan"
+    },
+    "Curate Lesson Plan"
+  ],
+  "Curate Lesson Resource": "Curate Lesson Resource",
+  "Loading chapters...": "Loading chapters...",
+  "No chapters in this group.": "No chapters in this group.",
+  "Back": "Back",
+  "Subtopics": "Subtopics",
+  "A subtopic is done when a lesson plan of this chapter lists it.": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "A subtopic is done when a period plan of this chapter lists it."
+    },
+    "A subtopic is done when a lesson plan of this chapter lists it."
+  ],
+  "Not done": "Not done",
+  "Submit for approval": "Submit for approval",
+  "Submitting...": "Submitting...",
+  "Add a lesson plan for every subtopic to turn on the submit button.": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Add a period plan for every subtopic to turn on the submit button."
+    },
+    "Add a lesson plan for every subtopic to turn on the submit button."
+  ],
+  "Lesson resources": "Lesson resources",
+  "No records yet.": "No records yet.",
+  "After you submit, you cannot change this chapter until an admin approves it or sends it back.": "After you submit, you cannot change this chapter until an admin approves it or sends it back.",
+  "The chapter is under review. You can read this record, but you cannot change it.": "The chapter is under review. You can read this record, but you cannot change it.",
+  "This chapter is not available to you. Open the chapter from your dashboard, then try again.": "This chapter is not available to you. Open the chapter from your dashboard, then try again.",
+  "Changes requested": "Changes requested",
+  "The chapter is marked approved and becomes visible to teachers and students. The lesson plans, resources and questions that are under review also go live.": "The chapter is marked approved and becomes visible to teachers and students. The lesson plans, resources and questions that are under review also go live.",
+  "Pick a curator to continue": "Pick a curator to continue",
+  "Enter a comment to continue": "Enter a comment to continue",
+  "Add lesson plan": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Add period plan"
+    },
+    "Add lesson plan"
+  ],
+  "Add lesson resource": "Add lesson resource",
+  "Add question": "Add question",
+  "Pick one of your assigned chapters, then the subtopic to write.": "Pick one of your assigned chapters, then the subtopic to write.",
+  "Search content": "Search content",
+  "Under review": "Under review",
+  "Save as draft": "Save as draft",
+  "Send for review": "Send for review",
+  "View Chapter": "View Chapter",
+  "My chapters": "My chapters",
+  "Write the content of the chapters that an admin assigned to you, then send each finished chapter for approval": "Write the content of the chapters that an admin assigned to you, then send each finished chapter for approval",
+  "Write the 5E lesson plan of a period for an assigned chapter": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Write the 5E period plan for an assigned chapter"
+    },
+    "Write the 5E lesson plan of a period for an assigned chapter"
+  ],
+  "Add activities, real-world scenarios and questions for an assigned chapter": "Add activities, real-world scenarios and questions for an assigned chapter",
+  "See which subtopics still need a lesson plan, and submit a complete chapter for approval": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "See which subtopics still need a period plan, and submit a complete chapter for approval"
+    },
+    "See which subtopics still need a lesson plan, and submit a complete chapter for approval"
+  ],
+  "The chapters that an admin assigned to you. Open a chapter to write its content and send it for approval.": "The chapters that an admin assigned to you. Open a chapter to write its content and send it for approval.",
+  "{{done}} of {{total}} subtopics done": "{{done}} of {{total}} subtopics done",
+  "Subtopic": "Subtopic",
+  "Add another": "Add another",
+  "Video title": "Video title",
+  "Video link": "Video link",
+  "Add video": "Add video",
+  "5E Table Docx": "5E Table Docx",
+  "5E Table PDF": "5E Table PDF",
+  "file": "file",
   "Content management": "Content management",
   "Content type": "Content type",
   "Export selected": "Export selected",
   "Records": "Records",
-  "Ready for review": "Ready for review",
   "Deleted": "Deleted",
   "The check of": "The check of",
   "runs...": "runs...",
@@ -1342,7 +1517,6 @@
   "available to the admin": "available to the admin",
   "Select every": "Select every",
   "on this page": "on this page",
-  "Send for review": "Send for review",
   "Approve": "Approve",
   "Send back to draft": "Send back to draft",
   "Restore": "Restore",
@@ -1356,7 +1530,6 @@
   "Row": "Row",
   "Result": "Result",
   "Ready to save.": "Ready to save.",
-  "Back": "Back",
   "Save the": "Save the",
   "Loading record...": "Loading record...",
   "Record id": "Record id",
@@ -1367,14 +1540,12 @@
   "Correct": "Correct",
   "Chapter no.": "Chapter no.",
   "Chapter title": "Chapter title",
-  "Save as draft": "Save as draft",
   "Save changes": "Save changes",
   "No chapter picked": "No chapter picked",
   "Pick chapter": "Pick chapter",
   "Clear": "Clear",
   "Pick a chapter": "Pick a chapter",
   "Search chapters": "Search chapters",
-  "Loading chapters...": "Loading chapters...",
   "Pick": "Pick",
   "No chapters found.": "No chapters found.",
   "Correct the fields marked with an error before you save.": "Correct the fields marked with an error before you save.",
@@ -1397,7 +1568,6 @@
   "an object with a rows array, or an Excel file with one header row.": "an object with a rows array, or an Excel file with one header row.",
   "The": "The",
   "are saved.": "are saved.",
-  "Approved": "Approved",
   "The record returns to the active list.": "The record returns to the active list.",
   "The record is marked approved and becomes visible to teachers and students.": "The record is marked approved and becomes visible to teachers and students.",
   "The record moves to Ready for review, visible to every admin who can approve it.": "The record moves to Ready for review, visible to every admin who can approve it.",
@@ -1411,7 +1581,6 @@
   "Enter order number, e.g. 1": "Enter order number, e.g. 1",
   "Index path (optional)": "Index path (optional)",
   "Leave this empty. The upload sets the standard path, and the ingestion pipeline writes the final path after it indexes the textbook.": "Leave this empty. The upload sets the standard path, and the ingestion pipeline writes the final path after it indexes the textbook.",
-  "Subtopics": "Subtopics",
   "One subtopic per line.": "One subtopic per line.",
   "One subtopic per line": "One subtopic per line",
   "Learning outcomes": "Learning outcomes",
@@ -1431,7 +1600,6 @@
   "Interact output": "Interact output",
   "Extracted resources": "Extracted resources",
   "Covers all subtopics": "Covers all subtopics",
-  "Lesson resources": "Lesson resources",
   "Level": "Level",
   "Enter level": "Enter level",
   "Additional resources": "Additional resources",

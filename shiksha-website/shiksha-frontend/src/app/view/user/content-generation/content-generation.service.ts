@@ -1,9 +1,12 @@
-import { HttpClient, HttpContext, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { BaseRestService } from 'src/app/core/services/base-rest.service';
 import { LOADER_MESSAGE } from 'src/app/core/services/loader-message.service';
 import { environment } from 'src/environments/environment';
+import { CurationChapter } from '../../admin/content-management/content-management.service';
+import { CONTENT_STATUS, LIST_TAB_BY_STATUS } from '../../admin/content-management/content-status.constants';
+import { LessonPlanTemplate } from 'src/app/shared/utility/section-content.util';
 
 @Injectable({
   providedIn: 'root',
@@ -97,7 +100,31 @@ export class ContentGenerationService extends BaseRestService {
     const options = {
       params: params,
     };
-    return this.http.get(`${this.baseUrl}/lesson-plan-template/list`, options);
+    return this.http.get<{ data: LessonPlanTemplate[] }>(`${this.baseUrl}/lesson-plan-template/list`, options);
+  }
+
+  getSectionTemplate(chapter: CurationChapter, type: 'lesson_plan' | 'lesson_resource'): Observable<LessonPlanTemplate> {
+    const { board, medium, standard, subject } = chapter;
+    const params = new HttpParams()
+      .set('filter[boards]', board)
+      .set('filter[mediums]', medium)
+      .set('filter[classes]', standard)
+      .set('filter[subjects]', subject[0].subjectName)
+      .set('filter[type]', type);
+
+    return this.getTemplates(params).pipe(
+      map((res) => {
+        const templates = res.data;
+        const template = templates.length === 1 ? templates[0] : templates.find((item) => /subtopic/i.test(item.workFlowId));
+        if (!template) {
+          throw new HttpErrorResponse({
+            status: 404,
+            error: { message: `No single ${type.replace('_', ' ')} template matches ${board}, ${medium}, class ${standard}, ${subject[0].subjectName}. Ask an admin to check the templates.` },
+          });
+        }
+        return template;
+      })
+    );
   }
 
   getLessonPlan(formValue: any): Observable<any> {
@@ -219,7 +246,8 @@ export class ContentGenerationService extends BaseRestService {
     board?: string,
     medium?: string,
     standard?: string,
-    subject?: any
+    subject?: any,
+    curatorMode = false
   ) {
     let params = new HttpParams();
 
@@ -238,7 +266,10 @@ export class ContentGenerationService extends BaseRestService {
     params=params.set('limit','999')
     params=params.set('sortBy','orderNumber')
     params=params.set('sortOrder','asc')
-    return this.http.get(`${this.baseUrl}/chapter/list`, { params });
+    if (curatorMode) {
+      params = params.set('includeDeleted', LIST_TAB_BY_STATUS[CONTENT_STATUS.DRAFT]);
+    }
+    return this.http.get(`${this.baseUrl}/${curatorMode ? 'curator/content/chapters' : 'chapter/list'}`, { params });
   }
 
   lessonPlanExists(lessonPlanId: any) {

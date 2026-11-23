@@ -69,6 +69,7 @@ class Settings(BaseSettings):
     pres_download_chunk_size: PositiveInt = 1024 * 1024  # 1 MiB
     pres_upload_max_filesize: int = 5_242_880  # 5 MiB
     pres_do_transform: bool = True
+    pres_soffice_timeout: PositiveInt = 120  # seconds
 
     # Commons
     youtube_api_key: str | None = None

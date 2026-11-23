@@ -1,3 +1,5 @@
+const mongoose = require("mongoose");
+const ExcelJS = require("exceljs");
 const ChapterDao = require("../dao/chapter.dao");
 const MasterSubjectDao = require("../dao/master.subject.dao");
 const BaseManager = require("./base.manager");
@@ -15,7 +17,12 @@ const { buildIdOrNameResolver } = require("../helper/id.or.name.resolver");
 const { formatSubject, getSemester } = require('../helper/formatter');
 const Chapter = require("../models/chapter.model");
 const MasterSubject = require("../models/master.subject.model");
-const { CONTENT_STATUS } = require("../constants/content-status");
+const MasterLesson = require("../models/master.lesson.model");
+const MasterResource = require("../models/master.resource.model");
+const Question = require("../models/question.model");
+const User = require("../models/user.model");
+const { CONTENT_STATUS, CONTENT_CURATOR_ROLE_ID } = require("../constants/content-status");
+const { stateWord } = require("../helper/content.state");
 const {
   buildIndexPath,
   checkBatch,
@@ -23,6 +30,45 @@ const {
   identityKey,
   orderKey,
 } = require("../validations/chapter.bulk.validation");
+
+const EXPORT_LIMIT = 10000;
+const CSV_COLUMNS = ["Board", "Class", "Medium", "Subject", "Chapter", "Assigned curator", "Curation status", "Submission date", "Approval status", "Last updated"];
+
+// Ends the open assignment entry, so one pipeline update can close it and append the next.
+const closeOpenAssignment = (now) => ({
+  $map: {
+    input: { $ifNull: ["$assignmentHistory", []] },
+    as: "entry",
+    in: {
+      $cond: [
+        { $eq: ["$$entry.unassignedAt", null] },
+        { $mergeObjects: ["$$entry", { unassignedAt: now }] },
+        "$$entry",
+      ],
+    },
+  },
+});
+
+const draftOnly = (id) => ({ _id: id, isDeleted: true, status: CONTENT_STATUS.DRAFT });
+const normalize = (text) => text.trim().toLowerCase();
+const timestamp = (date) => (date ? new Date(date).toISOString() : "");
+// A leading quote stops Excel from running a cell that starts with = + - or @ as a formula.
+const safeCell = (value) => {
+  const text = String(value ?? "");
+  return /^[=+\-@]/.test(text) ? `'${text}` : text;
+};
+
+const CURATION_LABELS = { [CONTENT_STATUS.APPROVED]: "Approved", [CONTENT_STATUS.UNDER_REVIEW]: "Submitted" };
+const APPROVAL_LABELS = { [CONTENT_STATUS.APPROVED]: "Approved", [CONTENT_STATUS.UNDER_REVIEW]: "Pending approval", [CONTENT_STATUS.DRAFT]: "Not submitted" };
+
+// A draft chapter has no status label of its own, so its label comes from the review comment and the assignee.
+function curationStatus(chapter) {
+  if (CURATION_LABELS[chapter.status]) return CURATION_LABELS[chapter.status];
+  if (chapter.reviewComment?.text) return "Changes requested";
+  return chapter.assignedTo ? "Assigned" : "Not assigned";
+}
+
+const approvalStatus = (chapter) => APPROVAL_LABELS[chapter.status];
 
 /** @extends {BaseManager<ChapterDao>} */
 class ChapterManager extends BaseManager {
@@ -383,45 +429,6 @@ class ChapterManager extends BaseManager {
     }
   }
 
-  // Editing runs the same identity/order check as an upload, and only ever touches a
-  // draft or under-review chapter: an approved chapter is not directly editable (it
-  // would let a change skip review), and a genuinely deleted one is not editable either.
-  async adminUpdate(req) {
-    try {
-      const current = await Chapter.findById(req.params.id).lean();
-      if (!current) return formatApiReponse(false, "Record not found", null);
-
-      const updates = req.body;
-      const merged = { ...current, ...updates };
-
-      const existing = await this._liveSiblings(merged);
-      const conflict = this.findLiveConflict(merged, existing, this._conflictKeyFns());
-
-      if (conflict) {
-        return formatApiReponse(
-          false,
-          `Saving "${merged.topics}" would duplicate the chapter "${conflict.topics}" (${conflict._id}). Change the name or order number.`,
-          null
-        );
-      }
-
-      const data = await Chapter.findOneAndUpdate(
-        { _id: current._id, status: { $in: [CONTENT_STATUS.DRAFT, CONTENT_STATUS.UNDER_REVIEW] } },
-        { $set: updates },
-        { new: true, runValidators: true }
-      );
-
-      if (!data) {
-        return formatApiReponse(false, "Record not found or has been deleted", null);
-      }
-
-      return formatApiReponse(true, "Updated successfully!", data);
-    } catch (err) {
-      console.error("adminUpdate failed:", err);
-      return formatApiReponse(false, err?.message, null);
-    }
-  }
-
   // Existing chapters that could conflict with `chapter` on name or order number,
   // scoped to the same subject.
   async _liveSiblings(chapter) {
@@ -440,84 +447,150 @@ class ChapterManager extends BaseManager {
     ];
   }
 
-  // Restore runs the same identity/order check as an upload, because another chapter
-  // can take this one's name or order number while it sits deleted.
-  async activate(req) {
-    try {
-      const chapter = await Chapter.findById(req.params.id).lean();
-      if (!chapter) return formatApiReponse(false, "Record not found", null);
-
-      if (!this.isGenuinelyDeleted(chapter)) {
-        return formatApiReponse(
-          false,
-          `"${chapter.topics}" is not a deleted, approved chapter, so it cannot be restored.`,
-          null
-        );
-      }
-
-      const existing = await this._liveSiblings(chapter);
-      const conflict = this.findLiveConflict(chapter, existing, this._conflictKeyFns());
-
-      if (conflict) {
-        return formatApiReponse(
-          false,
-          `Restoring "${chapter.topics}" would duplicate the chapter "${conflict.topics}" (${conflict._id}). Change or remove that chapter first.`,
-          null
-        );
-      }
-
-      const data = await this.dao.activate(req.params.id);
-      return formatApiReponse(true, "Chapter restored successfully!", data);
-    } catch (err) {
-      console.error("activate failed:", err);
-      return formatApiReponse(false, err?.message, null);
-    }
+  _model() {
+    return Chapter;
   }
 
-  // Approving a chapter that is ready for review is a single atomic transition, because
-  // going through restore + a separate status update fails: restore only accepts an
-  // already-approved chapter, which a ready-for-review chapter is not yet.
-  async approve(req) {
-    const chapter = await Chapter.findById(req.params.id).lean();
-    if (!chapter) return formatApiReponse(false, "Record not found", null);
+  get _entityName() {
+    return "chapter";
+  }
 
-    if (!(chapter.isDeleted === true && chapter.status === CONTENT_STATUS.UNDER_REVIEW)) {
-      return formatApiReponse(
-        false,
-        `"${chapter.topics}" is not ready for review, so it cannot be approved.`,
-        null
-      );
-    }
+  get _conflictHint() {
+    return "Change the name or order number.";
+  }
 
-    const existing = await this._liveSiblings(chapter);
-    const conflict = this.findLiveConflict(chapter, existing, this._conflictKeyFns());
+  _describe(chapter) {
+    return `"${chapter.topics}"`;
+  }
 
-    if (conflict) {
-      return formatApiReponse(
-        false,
-        `Approving "${chapter.topics}" would duplicate the chapter "${conflict.topics}" (${conflict._id}). Change or remove that chapter first.`,
-        null
-      );
-    }
+  _describeConflict(chapter) {
+    return `the chapter "${chapter.topics}" (${chapter._id})`;
+  }
 
-    const data = await Chapter.findOneAndUpdate(
+  _approveTransition(chapter) {
+    return this._moveChapter(
       { _id: chapter._id, status: CONTENT_STATUS.UNDER_REVIEW, isDeleted: true },
-      { $set: { status: CONTENT_STATUS.APPROVED, isDeleted: false } },
+      { $set: { status: CONTENT_STATUS.APPROVED, isDeleted: false } }
+    );
+  }
+
+  // One transaction: a failed child write must roll the chapter back too.
+  _moveChapter(filter, update) {
+    const set = { status: update.$set.status, isDeleted: update.$set.isDeleted ?? true };
+    return mongoose.connection.transaction(async (session) => {
+      const data = await Chapter.findOneAndUpdate(filter, update, { new: true, session });
+      if (data) {
+        for (const Model of [MasterLesson, MasterResource, Question]) {
+          await Model.updateMany({ chapterId: filter._id, isDeleted: true, status: filter.status }, { $set: set }, { session });
+        }
+      }
+      return data;
+    });
+  }
+
+  async _draftOnlyError(id, action) {
+    const chapter = await Chapter.findById(id).select("status isDeleted").lean();
+    if (!chapter) return new AppError("Chapter not found. Reload the list and try again.", 404);
+    if (chapter.status === CONTENT_STATUS.DRAFT) {
+      return new AppError("The chapter changed before the update finished. Reload the list and try again.", 409);
+    }
+    return new AppError(`Chapter is ${stateWord(chapter)}. Only draft chapters can be ${action}.`, 409);
+  }
+
+  async assign(id, curatorId, adminId) {
+    const isCurator = await User.exists({ _id: curatorId, isDeleted: { $ne: true }, "roles.role": CONTENT_CURATOR_ROLE_ID });
+    if (!isCurator) throw new AppError("The selected user is not an active Content Curator. Choose a user from the Content Curator list.", 400);
+
+    const now = new Date();
+    const assignedTo = new mongoose.Types.ObjectId(curatorId);
+    const entry = { assignedTo, assignedBy: adminId, assignedAt: now, unassignedAt: null };
+    const data = await Chapter.findOneAndUpdate(
+      draftOnly(id),
+      [{ $set: { assignedTo, assignmentHistory: { $concatArrays: [closeOpenAssignment(now), [entry]] } } }],
       { new: true }
     );
+    if (!data) throw await this._draftOnlyError(id, "assigned or unassigned");
 
-    if (!data) {
-      return formatApiReponse(
-        false,
-        `"${chapter.topics}" changed before the approval finished. Reload and try again.`,
-        null
-      );
+    return formatApiReponse(true, "Chapter assigned successfully!", data);
+  }
+
+  async unassign(id) {
+    const data = await Chapter.findOneAndUpdate(
+      draftOnly(id),
+      [{ $set: { assignedTo: null, assignmentHistory: closeOpenAssignment(new Date()) } }],
+      { new: true }
+    );
+    if (!data) throw await this._draftOnlyError(id, "assigned or unassigned");
+
+    return formatApiReponse(true, "Chapter unassigned successfully!", data);
+  }
+
+  async submit(id, curatorId) {
+    const chapter = await Chapter.findById(id).select("subTopics").lean();
+    if (!chapter) throw new AppError("Chapter not found. Reload the list and try again.", 404);
+
+    const planned = await MasterLesson.distinct("subTopics", { chapterId: id, $nor: [{ isDeleted: true, status: CONTENT_STATUS.APPROVED }] });
+    const covered = new Set(planned.map(normalize));
+    const missing = chapter.subTopics.filter((subTopic) => !covered.has(normalize(subTopic)));
+    if (missing.length) {
+      throw new AppError(`Cannot submit yet. These subtopics have no lesson plan: ${missing.join(", ")}. Add a lesson plan for each, then submit again.`, 409);
     }
 
-    return formatApiReponse(true, "Chapter approved successfully!", data);
+    const data = await this._moveChapter(
+      { ...draftOnly(id), assignedTo: curatorId },
+      { $set: { status: CONTENT_STATUS.UNDER_REVIEW, submittedAt: new Date() }, $unset: { reviewComment: 1 } }
+    );
+    if (!data) throw await this._draftOnlyError(id, "submitted");
+
+    return formatApiReponse(true, "Chapter submitted for review.", data);
+  }
+
+  async requestChanges(id, comment, adminId) {
+    const data = await this._moveChapter(
+      { _id: id, isDeleted: true, status: CONTENT_STATUS.UNDER_REVIEW },
+      { $set: { status: CONTENT_STATUS.DRAFT, reviewComment: { text: comment.trim(), by: adminId, at: new Date() } } }
+    );
+    if (!data) throw new AppError("Chapter is not under review. Only chapters under review can be sent back for changes. Reload the list and try again.", 409);
+
+    return formatApiReponse(true, "Chapter sent back for changes.", data);
+  }
+
+  async curators() {
+    const users = await User.find({ "roles.role": CONTENT_CURATOR_ROLE_ID, isDeleted: { $ne: true } })
+      .select("identity.name")
+      .sort({ "identity.name": 1 })
+      .lean();
+    return formatApiReponse(true, "", { results: users.map((user) => ({ _id: user._id, name: user.identity.name })) });
+  }
+
+  async exportCsv(filters, sort, status) {
+    const chapters = await this.dao.getAllForExport(EXPORT_LIMIT + 1, filters, sort, status);
+    if (chapters.length > EXPORT_LIMIT) {
+      throw new AppError(`The export holds at most ${EXPORT_LIMIT} chapters, and more chapters match. Narrow the filters (Assigned, Curator, Board, Class, Medium, Subject) or the Records tab, then export again.`, 409);
+    }
+
+    const curators = await User.find({ _id: { $in: chapters.map((chapter) => chapter.assignedTo).filter(Boolean) } })
+      .select("identity.name")
+      .lean();
+    const curatorName = new Map(curators.map((curator) => [String(curator._id), curator.identity.name]));
+
+    const rows = chapters.map((chapter) => [
+      chapter.board,
+      chapter.standard,
+      chapter.medium,
+      chapter.subjectName,
+      chapter.topics,
+      curatorName.get(String(chapter.assignedTo)),
+      curationStatus(chapter),
+      timestamp(chapter.submittedAt),
+      approvalStatus(chapter),
+      timestamp(chapter.updatedAt),
+    ]);
+
+    const workbook = new ExcelJS.Workbook();
+    workbook.addWorksheet("Chapters").addRows([CSV_COLUMNS, ...rows].map((row) => row.map(safeCell)));
+    return workbook.csv.writeBuffer({ formatterOptions: { rowDelimiter: "\r\n", quoteColumns: true } });
   }
 }
-
-
 
 module.exports = ChapterManager;

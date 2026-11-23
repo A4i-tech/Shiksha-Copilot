@@ -15,11 +15,61 @@
     <p *ngIf="isLoading" class="text-content-60">{{ 'Loading record...' | translate }}</p>
 
     <form class="content-edit-form mt-3" *ngIf="!isLoading && record" (ngSubmit)="save()" novalidate>
-      <p class="text-sm text-content-60 mb-4" *ngIf="!isCreate">
+      <p *ngIf="curatorMode && chapter" class="mb-6 text-sm text-content" data-testid="chapter-details">
+        {{ chapter.topics }} · {{ chapter.board }} · {{ chapter.medium }} · {{ 'Class' | translate }} {{ chapter.standard }} · {{ chapter.subject[0].subjectName }}
+      </p>
+
+      <p *ngIf="curatorMode && subTopic" class="mb-6 text-sm text-content" data-testid="subtopic-details">
+        <span class="font-semibold">{{ 'Subtopic' | translate }}:</span> {{ subTopic }}
+      </p>
+
+      <p class="text-sm text-content-60 mb-4" *ngIf="!isCreate && !curatorMode">
         {{ 'Record id' | translate }}: {{ recordId }}
       </p>
 
-      <p class="text-sm text-content-60 mb-4" *ngIf="isCreate">
+      <p class="text-sm text-warn mb-4" *ngIf="curatorMode && isReadonly">
+        {{ 'The chapter is under review. You can read this record, but you cannot change it.' | translate }}
+      </p>
+
+      <section *ngIf="config.key === 'chapters' && !isCreate" class="mb-6 p-4 rounded border border-content-30">
+        <h2 class="text-lg font-semibold text-content">{{ 'Curation' | translate }}</h2>
+        <p class="mt-2 text-sm text-content">
+          {{ 'Assigned curator' | translate }}:
+          {{ record.assignedTo ? contentService.curatorName(record.assignedTo) : ('Not assigned' | translate) }}
+        </p>
+
+        <div *ngIf="record.reviewComment" class="mt-3 text-sm text-content">
+          <p class="font-semibold">{{ 'Admin review comment' | translate }}</p>
+          <p class="whitespace-pre-line break-words">{{ record.reviewComment.text }}</p>
+          <p class="text-content-60">
+            {{ contentService.curatorName(record.reviewComment.by) }}, {{ record.reviewComment.at | date: 'medium' }}
+          </p>
+        </div>
+
+        <div *ngIf="record.assignmentHistory?.length" class="mt-3 w-full overflow-x-auto">
+          <table class="min-w-full text-left text-sm">
+            <caption class="text-left font-semibold text-content mb-1">{{ 'Assignment history' | translate }}</caption>
+            <thead>
+              <tr class="bg-primary-60">
+                <th scope="col" class="border-b border-content-50 px-2 py-1 text-content">{{ 'Curator' | translate }}</th>
+                <th scope="col" class="border-b border-content-50 px-2 py-1 text-content">{{ 'Assigned at' | translate }}</th>
+                <th scope="col" class="border-b border-content-50 px-2 py-1 text-content">{{ 'Unassigned at' | translate }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let entry of record.assignmentHistory">
+                <td class="border-b border-content-30 px-2 py-1">{{ contentService.curatorName(entry.assignedTo) }}</td>
+                <td class="border-b border-content-30 px-2 py-1">{{ entry.assignedAt | date: 'medium' }}</td>
+                <td class="border-b border-content-30 px-2 py-1">
+                  {{ entry.unassignedAt ? (entry.unassignedAt | date: 'medium') : ('Current' | translate) }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <p class="text-sm text-content-60 mb-4" *ngIf="isCreate && !curatorMode">
         {{ 'The new chapter passes the same check that the file upload runs. A chapter that repeats a name or an order number of the same subject, board, medium and class is refused.' | translate }}
       </p>
 
@@ -28,7 +78,7 @@
         <div
           *ngFor="let field of visibleFields"
           [ngClass]="{
-            'md:col-span-2': field.type === 'json' || field.type === 'textarea' || field.type === 'question-content' || field.type === 'mcq-options'
+            'md:col-span-2': isWideField(field)
           }"
         >
           <label class="form-control-label" [attr.for]="'field-' + field.field" *ngIf="!isDropdownField(field)">
@@ -36,7 +86,7 @@
             <span *ngIf="field.requiredOnCreate && isCreate" class="text-[16px] text-error">*</span>
           </label>
 
-          <ng-container [ngSwitch]="field.type">
+          <ng-container [ngSwitch]="fieldType(field)">
             <input
               *ngSwitchCase="'text'"
               type="text"
@@ -155,6 +205,22 @@
               (ngModelChange)="onFieldChange(field, $event)"
             ></app-dropdown>
 
+            <div *ngSwitchCase="'sections'" class="space-y-6">
+              <div *ngFor="let section of formValues[field.field]" [attr.data-testid]="'section-' + section.id">
+                <h3 class="text-base font-semibold text-content mb-2">{{ section.title }}</h3>
+                <app-section-editor [section]="section"></app-section-editor>
+              </div>
+            </div>
+
+            <div *ngSwitchCase="'videos'" class="space-y-2">
+              <div *ngFor="let video of formValues[field.field]; let i = index" class="flex flex-col sm:flex-row gap-2">
+                <input type="text" class="form-control sm:w-1/3" [name]="field.field + '-title-' + i" [placeholder]="'Video title' | translate" [(ngModel)]="video.title" />
+                <input type="url" class="form-control flex-1" [name]="field.field + '-url-' + i" [placeholder]="'Video link' | translate" [(ngModel)]="video.url" />
+                <button type="button" class="btn-outline-primary h-9" (click)="removeVideo(field, i)">{{ 'Remove' | translate }}</button>
+              </div>
+              <button type="button" class="btn-outline-primary h-9" (click)="addVideo(field)">{{ 'Add video' | translate }}</button>
+            </div>
+
             <div *ngSwitchCase="'mcq-options'" class="space-y-2">
               <div
                 *ngFor="let option of formValues[field.field]; let i = index"
@@ -233,33 +299,23 @@
       <div class="flex flex-col sm:flex-row justify-end mt-9 gap-2">
         <button
           type="button"
+          data-testid="cancel-btn"
           class="btn-outline-primary h-9 w-full sm:w-[74px]"
           (click)="cancel()"
         >
           {{ 'Cancel' | translate }}
         </button>
 
-        <ng-container *ngIf="isCreate; else editAction">
+        <ng-container *ngIf="isCreate && !curatorMode; else editAction">
           <button
             type="button"
             class="btn-outline-primary h-9 w-full sm:w-auto"
-            [disabled]="isSaving"
+            [disabled]="isSaving || templatePending"
             (click)="save('draft')"
           >
             {{ 'Save as draft' | translate }}
           </button>
 
-          <button
-            type="button"
-            class="btn-primary h-9 w-full sm:w-auto"
-            [disabled]="isSaving"
-            (click)="save('under_review')"
-          >
-            <div class="flex items-center justify-center gap-2">
-              <span>{{ (isSaving ? 'Saving...' : 'Ready for review') | translate }}</span>
-              <img src="assets/icons/check.svg" alt="" />
-            </div>
-          </button>
         </ng-container>
 
         <ng-template #editAction>
@@ -267,12 +323,23 @@
             *ngIf="!isReadonly"
             type="submit"
             class="btn-primary h-9 w-full sm:w-auto"
-            [disabled]="isSaving"
+            [disabled]="isSaving || templatePending"
           >
             <div class="flex items-center justify-center gap-2">
-              <span>{{ (isSaving ? 'Saving...' : 'Save changes') | translate }}</span>
+              <span>{{ isSaving ? ('Saving...' | translate) : (curatorMode ? ('Save as draft' | translate) : ('Save changes' | translate)) }}</span>
               <img src="assets/icons/check.svg" alt="" />
             </div>
+          </button>
+
+          <button
+            *ngIf="curatorMode && !isReadonly"
+            type="button"
+            class="btn-primary h-9 w-full sm:w-auto"
+            data-testid="send-for-review-btn"
+            [disabled]="isSaving || templatePending"
+            (click)="save('under_review')"
+          >
+            {{ 'Send for review' | translate }}
           </button>
         </ng-template>
       </div>
