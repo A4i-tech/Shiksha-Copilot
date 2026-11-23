@@ -277,7 +277,7 @@ export class ContentEditComponent implements OnInit, OnDestroy {
       isBackground: false,
       placeHolderTxt: field.placeholder
         ? this.translateService.instant(field.placeholder)
-        : `${this.translateService.instant('Pick')} ${this.translateService.instant(field.label).toLowerCase()}`,
+        : this.translateService.instant('Pick {{field}}', { field: this.translateService.instant(field.label) }),
       labelTxt: this.translateService.instant(field.label),
       bindLabel: 'label',
       bindValue: 'value',

@@ -458,9 +458,8 @@ export class ContentListComponent implements OnInit, OnDestroy {
   }
 
   get uploadInstructions(): string[] {
-    const label = this.config.label.toLowerCase();
     return [
-      `${this.translateService.instant('The file is a JSON array of')} ${label} ${this.translateService.instant('(or an object with a rows array), or an Excel (.xlsx) file with one header row.')}`,
+      this.translateService.instant('The file is a JSON array of {{items}} (or an object with a rows array), or an Excel (.xlsx) file with one header row.', { items: this.config.label.toLowerCase() }),
       this.translateService.instant('The upload runs a check first. Nothing is saved until you press Save.'),
       this.translateService.instant('Every column that the check reports as missing must carry a value.'),
     ];
