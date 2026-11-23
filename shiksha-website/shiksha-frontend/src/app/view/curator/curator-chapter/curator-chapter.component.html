@@ -112,7 +112,7 @@
           *ngIf="isDraft"
           class="btn-outline-primary flex gap-2 items-center"
           [attr.aria-label]="child.addLabel | translate"
-          [routerLink]="['/curation/chapters', chapterId, child.segment, 'new']"
+          [routerLink]="child.addUrl"
         >
           <img src="assets/icons/edit_primary.svg" alt="" />
           <span class="text-sm md:text-base">{{ child.addLabel | translate }}</span>

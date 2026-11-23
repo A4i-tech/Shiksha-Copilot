@@ -1,0 +1,100 @@
+<div *ngIf="section.outputFormat === 'plain_text'" data-testid="editor-plain_text">
+  <textarea rows="3" class="form-control" [(ngModel)]="plainText.content" [ngModelOptions]="{ standalone: true }"></textarea>
+</div>
+
+<div *ngIf="section.outputFormat === 'json_5E_checklist'" class="space-y-3" data-testid="editor-json_5E_checklist">
+  <div *ngFor="let phase of phases" class="space-y-3 pl-3 border-l-2 border-content-30">
+    <h4 class="text-sm font-semibold text-content capitalize">{{ phase }}</h4>
+    <label class="form-control-label">Activity</label>
+    <textarea rows="3" class="form-control" [(ngModel)]="checklist.content[phase].activity" [ngModelOptions]="{ standalone: true }"></textarea>
+    <label class="form-control-label">Materials</label>
+    <textarea rows="3" class="form-control" [(ngModel)]="checklist.content[phase].materials" [ngModelOptions]="{ standalone: true }"></textarea>
+  </div>
+</div>
+
+<div *ngIf="section.outputFormat === 'json_1'" class="space-y-3" data-testid="editor-json_1">
+  <div *ngFor="let level of questionBank.content" class="space-y-3 pl-3 border-l-2 border-content-30">
+    <h4 class="text-sm font-semibold text-content capitalize">{{ level.difficulty }}</h4>
+    <ng-container *ngFor="let group of level.content">
+      <ng-container *ngIf="isMcqGroup(group)">
+        <h4 class="text-sm font-semibold text-content">MCQs</h4>
+        <div *ngFor="let mcq of group.questions; let i = index; trackBy: trackByIndex" class="flex items-start gap-2" data-testid="mcq">
+          <div class="flex-1 min-w-0 space-y-2">
+            <label class="form-control-label">Question {{ i + 1 }}</label>
+            <textarea rows="3" class="form-control" [(ngModel)]="mcq.question" [ngModelOptions]="{ standalone: true }"></textarea>
+            <ng-container *ngFor="let label of optionLabels; let o = index">
+              <label class="form-control-label">Option {{ label }}</label>
+              <input type="text" class="form-control" [(ngModel)]="mcq.options[o]" [ngModelOptions]="{ standalone: true }" />
+            </ng-container>
+          </div>
+          <button *ngIf="group.questions.length > 1" type="button" class="btn-outline-primary h-8 text-xs" data-testid="remove-mcq" (click)="removeMcq(group, i)">
+            {{ 'Remove' | translate }}
+          </button>
+        </div>
+        <button type="button" class="btn-outline-primary h-8 text-xs" data-testid="add-mcq" (click)="addMcq(group)">
+          {{ 'Add another' | translate }}
+        </button>
+      </ng-container>
+      <ng-container *ngIf="!isMcqGroup(group)">
+        <h4 class="text-sm font-semibold text-content">Assessment</h4>
+        <div *ngFor="let item of group.questions; let i = index; trackBy: trackByIndex" class="flex items-start gap-2" data-testid="assessment">
+          <div class="flex-1 min-w-0">
+            <label class="form-control-label">Question {{ i + 1 }}</label>
+            <textarea rows="3" class="form-control" [(ngModel)]="item.question" [ngModelOptions]="{ standalone: true }"></textarea>
+          </div>
+          <button *ngIf="group.questions.length > 1" type="button" class="btn-outline-primary h-8 text-xs" data-testid="remove-assessment" (click)="removeAssessment(group, i)">
+            {{ 'Remove' | translate }}
+          </button>
+        </div>
+        <button type="button" class="btn-outline-primary h-8 text-xs" data-testid="add-assessment" (click)="addAssessment(group)">
+          {{ 'Add another' | translate }}
+        </button>
+      </ng-container>
+    </ng-container>
+  </div>
+</div>
+
+<div *ngIf="section.outputFormat === 'json_2'" class="space-y-3" data-testid="editor-json_2">
+  <div *ngFor="let level of scenarios.content" class="space-y-3 pl-3 border-l-2 border-content-30">
+    <h4 class="text-sm font-semibold text-content capitalize">{{ level.difficulty }}</h4>
+    <div *ngFor="let item of level.content; let i = index; trackBy: trackByIndex" class="flex items-start gap-2" data-testid="scenario">
+      <div class="flex-1 min-w-0 space-y-2">
+        <label class="form-control-label">Title {{ i + 1 }}</label>
+        <input type="text" class="form-control" [(ngModel)]="item.title" [ngModelOptions]="{ standalone: true }" />
+        <label class="form-control-label">Question</label>
+        <textarea rows="3" class="form-control" [(ngModel)]="item.question" [ngModelOptions]="{ standalone: true }"></textarea>
+        <label class="form-control-label">Description</label>
+        <textarea rows="3" class="form-control" [(ngModel)]="item.description" [ngModelOptions]="{ standalone: true }"></textarea>
+      </div>
+      <button *ngIf="level.content.length > 1" type="button" class="btn-outline-primary h-8 text-xs" data-testid="remove-scenario" (click)="removeScenario(level, i)">
+        {{ 'Remove' | translate }}
+      </button>
+    </div>
+    <button type="button" class="btn-outline-primary h-8 text-xs" data-testid="add-scenario" (click)="addScenario(level)">
+      {{ 'Add another' | translate }}
+    </button>
+  </div>
+</div>
+
+<div *ngIf="section.outputFormat === 'json_3'" class="space-y-3" data-testid="editor-json_3">
+  <div *ngFor="let item of activities.content; let i = index; trackBy: trackByIndex" class="flex items-start gap-2" data-testid="activity">
+    <div class="flex-1 min-w-0 space-y-2">
+      <label class="form-control-label">Title {{ i + 1 }}</label>
+      <input type="text" class="form-control" [(ngModel)]="item.title" [ngModelOptions]="{ standalone: true }" />
+      <label class="form-control-label">Preparation</label>
+      <textarea rows="3" class="form-control" [(ngModel)]="item.preparation" [ngModelOptions]="{ standalone: true }"></textarea>
+      <label class="form-control-label">Required materials</label>
+      <textarea rows="3" class="form-control" [(ngModel)]="item.required_materials" [ngModelOptions]="{ standalone: true }"></textarea>
+      <label class="form-control-label">Obtaining materials</label>
+      <textarea rows="3" class="form-control" [(ngModel)]="item.obtaining_materials" [ngModelOptions]="{ standalone: true }"></textarea>
+      <label class="form-control-label">Recap</label>
+      <textarea rows="3" class="form-control" [(ngModel)]="item.recap" [ngModelOptions]="{ standalone: true }"></textarea>
+    </div>
+    <button *ngIf="activities.content.length > 1" type="button" class="btn-outline-primary h-8 text-xs" data-testid="remove-activity" (click)="removeActivity(i)">
+      {{ 'Remove' | translate }}
+    </button>
+  </div>
+  <button type="button" class="btn-outline-primary h-8 text-xs" data-testid="add-activity" (click)="addActivity()">
+    {{ 'Add another' | translate }}
+  </button>
+</div>
