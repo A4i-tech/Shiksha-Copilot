@@ -33,6 +33,10 @@ describe("content.curate permission", () => {
     expect(names([{ role: { scopeType, permissions: ["content.curate", "content.view"] }, dep }])).toEqual(["content.curate", "content.view"]);
   });
 
+  it("drops a permission the role scope does not allow", () => {
+    expect(names([{ role: { scopeType: "DISTRICT", permissions: ["home.view", "content.curate"] }, dep: { district: "d1" } }])).toEqual(["content.curate"]);
+  });
+
   it("keeps it for Superuser", () => {
     expect(names([{ role: { isSuperUser: true } }])).toContain("content.curate");
   });

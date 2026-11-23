@@ -20,6 +20,7 @@ import { Observable } from 'rxjs';
 import { DeleteDetailComponent, DeleteDetailConfig } from '../delete-detail/delete-detail.component';
 import { HttpParams } from '@angular/common/http';
 import { HasPermissionDirective } from 'src/app/core/directives/has-permission.directive';
+import { CURATION_URL } from 'src/app/view/curator/curation-routes';
 import { IdleService } from '../../services/idle.service';
 
 export interface LessonTypeConfig {
@@ -185,8 +186,8 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
       type: 'resource',
       inspectUrl: '/content-generation/inspect/resource-plan',
     },
-    '/curation/lesson-plan': { type: 'plan', inspectUrl: '/curation' },
-    '/curation/lesson-resources': { type: 'resource', inspectUrl: '/curation' },
+    [CURATION_URL.lessonPlan]: { type: 'plan', inspectUrl: '/curation' },
+    [CURATION_URL.lessonResources]: { type: 'resource', inspectUrl: '/curation' },
   };
 
   readonly curatorMode: boolean;

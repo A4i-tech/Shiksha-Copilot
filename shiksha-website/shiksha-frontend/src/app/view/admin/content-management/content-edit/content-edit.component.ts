@@ -3,7 +3,7 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { EMPTY, Subscription, catchError, of, switchMap } from 'rxjs';
+import { EMPTY, Subscription, catchError, map, of, switchMap } from 'rxjs';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { DropdownComponent } from 'src/app/shared/components/dropdown/dropdown.component';
 import { DropDownConfig } from 'src/app/shared/interfaces/dropdown.interface';
@@ -13,6 +13,7 @@ import {
   ContentField,
   ContentFieldType,
   ContentSelectOption,
+  LessonVideo,
   getContentEntityConfig,
   localizeEntity,
 } from '../content-management.config';
@@ -20,17 +21,27 @@ import { ContentManagementService, CurationChapter } from '../content-management
 import { ChapterPickerComponent } from '../chapter-picker/chapter-picker.component';
 import { CONTENT_STATUS } from '../content-status.constants';
 import { UmamiService } from 'src/app/shared/services/umami.service';
-import { TreeFieldComponent } from 'src/app/shared/components/tree-field/tree-field.component';
-import { blankSections, filledSections, hasText } from 'src/app/shared/utility/section-content.util';
+import { SectionEditorComponent } from 'src/app/shared/components/section-editor/section-editor.component';
+import { blankSections, filledSections } from 'src/app/shared/utility/section-content.util';
+import { ContentGenerationService } from 'src/app/view/user/content-generation/content-generation.service';
+import { CURATION_URL } from 'src/app/view/curator/curation-routes';
 
 /** the fixed A-D option row set an MCQ answer type needs, matching McqOption in question_paper.py */
 const MCQ_OPTION_LABELS = ['A', 'B', 'C', 'D'];
+
+type NewRecordFields = ({ name: string } | { lessonName: string }) & {
+  subTopics: string[];
+  isAll: false;
+  templateId: string;
+};
+
+const WIDE_FIELD_TYPES: ContentFieldType[] = ['json', 'textarea', 'question-content', 'mcq-options', 'sections', 'videos'];
 
 @Component({
   selector: 'app-content-edit',
   templateUrl: './content-edit.component.html',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, ChapterPickerComponent, DropdownComponent, TranslateModule, TreeFieldComponent],
+  imports: [CommonModule, FormsModule, RouterModule, ChapterPickerComponent, DropdownComponent, TranslateModule, SectionEditorComponent],
 })
 export class ContentEditComponent implements OnInit, OnDestroy {
   config!: ContentEntityConfig;
@@ -44,8 +55,8 @@ export class ContentEditComponent implements OnInit, OnDestroy {
   chapterId = '';
   chapter?: CurationChapter;
   subTopic = '';
-  private templateId?: string;
-  isTemplateLoading = false;
+  private newRecordFields?: NewRecordFields;
+  templatePending = false;
 
   /** form value of each field, as the control shows it */
   formValues: { [field: string]: any } = {};
@@ -68,7 +79,8 @@ export class ContentEditComponent implements OnInit, OnDestroy {
     public contentService: ContentManagementService,
     private utilityService: UtilityService,
     private translateService: TranslateService,
-    private umamiService: UmamiService
+    private umamiService: UmamiService,
+    private contentGenerationService: ContentGenerationService
   ) {
     this.subscriptions.push(
       translateService.onLangChange.subscribe(() => {
@@ -94,10 +106,7 @@ export class ContentEditComponent implements OnInit, OnDestroy {
         this.config = localizeEntity(entity, this.translateService);
         this.recordId = id;
         this.isCreate = id === 'new';
-        if (this.curatorMode) {
-          this.chapterId = params.get('chapterId')!;
-          this.subTopic = this.route.snapshot.queryParamMap.get('subTopic') ?? '';
-        }
+        if (this.curatorMode) this.chapterId = params.get('chapterId')!;
 
         if (entity.fields.some((field) => field.type === 'subject-select')) {
           this.loadSubjectOptions();
@@ -185,9 +194,13 @@ export class ContentEditComponent implements OnInit, OnDestroy {
           this.router.navigate(chapter ? ['/curation/chapters', this.chapterId] : ['/curation']);
           return;
         }
-        if (this.isCreate && this.hasSubTopic && !this.subTopic) {
-          this.router.navigate([this.selectionUrl]);
-          return;
+        if (this.isCreate && this.hasSubTopic) {
+          const subTopic = this.route.snapshot.queryParamMap.get('subTopic');
+          if (!subTopic) {
+            this.router.navigate([this.selectionUrl]);
+            return;
+          }
+          this.subTopic = subTopic;
         }
         this.chapter = chapter;
         this.record = record;
@@ -216,30 +229,24 @@ export class ContentEditComponent implements OnInit, OnDestroy {
   }
 
   private get selectionUrl(): string {
-    return this.isPlan ? '/curation/lesson-plan' : '/curation/lesson-resources';
+    return this.isPlan ? CURATION_URL.lessonPlan : CURATION_URL.lessonResources;
   }
 
   private loadSectionTemplate(chapter: CurationChapter): void {
-    this.isTemplateLoading = true;
+    this.templatePending = true;
     this.subscriptions.push(
-      this.contentService.getSectionTemplate(chapter, this.isPlan ? 'lesson_plan' : 'lesson_resource').subscribe({
-        next: (template) => {
-          this.isTemplateLoading = false;
-          if (!template) {
-            const { board, medium, standard, subject } = chapter;
-            this.utilityService.showError(
-              `No template exists for ${board}, ${medium}, class ${standard}, ${subject[0].subjectName}. Ask an admin to add one, then open this form again.`
-            );
-            return;
-          }
-          this.templateId = template._id;
-          this.formValues[this.sectionsField] = blankSections(template.sections);
-        },
-        error: (err: any) => {
-          this.isTemplateLoading = false;
-          this.utilityService.handleError(err);
-        },
-      })
+      this.contentGenerationService
+        .getSectionTemplate(chapter, this.isPlan ? 'lesson_plan' : 'lesson_resource')
+        .pipe(map((template) => ({ template, sections: blankSections(template.sections) })))
+        .subscribe({
+          next: ({ template, sections }) => {
+            this.templatePending = false;
+            this.formValues[this.sectionsField] = sections;
+            if (this.isCreate) this.newRecordFields = this.buildNewRecordFields(chapter, template._id);
+          },
+          error: (err: any) =>
+            err instanceof Error ? this.utilityService.showError(err.message) : this.utilityService.handleError(err),
+        })
     );
   }
 
@@ -248,7 +255,21 @@ export class ContentEditComponent implements OnInit, OnDestroy {
   }
 
   isDropdownField(field: ContentField): boolean {
-    return this.fieldType(field) === 'select' || this.fieldType(field) === 'subject-select';
+    const type = this.fieldType(field);
+    return type === 'select' || type === 'subject-select';
+  }
+
+  isWideField(field: ContentField): boolean {
+    return WIDE_FIELD_TYPES.includes(this.fieldType(field));
+  }
+
+  addVideo(field: ContentField): void {
+    const video: LessonVideo = { title: '', url: '', selected: true };
+    this.formValues[field.field].push(video);
+  }
+
+  removeVideo(field: ContentField, index: number): void {
+    this.formValues[field.field].splice(index, 1);
   }
 
   dropdownConfig(field: ContentField): DropDownConfig {
@@ -274,16 +295,13 @@ export class ContentEditComponent implements OnInit, OnDestroy {
   }
 
   save(targetStatus: typeof CONTENT_STATUS.DRAFT | typeof CONTENT_STATUS.UNDER_REVIEW = CONTENT_STATUS.DRAFT): void {
-    if (this.isReadonly || this.isTemplateLoading) return;
+    if (this.isReadonly) return;
 
     const body = this.isCreate
       ? this.buildCreateBody()
       : this.buildChangedBody();
 
-    if (body && this.curatorMode && this.isCreate) {
-      body['chapterId'] = this.chapterId;
-      if (this.hasSubTopic) Object.assign(body, this.subTopicFields());
-    }
+    if (body && this.curatorMode && this.isCreate) Object.assign(body, { chapterId: this.chapterId }, this.newRecordFields);
 
     if (Object.keys(this.fieldErrors).length) {
       this.utilityService.showError(
@@ -359,16 +377,10 @@ export class ContentEditComponent implements OnInit, OnDestroy {
     });
   }
 
-  // Same name pattern as the generation pipeline.
-  private subTopicFields(): { [key: string]: any } {
-    const { subject, board, standard, topics } = this.chapter!;
+  private buildNewRecordFields(chapter: CurationChapter, templateId: string): NewRecordFields {
+    const { subject, board, standard, topics } = chapter;
     const name = `${subject[0].subjectName}-${board} Class${standard} ${topics}`;
-    return {
-      [this.isPlan ? 'name' : 'lessonName']: name,
-      subTopics: [this.subTopic],
-      isAll: false,
-      templateId: this.templateId,
-    };
+    return { ...(this.isPlan ? { name } : { lessonName: name }), subTopics: [this.subTopic], isAll: false, templateId };
   }
 
   // The backend runs the same check as the bulk upload, so this sends the values as they are.
@@ -519,8 +531,15 @@ export class ContentEditComponent implements OnInit, OnDestroy {
     switch (this.fieldType(field)) {
       case 'sections':
         return filledSections(raw);
-      case 'videos':
-        return raw.filter((video: any) => hasText(video.url));
+      case 'videos': {
+        delete this.fieldErrors[field.field];
+        const videos = (raw as LessonVideo[]).filter((video) => video.title.trim() || video.url.trim());
+        if (videos.some((video) => !video.url.trim())) {
+          this.fieldErrors[field.field] = 'Add a link to every video, or remove the row.';
+          return null;
+        }
+        return videos;
+      }
       case 'boolean':
         return raw === true;
       case 'number':
@@ -561,7 +580,7 @@ export class ContentEditComponent implements OnInit, OnDestroy {
     const body: { [key: string]: any } = {};
 
     this.visibleFields.forEach((field) => {
-      if (this.fieldErrors[field.field]) return;
+      if (this.fieldErrors[field.field] && this.fieldType(field) === 'json') return;
 
       let next: any;
 

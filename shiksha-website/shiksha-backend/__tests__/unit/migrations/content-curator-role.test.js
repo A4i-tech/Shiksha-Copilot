@@ -15,7 +15,7 @@ describe("Content Curator builtin role", () => {
   });
 
   it("holds only permissions the UNBOUND scope allows", () => {
-    expect(curator.permissions.filter((permission) => !isPermissionAllowed(permission, "UNBOUND"))).toEqual([]);
+    expect(curator.permissions.filter((permission) => !isPermissionAllowed(permission, curator.scopeType))).toEqual([]);
   });
 
   it("holds no admin content permission, so it cannot reach the admin routes or approve", () => {
