@@ -5,6 +5,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { Subscription, forkJoin } from 'rxjs';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { ModalComponent } from 'src/app/shared/components/modal/modal.component';
+import { CURATION_URL } from '../curation-routes';
 import { recordTitle } from '../../admin/content-management/content-management.config';
 import { ContentManagementService, CurationChapter } from '../../admin/content-management/content-management.service';
 import { CONTENT_STATUS, STATUS_BADGE_CLASSES, STATUS_LABELS } from '../../admin/content-management/content-status.constants';
@@ -24,7 +25,7 @@ export class CuratorChapterComponent implements OnInit, OnDestroy {
   pending: CurationChapter[] = [];
   returned: CurationChapter[] = [];
   submitted: CurationChapter[] = [];
-  children: { segment: string; label: string; addLabel: string; records: any[] }[] = [];
+  children: { segment: string; label: string; addLabel: string; addUrl: string[]; records: any[] }[] = [];
   subTopics: { name: string; done: boolean }[] = [];
   isLoading = false;
   isSubmitting = false;
@@ -126,9 +127,9 @@ export class CuratorChapterComponent implements OnInit, OnDestroy {
           }
           this.chapter = chapter;
           this.children = [
-            { segment: 'lesson-plans', label: 'Lesson plans', addLabel: 'Add lesson plan', records: lists[0] },
-            { segment: 'resources', label: 'Lesson resources', addLabel: 'Add lesson resource', records: lists[1] },
-            { segment: 'questions', label: 'Questions', addLabel: 'Add question', records: lists[2] },
+            { segment: 'lesson-plans', label: 'Lesson plans', addLabel: 'Add lesson plan', addUrl: [CURATION_URL.lessonPlan], records: lists[0] },
+            { segment: 'resources', label: 'Lesson resources', addLabel: 'Add lesson resource', addUrl: [CURATION_URL.lessonResources], records: lists[1] },
+            { segment: 'questions', label: 'Questions', addLabel: 'Add question', addUrl: ['/curation/chapters', chapterId, 'questions', 'new'], records: lists[2] },
           ];
           const covered = new Set(lists[0].flatMap((plan: any) => plan.subTopics).map(normalize));
           this.subTopics = chapter.subTopics.map((name) => ({ name, done: covered.has(normalize(name)) }));

@@ -12,6 +12,8 @@ import { ChatbotComponent } from './user/chatbot/chatbot.component';
 import { ContentActivityComponent } from './admin/content-activity/content-activity.component';
 import { ViewLessonPlanComponent } from './admin/view-lesson-plan/view-lesson-plan.component';
 import { LandingComponent } from './landing.component';
+
+import { CURATION_PATH } from './curator/curation-routes';
 import { RoleManagementComponent } from './admin/role-management/role-management.component';
 
 const routes: Routes = [
@@ -140,14 +142,14 @@ const routes: Routes = [
         canActivate: [PermissionGuard],
       },
       {
-        path: 'curation/lesson-plan',
+        path: CURATION_PATH.lessonPlan,
         loadComponent: () =>
           import('../shared/components/lesson-plan-resource-details/lesson-plan-resource-details.component').then((c) => c.LessonPlanResourceDetailsComponent),
         data: { permissions: ['content.curate'], curatorMode: true },
         canActivate: [PermissionGuard],
       },
       {
-        path: 'curation/lesson-resources',
+        path: CURATION_PATH.lessonResources,
         loadComponent: () =>
           import('../shared/components/lesson-plan-resource-details/lesson-plan-resource-details.component').then((c) => c.LessonPlanResourceDetailsComponent),
         data: { permissions: ['content.curate'], curatorMode: true },

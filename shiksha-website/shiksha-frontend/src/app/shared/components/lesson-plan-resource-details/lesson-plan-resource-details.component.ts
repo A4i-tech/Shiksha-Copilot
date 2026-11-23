@@ -20,6 +20,7 @@ import { Observable } from 'rxjs';
 import { DeleteDetailComponent, DeleteDetailConfig } from '../delete-detail/delete-detail.component';
 import { HttpParams } from '@angular/common/http';
 import { HasPermissionDirective } from 'src/app/core/directives/has-permission.directive';
+import { CURATION_URL } from 'src/app/view/curator/curation-routes';
 import { IdleService } from '../../services/idle.service';
 
 export interface LessonTypeConfig {
@@ -185,8 +186,8 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
       type: 'resource',
       inspectUrl: '/content-generation/inspect/resource-plan',
     },
-    '/curation/lesson-plan': { type: 'plan', inspectUrl: '/curation' },
-    '/curation/lesson-resources': { type: 'resource', inspectUrl: '/curation' },
+    [CURATION_URL.lessonPlan]: { type: 'plan', inspectUrl: '/curation' },
+    [CURATION_URL.lessonResources]: { type: 'resource', inspectUrl: '/curation' },
   };
 
   readonly curatorMode: boolean;
@@ -441,12 +442,13 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
   }
 
   onTopicSelected(val: any) {
-    if (this.curatorMode) {
-      if (val) this.router.navigate(['/curation/chapters', val._id, this.getLessonType()?.type === 'plan' ? 'lesson-plans' : 'resources', 'new']);
-      return;
-    }
     this.chapterId = val?._id;
     this.resetTopicChange();
+
+    if (this.curatorMode) {
+      if (val) this.subtopicsDropdownOptions = val.subTopics.map((name: string) => ({ label: name, value: name }));
+      return;
+    }
 
     let subTopicSubscriber;
 
@@ -517,6 +519,13 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
   }
 
   onsubTopicSelected(val: any): void {
+    if (this.curatorMode) {
+      if (val) {
+        const segment = this.getLessonType()?.type === 'plan' ? 'lesson-plans' : 'resources';
+        this.router.navigate(['/curation/chapters', this.chapterId, segment, 'new'], { queryParams: { subTopic: val.value } });
+      }
+      return;
+    }
     this.selectedSubtopic = val;
     this.learningOutcomes = val.learningOutcomes;
     this.initialLearningOutcomes = structuredClone(this.learningOutcomes);
