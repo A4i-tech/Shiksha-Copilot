@@ -1,0 +1,124 @@
+name: Object store tests
+
+# Runs the Node and Python contract tests against a real CubeFS object store.
+# CubeFS runs on a 3-node kind cluster that lives inside this runner.
+on:
+  pull_request:
+    branches: [a4i/staging]
+    paths:
+      - ".github/workflows/object-store-tests.yaml"
+      - ".github/object-store/**"
+      - "shiksha-api/app-service/app/utils/blob_store.py"
+      - "shiksha-api/app-service/app/config.py"
+      - "shiksha-api/app-service/tests/unit/utils/test_blob_store_object_store.py"
+      - "shiksha-website/shiksha-backend/services/**"
+      - "shiksha-website/shiksha-backend/__tests__/unit/services/blob.provider.contract.test.js"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: object-store-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CUBEFS_HELM_REF: 164b8284050c12c33d03212000a39710bb8fbc18
+  OBJECT_STORE_TEST_ENDPOINT_URL: http://localhost:1601
+  OBJECT_STORE_TEST_BUCKET_NAME: shiksha-ci
+
+jobs:
+  contract:
+    name: Node and Python contract tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: helm/kind-action@v1
+        with:
+          cluster_name: object-store
+          config: .github/object-store/kind-cubefs.yaml
+
+      - name: Install CubeFS
+        run: |
+          set -euo pipefail
+          # The control-plane node must run pods, because the chart needs 3 master nodes.
+          kubectl taint nodes -l node-role.kubernetes.io/control-plane node-role.kubernetes.io/control-plane-
+          kubectl label nodes --all component.cubefs.io/master=enabled component.cubefs.io/metanode=enabled \
+            component.cubefs.io/datanode=enabled component.cubefs.io/objectnode=enabled --overwrite
+          git clone -q https://github.com/cubefs/cubefs-helm "$RUNNER_TEMP/cubefs-helm"
+          git -C "$RUNNER_TEMP/cubefs-helm" checkout -q "$CUBEFS_HELM_REF"
+          # The chart has a typo: .Value.master. Patch it here and not in app code.
+          grep -q '\.Value\.master\.' "$RUNNER_TEMP/cubefs-helm/cubefs/templates/statefulset-master.yaml"
+          sed -i 's/\.Value\.master\./.Values.master./' "$RUNNER_TEMP/cubefs-helm/cubefs/templates/statefulset-master.yaml"
+          helm install cubefs "$RUNNER_TEMP/cubefs-helm/cubefs" --namespace cubefs --create-namespace \
+            --values .github/object-store/cubefs-values.yaml --wait --timeout 10m
+
+      - name: Create keys and bucket
+        run: |
+          set -euo pipefail
+          ak=$(openssl rand -hex 8)
+          sk=$(openssl rand -hex 16)
+          echo "::add-mask::$ak"
+          echo "::add-mask::$sk"
+          kubectl -n cubefs port-forward svc/master-service 17010:17010 > "$RUNNER_TEMP/master-forward.log" 2>&1 &
+          kubectl -n cubefs port-forward svc/objectnode-service 1601:1601 > "$RUNNER_TEMP/objectnode-forward.log" 2>&1 &
+          for _ in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:17010/admin/getCluster || true)
+            [ "$code" = 200 ] && break
+            sleep 2
+          done
+          curl -sf -X POST http://localhost:17010/user/create -H 'Content-Type: application/json' \
+            -d "{\"id\":\"ci\",\"pwd\":\"$(openssl rand -hex 8)\",\"type\":2,\"ak\":\"$ak\",\"sk\":\"$sk\"}" > /dev/null
+          for _ in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "$OBJECT_STORE_TEST_ENDPOINT_URL" || true)
+            [ "$code" != 000 ] && break
+            sleep 2
+          done
+          export AWS_ACCESS_KEY_ID="$ak" AWS_SECRET_ACCESS_KEY="$sk" AWS_DEFAULT_REGION=us-east-1
+          aws configure set default.s3.addressing_style path
+          # CubeFS returns InternalError when CreateBucket runs on an existing bucket. Check first.
+          if ! head=$(aws --endpoint-url "$OBJECT_STORE_TEST_ENDPOINT_URL" s3api head-bucket --bucket "$OBJECT_STORE_TEST_BUCKET_NAME" 2>&1); then
+            case "$head" in
+              *404*) aws --endpoint-url "$OBJECT_STORE_TEST_ENDPOINT_URL" s3api create-bucket --bucket "$OBJECT_STORE_TEST_BUCKET_NAME" ;;
+              *) echo "$head" >&2; exit 1 ;;
+            esac
+          fi
+          {
+            echo "OBJECT_STORE_TEST_ACCESS_KEY_ID=$ak"
+            echo "OBJECT_STORE_TEST_SECRET_ACCESS_KEY=$sk"
+          } >> "$GITHUB_ENV"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: shiksha-website/shiksha-backend/package-lock.json
+
+      - name: Node contract tests
+        working-directory: shiksha-website/shiksha-backend
+        run: |
+          npm ci
+          OBJECT_STORE_TESTS=true npx jest __tests__/unit/services/blob.provider.contract.test.js --coverage=false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Python object store tests
+        working-directory: shiksha-api/app-service
+        env:
+          OPENAI_API_KEY: dummy-key-for-testing
+        run: |
+          pip install poetry
+          poetry install
+          poetry run pytest -m object_store tests/unit/utils/test_blob_store_object_store.py --no-cov
+
+      - name: CubeFS logs
+        if: failure()
+        run: |
+          kubectl -n cubefs get pods -o wide || true
+          kubectl -n cubefs logs deployment/objectnode --tail=100 || true

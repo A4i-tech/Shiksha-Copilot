@@ -2,14 +2,14 @@ require("dotenv").config();
 
 const LINK_EXPIRY_SECONDS = 7 * 24 * 60 * 60;
 
-const backend = (process.env.STORAGE_BACKEND || "s3").toLowerCase();
+const backend = process.env.STORAGE_BACKEND;
 let provider;
-if (backend === "s3") {
-    provider = require("./s3.blob.service");
+if (backend === "object-store") {
+    provider = require("./object.store.blob.service");
 } else if (backend === "azure") {
     provider = require("./azure.blob.service");
 } else {
-    throw new Error(`STORAGE_BACKEND=${process.env.STORAGE_BACKEND} is not supported. Set STORAGE_BACKEND to "s3" or "azure".`);
+    throw new Error(`STORAGE_BACKEND is ${backend ? `"${backend}"` : "unset"}. Set STORAGE_BACKEND to "object-store" or "azure".`);
 }
 
 function getBlobName(blobRef, container) {

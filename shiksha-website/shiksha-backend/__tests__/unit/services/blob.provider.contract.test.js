@@ -1,15 +1,14 @@
-const { spawnSync } = require("child_process");
 const { PassThrough } = require("stream");
 const { randomUUID } = require("crypto");
 
-const HEALTH_URL = "http://localhost:9000/minio/health/ready";
+const ENDPOINT = process.env.OBJECT_STORE_TEST_ENDPOINT_URL || "http://localhost:9000";
+const ACCESS_KEY = process.env.OBJECT_STORE_TEST_ACCESS_KEY_ID || "test-access-key";
+const SECRET_KEY = process.env.OBJECT_STORE_TEST_SECRET_ACCESS_KEY || "test-secret-key";
+const BUCKET = process.env.OBJECT_STORE_TEST_BUCKET_NAME || "doc-pro";
 const SEVEN_DAYS = 7 * 24 * 60 * 60;
 const STORAGE = "../../../services/storage.service";
 
-// describe.skip needs the answer before any test runs, so ask in a child process.
-const minioReady =
-  spawnSync(process.execPath, ["-e", `fetch("${HEALTH_URL}").then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))`], { timeout: 5000 })
-    .status === 0;
+const runObjectStore = process.env.OBJECT_STORE_TESTS === "true";
 
 jest.mock(
   "@azure/storage-blob",
@@ -80,11 +79,12 @@ jest.mock("@azure/identity", () => ({ DefaultAzureCredential: jest.fn() }));
 
 const ENV_KEYS = [
   "STORAGE_BACKEND",
-  "S3_ENDPOINT_URL",
-  "S3_ACCESS_KEY_ID",
-  "S3_SECRET_ACCESS_KEY",
-  "S3_BUCKET_NAME",
-  "S3_REGION",
+  "OBJECT_STORE_ENDPOINT_URL",
+  "OBJECT_STORE_PUBLIC_ENDPOINT_URL",
+  "OBJECT_STORE_ACCESS_KEY_ID",
+  "OBJECT_STORE_SECRET_ACCESS_KEY",
+  "OBJECT_STORE_BUCKET_NAME",
+  "OBJECT_STORE_REGION",
   "AZURE_STORAGE_CONNECTION_STRING",
   "AZURE_STORAGE_ACCOUNT_NAME",
   "AZURE_STORAGE_CONTAINER_NAME",
@@ -101,11 +101,11 @@ const resetEnv = () => {
 const setBackendEnv = (backend) => {
   ENV_KEYS.forEach((key) => delete process.env[key]);
   process.env.STORAGE_BACKEND = backend;
-  if (backend === "s3") {
-    process.env.S3_ENDPOINT_URL = "http://localhost:9000";
-    process.env.S3_ACCESS_KEY_ID = "test-access-key";
-    process.env.S3_SECRET_ACCESS_KEY = "test-secret-key";
-    process.env.S3_BUCKET_NAME = "doc-pro";
+  if (backend === "object-store") {
+    process.env.OBJECT_STORE_ENDPOINT_URL = ENDPOINT;
+    process.env.OBJECT_STORE_ACCESS_KEY_ID = ACCESS_KEY;
+    process.env.OBJECT_STORE_SECRET_ACCESS_KEY = SECRET_KEY;
+    process.env.OBJECT_STORE_BUCKET_NAME = BUCKET;
   } else {
     process.env.AZURE_STORAGE_ACCOUNT_NAME = "testaccount";
     process.env.AZURE_STORAGE_CONTAINER_NAME = "testcontainer";
@@ -113,7 +113,7 @@ const setBackendEnv = (backend) => {
 };
 
 const readers = {
-  s3: async (url) => {
+  "object-store": async (url) => {
     const response = await fetch(url);
     return response.status === 200 ? Buffer.from(await response.arrayBuffer()) : null;
   },
@@ -124,18 +124,14 @@ const readers = {
 };
 
 const expiryOf = {
-  s3: (url) => Number(new URL(url).searchParams.get("X-Amz-Expires")),
+  "object-store": (url) => Number(new URL(url).searchParams.get("X-Amz-Expires")),
   azure: () => {
     const { options } = require("@azure/storage-blob").__sasCalls.at(-1);
     return (options.expiresOn - options.startsOn) / 1000;
   },
 };
 
-describe.each([
-  ["s3", minioReady ? "" : ` (skipped: MinIO does not answer at ${HEALTH_URL})`],
-  ["azure", ""],
-])("%s provider contract%s", (backend, skipReason) => {
-  const test = skipReason ? it.skip : it;
+describe.each([...(runObjectStore ? ["object-store"] : []), "azure"])("%s provider contract", (backend) => {
   const read = readers[backend];
   let storage;
   let links;
@@ -159,7 +155,7 @@ describe.each([
 
   afterAll(resetEnv);
 
-  test("uploadToStorage returns a link that serves the uploaded bytes", async () => {
+  it("uploadToStorage returns a link that serves the uploaded bytes", async () => {
     const body = Buffer.from(`upload ${randomUUID()}`);
 
     const link = await upload(`contract-${randomUUID()}.txt`, body);
@@ -167,13 +163,13 @@ describe.each([
     expect((await read(link)).equals(body)).toBe(true);
   });
 
-  test("presigned links expire in 7 days", async () => {
+  it("presigned links expire in 7 days", async () => {
     const link = await upload(`contract-${randomUUID()}.txt`, Buffer.from("x"));
 
     expect(expiryOf[backend](link)).toBe(SEVEN_DAYS);
   });
 
-  test("uploadStreamToStorage reports progress and stores every byte", async () => {
+  it("uploadStreamToStorage reports progress and stores every byte", async () => {
     const name = `contract-${randomUUID()}.bin`;
     const chunks = [Buffer.alloc(1000, 1), Buffer.alloc(2000, 2), Buffer.alloc(500, 3)];
     const stream = new PassThrough();
@@ -191,7 +187,7 @@ describe.each([
     expect(progress[progress.length - 1]).toBe(3500);
   });
 
-  test("getPreSignedProfileImageUrl links the {userId}_photo object", async () => {
+  it("getPreSignedProfileImageUrl links the {userId}_photo object", async () => {
     const userId = randomUUID();
     const body = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 255, 1]);
     await upload(`${userId}_photo`, body, "image/png");
@@ -201,7 +197,7 @@ describe.each([
     expect((await read(link)).equals(body)).toBe(true);
   });
 
-  test("getPreSignedFileUrl links the last path segment of a stored link", async () => {
+  it("getPreSignedFileUrl links the last path segment of a stored link", async () => {
     const id = randomUUID();
     const body = Buffer.from(`file ${id}`);
     await upload(`contract file ${id}.txt`, body);
@@ -213,7 +209,7 @@ describe.each([
     expect((await read(link)).equals(body)).toBe(true);
   });
 
-  test("getBlobContent returns the given contentType and base64 content", async () => {
+  it("getBlobContent returns the given contentType and base64 content", async () => {
     const body = Buffer.from("content body");
     const link = await upload(`contract-${randomUUID()}.txt`, body);
 
@@ -223,13 +219,13 @@ describe.each([
     });
   });
 
-  test("getBlobContent rejects for a missing object", async () => {
+  it("getBlobContent rejects for a missing object", async () => {
     const link = await storage.getPreSignedProfileImageUrl(randomUUID());
 
     await expect(storage.getBlobContent(link, "text/plain")).rejects.toThrow();
   });
 
-  test("deleteFromStorage removes the object", async () => {
+  it("deleteFromStorage removes the object", async () => {
     const link = await upload(`contract-${randomUUID()}.txt`, Buffer.from("to delete"));
 
     await storage.deleteFromStorage(link);
@@ -237,7 +233,7 @@ describe.each([
     expect(await read(link)).toBeNull();
   });
 
-  test("deleteFromStorage does not throw for a missing object", async () => {
+  it("deleteFromStorage does not throw for a missing object", async () => {
     const link = await storage.getPreSignedProfileImageUrl(randomUUID());
 
     await expect(storage.deleteFromStorage(link)).resolves.toBeUndefined();
@@ -296,37 +292,61 @@ describe("azure.blob.service settings", () => {
   });
 });
 
-describe("s3.blob.service settings", () => {
+describe("object.store.blob.service settings", () => {
   beforeEach(() => {
     jest.resetModules();
-    setBackendEnv("s3");
+    setBackendEnv("object-store");
   });
 
   afterAll(resetEnv);
 
-  it("throws at load when S3_BUCKET_NAME is missing", () => {
-    delete process.env.S3_BUCKET_NAME;
+  it("throws at load when OBJECT_STORE_BUCKET_NAME is missing", () => {
+    delete process.env.OBJECT_STORE_BUCKET_NAME;
 
-    expect(() => require("../../../services/s3.blob.service")).toThrow("needs S3_BUCKET_NAME");
+    expect(() => require("../../../services/object.store.blob.service")).toThrow("needs OBJECT_STORE_BUCKET_NAME");
   });
 
-  it.each(["S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY"])("throws at load when %s is missing", (name) => {
+  it.each(["OBJECT_STORE_ACCESS_KEY_ID", "OBJECT_STORE_SECRET_ACCESS_KEY"])("throws at load when %s is missing", (name) => {
     delete process.env[name];
 
-    expect(() => require("../../../services/s3.blob.service")).toThrow(
-      "needs S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY"
+    expect(() => require("../../../services/object.store.blob.service")).toThrow(
+      "needs OBJECT_STORE_ACCESS_KEY_ID and OBJECT_STORE_SECRET_ACCESS_KEY"
     );
   });
 
-  it("throws at load when S3_ENDPOINT_URL is not a URL", () => {
-    process.env.S3_ENDPOINT_URL = "not a url";
+  it("throws at load when only Azure settings exist", () => {
+    ["OBJECT_STORE_ENDPOINT_URL", "OBJECT_STORE_ACCESS_KEY_ID", "OBJECT_STORE_SECRET_ACCESS_KEY", "OBJECT_STORE_BUCKET_NAME"].forEach(
+      (key) => delete process.env[key]
+    );
+    process.env.AZURE_STORAGE_ACCOUNT_NAME = "testaccount";
 
-    expect(() => require("../../../services/s3.blob.service")).toThrow("is not a URL");
+    expect(() => require("../../../services/object.store.blob.service")).toThrow("found Azure settings and no OBJECT_STORE_");
   });
 
-  it("throws at load when S3_ENDPOINT_URL is not http or https", () => {
-    process.env.S3_ENDPOINT_URL = "localhost:9000";
+  it("throws at load when OBJECT_STORE_ENDPOINT_URL is not a URL", () => {
+    process.env.OBJECT_STORE_ENDPOINT_URL = "not a url";
 
-    expect(() => require("../../../services/s3.blob.service")).toThrow("must start with http:// or https://");
+    expect(() => require("../../../services/object.store.blob.service")).toThrow("is not a URL");
+  });
+
+  it("signs links for OBJECT_STORE_PUBLIC_ENDPOINT_URL and not for OBJECT_STORE_ENDPOINT_URL", async () => {
+    process.env.OBJECT_STORE_ENDPOINT_URL = "http://internal-store:9000";
+    process.env.OBJECT_STORE_PUBLIC_ENDPOINT_URL = "https://files.example.com";
+
+    const link = await require("../../../services/object.store.blob.service").getPreSignedUrl("file.txt", 60);
+
+    expect(new URL(link).host).toBe("files.example.com");
+  });
+
+  it("throws at load when OBJECT_STORE_PUBLIC_ENDPOINT_URL is not a URL", () => {
+    process.env.OBJECT_STORE_PUBLIC_ENDPOINT_URL = "not a url";
+
+    expect(() => require("../../../services/object.store.blob.service")).toThrow("OBJECT_STORE_PUBLIC_ENDPOINT_URL");
+  });
+
+  it("throws at load when OBJECT_STORE_ENDPOINT_URL is not http or https", () => {
+    process.env.OBJECT_STORE_ENDPOINT_URL = "localhost:9000";
+
+    expect(() => require("../../../services/object.store.blob.service")).toThrow("must start with http:// or https://");
   });
 });

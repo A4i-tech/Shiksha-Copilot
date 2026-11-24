@@ -1,4 +1,4 @@
-const providerPaths = { s3: "../../../services/s3.blob.service", azure: "../../../services/azure.blob.service" };
+const providerPaths = { "object-store": "../../../services/object.store.blob.service", azure: "../../../services/azure.blob.service" };
 
 describe("storage.service", () => {
   let loaded;
@@ -20,13 +20,14 @@ describe("storage.service", () => {
     delete process.env.STORAGE_BACKEND;
   });
 
-  it("uses s3 when STORAGE_BACKEND is not set", () => {
-    require("../../../services/storage.service");
+  it.each([undefined, ""])("throws at require when STORAGE_BACKEND is %p and loads no provider", (value) => {
+    if (value !== undefined) process.env.STORAGE_BACKEND = value;
 
-    expect(loaded).toEqual(["s3"]);
+    expect(() => require("../../../services/storage.service")).toThrow('STORAGE_BACKEND is unset. Set STORAGE_BACKEND to "object-store" or "azure"');
+    expect(loaded).toEqual([]);
   });
 
-  it.each(["s3", "azure"])("loads only the %s provider when STORAGE_BACKEND=%s", (backend) => {
+  it.each(["object-store", "azure"])("loads only the %s provider when STORAGE_BACKEND=%s", (backend) => {
     process.env.STORAGE_BACKEND = backend;
 
     require("../../../services/storage.service");
@@ -34,10 +35,17 @@ describe("storage.service", () => {
     expect(loaded).toEqual([backend]);
   });
 
+  it.each(["Azure", "OBJECT-STORE"])("throws at require for STORAGE_BACKEND %p because the match is exact", (value) => {
+    process.env.STORAGE_BACKEND = value;
+
+    expect(() => require("../../../services/storage.service")).toThrow(`STORAGE_BACKEND is "${value}"`);
+    expect(loaded).toEqual([]);
+  });
+
   it("throws at require for an unknown STORAGE_BACKEND and loads no provider", () => {
     process.env.STORAGE_BACKEND = "gcs";
 
-    expect(() => require("../../../services/storage.service")).toThrow("STORAGE_BACKEND=gcs is not supported");
+    expect(() => require("../../../services/storage.service")).toThrow('STORAGE_BACKEND is "gcs"');
     expect(loaded).toEqual([]);
   });
 

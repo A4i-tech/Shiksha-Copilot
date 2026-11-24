@@ -8,7 +8,7 @@ from botocore.exceptions import BotoCoreError, ClientError
 
 from app.config import settings
 
-_S3_CONFIG = Config(
+_OBJECT_STORE_CONFIG = Config(
     s3={"addressing_style": "path"},
     request_checksum_calculation="when_required",
     response_checksum_validation="when_required",
@@ -61,26 +61,26 @@ class _AzureBackend:
             raise RuntimeError(f"Failed to download blobs asynchronously: {e}") from e
 
 
-class _S3Backend:
+class _ObjectStoreBackend:
     def __init__(self):
         self._session = get_session()
-        secret = settings.s3_secret_access_key
-        endpoint = settings.s3_endpoint_url
+        secret = settings.object_store_secret_access_key
+        endpoint = settings.object_store_endpoint_url
         self._client_args = dict(
             service_name="s3",
             endpoint_url=str(endpoint) if endpoint else None,
-            aws_access_key_id=settings.s3_access_key_id,
+            aws_access_key_id=settings.object_store_access_key_id,
             aws_secret_access_key=secret.get_secret_value() if secret else None,
-            region_name=settings.s3_region,
-            config=_S3_CONFIG,
+            region_name=settings.object_store_region,
+            config=_OBJECT_STORE_CONFIG,
         )
 
     async def iter_blobs(
         self, bucket: str, prefix: str
     ) -> AsyncIterator[Tuple[str, bytes]]:
         try:
-            async with self._session.create_client(**self._client_args) as s3:
-                paginator = s3.get_paginator("list_objects_v2")
+            async with self._session.create_client(**self._client_args) as client:
+                paginator = client.get_paginator("list_objects_v2")
                 async for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
                     if "Contents" not in page:
                         continue
@@ -88,33 +88,29 @@ class _S3Backend:
                         key = obj["Key"]
                         if key.endswith("/"):
                             continue
-                        response = await s3.get_object(Bucket=bucket, Key=key)
+                        response = await client.get_object(Bucket=bucket, Key=key)
                         async with response["Body"] as body:
                             yield key, await body.read()
         except (BotoCoreError, ClientError) as e:
             raise RuntimeError(
-                f"Failed to download objects from S3 bucket '{bucket}' with prefix '{prefix}': {e}"
+                f"Failed to download objects from object store bucket '{bucket}' with prefix '{prefix}': {e}"
             ) from e
 
 
 class BlobStore:
     """
-    Async helper for interacting with Azure Blob Storage.
+    Async helper for downloading blobs from an object store or Azure Blob Storage.
 
-    STORAGE_BACKEND selects the backend: "s3" (default) or "azure".
+    STORAGE_BACKEND selects the backend: "object-store" or "azure".
     """
 
-    def __init__(self, backend: Optional[Union[_AzureBackend, _S3Backend]] = None):
+    def __init__(self, backend: Optional[Union[_AzureBackend, _ObjectStoreBackend]] = None):
         if backend is not None:
             self._backend = backend
         elif settings.storage_backend == "azure":
             self._backend = _AzureBackend()
-        elif settings.storage_backend == "s3":
-            self._backend = _S3Backend()
         else:
-            raise ValueError(
-                f"Unknown STORAGE_BACKEND '{settings.storage_backend}'. Set it to 's3' or 'azure'."
-            )
+            self._backend = _ObjectStoreBackend()
 
     async def download_blobs_to_folder(
         self, prefix: str, target_folder: str = "blob_downloads"

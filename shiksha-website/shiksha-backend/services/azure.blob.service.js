@@ -11,7 +11,7 @@ const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
 const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME;
 
 if (!containerName) {
-    throw new Error("STORAGE_BACKEND=azure needs AZURE_STORAGE_CONTAINER_NAME. Set it to the container name or use STORAGE_BACKEND=s3.");
+    throw new Error("STORAGE_BACKEND=azure needs AZURE_STORAGE_CONTAINER_NAME. Set it to the container name or use STORAGE_BACKEND=object-store.");
 }
 
 // Dual auth: connection string (local dev) or DefaultAzureCredential (production)
@@ -36,7 +36,7 @@ if (connectionString) {
 } else {
     if (!accountName) {
         throw new Error(
-            "STORAGE_BACKEND=azure needs AZURE_STORAGE_CONNECTION_STRING or AZURE_STORAGE_ACCOUNT_NAME. Set one of them or use STORAGE_BACKEND=s3."
+            "STORAGE_BACKEND=azure needs AZURE_STORAGE_CONNECTION_STRING or AZURE_STORAGE_ACCOUNT_NAME. Set one of them or use STORAGE_BACKEND=object-store."
         );
     }
     const credential = new DefaultAzureCredential();
