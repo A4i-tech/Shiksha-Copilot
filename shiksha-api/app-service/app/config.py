@@ -57,6 +57,7 @@ class Settings(BaseSettings):
     pres_max_file_conversions: PositiveInt = 2
     pres_max_instruction_size: PositiveInt = 1000
     pres_max_jobs_per_user: PositiveInt | Literal[-1] = 1
+    pres_max_figures: PositiveInt = 100
     pres_max_slide_count: PositiveInt = 20
     pres_max_tasks_designer: PositiveInt = 3
     pres_max_tasks_planner: PositiveInt = 2
