@@ -1,85 +1,100 @@
 import asyncio
 import io
 import json, logging, pathlib
-from typing import IO, Any, Iterator
+from typing import Any
 import zlib
+from concurrent.futures import ThreadPoolExecutor
 
 from PIL import Image
+from app.config import settings
 from app.models.presentation import FigureInfo
 from app.utils.storage import Storage
 from pptx import Presentation, presentation
 from pptx.enum.shapes import PP_PLACEHOLDER
 
 from pydantic_ai import AgentRunError, BinaryContent
-import pymupdf4llm
-import pymupdf
+import pypdfium2 as pdfium
+import pypdfium2.raw as pdfium_c
 from aiofiles.threadpool.binary import AsyncBufferedReader
 
 
-async def _caption(data: IO[bytes], figure_path: str, page_text: str, sem: asyncio.Semaphore) -> FigureInfo | None:
+MAX_FIGURE_SIDE = 1600
+_pdfium = ThreadPoolExecutor(max_workers=1)  # pdfium is not thread-safe
+
+
+async def _in_pdfium(fn, *args):
+    return await asyncio.get_running_loop().run_in_executor(_pdfium, fn, *args)
+
+
+async def _caption(png: bytes, figure_path: str, page_text: str) -> FigureInfo | None:
     from app.services.presentation.agent import captioner
-    async with sem:
-        try:
-            data.seek(0)
-            resp = await captioner.run(["Page text:\n" + page_text, BinaryContent(data.read(), media_type="image/png")])
-        except AgentRunError:
-            return None
-        if resp.output.caption is None or resp.output.context is None:
-            return None
-        return FigureInfo(path=figure_path, caption=resp.output.caption, context=resp.output.context)
+    try:
+        resp = await captioner.run(["Page text:\n" + page_text, BinaryContent(png, media_type="image/png")])
+    except AgentRunError:
+        return None
+    if resp.output.caption is None or resp.output.context is None:
+        return None
+    return FigureInfo(path=figure_path, caption=resp.output.caption, context=resp.output.context)
 
 
-def _page_figures(doc: pymupdf.Document, page: pymupdf.Page) -> Iterator[tuple[int, int, str, bytes]]:
-    result = []
-    for data in page.get_images():
-        image = doc.extract_image(data[0])
-        if image["width"] > page.rect.width * 0.85 or image["height"] > page.rect.height * 0.85:
+Rect = tuple[float, float, float, float]  # left, bottom, right, top in page points
+
+
+def _contains(a: Rect, b: Rect) -> bool:
+    return a[0] <= b[0] and a[1] <= b[1] and a[2] >= b[2] and a[3] >= b[3]
+
+
+def _visible(page: pdfium.PdfPage, rect: Rect) -> Rect:
+    # object bounds are in unrotated page space, but get_size() and render() use the rotated, cropped page
+    left, bottom, right, top = page.get_cropbox()
+    w, h = right - left, top - bottom
+    to_visible = {0: lambda x, y: (x, y), 90: lambda x, y: (y, w - x), 180: lambda x, y: (w - x, h - y), 270: lambda x, y: (h - y, x)}[page.get_rotation()]
+    (ax, ay), (bx, by) = to_visible(rect[0] - left, rect[1] - bottom), to_visible(rect[2] - left, rect[3] - bottom)
+    return min(ax, bx), min(ay, by), max(ax, bx), max(ay, by)
+
+
+def _png(image: Image.Image) -> bytes:
+    image.thumbnail((MAX_FIGURE_SIDE, MAX_FIGURE_SIDE))
+    buf = io.BytesIO()
+    image.convert("RGB").save(buf, format="PNG")
+    return buf.getvalue()
+
+
+def _page_figures(page: pdfium.PdfPage) -> list[bytes]:
+    pw, ph = page.get_size()
+    figures = []
+    for img in page.get_objects([pdfium_c.FPDF_PAGEOBJ_IMAGE]):
+        x0, y0, x1, y1 = _visible(page, img.get_bounds())
+        w, h = img.get_px_size()
+        if x1 - x0 > pw * 0.85 or y1 - y0 > ph * 0.85 or w < 180 or h < 120:
             continue
-        yield image["width"], image["height"], image["ext"], image["image"]
+        figures.append(_png(img.get_bitmap().to_pil()))
 
-    buf = []
-    for drawing in page.get_drawings():
-        rect = drawing["rect"]
-        if rect.width < 64 or rect.height < 64:
+    buf: list[Rect] = []
+    for path in page.get_objects([pdfium_c.FPDF_PAGEOBJ_PATH]):
+        rect = _visible(page, path.get_bounds())
+        w, h = rect[2] - rect[0], rect[3] - rect[1]
+        if w < 180 or h < 120 or w > pw * 0.85 or h > ph * 0.85 or w * h > pw * ph * 0.7:
             continue
-
-        # skip if rect too big
-        if rect.width > page.rect.width * 0.85 or rect.height > page.rect.height * 0.85 or rect.get_area() > page.rect.get_area() * 0.7:
+        if any(_contains(r, rect) for r in buf):
             continue
-
-        # skip if current rect is already contained in an existing rect
-        if any(r.x0 <= rect.x0 and r.y0 <= rect.y0 and r.x1 >= rect.x1 and r.y1 >= rect.y1 for r in buf):
-            continue
-
-        # replace previous rects contained in current rect
-        buf = [r for r in buf if not (rect.x0 <= r.x0 and rect.y0 <= r.y0 and rect.x1 >= r.x1 and rect.y1 >= r.y1)]
+        buf = [r for r in buf if not _contains(rect, r)]
         buf.append(rect)
 
-    for rect in buf:
-        pix = page.get_pixmap(clip=rect, matrix=pymupdf.Matrix(2, 2), alpha=False)
-        yield int(rect.width), int(rect.height), "png", pix.tobytes("png")
-
-    return page, result
-
-
-def _extract_figures(data: bytes) -> list[tuple[str, bytes]]:
-    figures = []
-    with pymupdf.open(stream=data) as doc:
-        for page in doc.pages():
-            page_text = None
-            for w, h, ext, content in _page_figures(doc, page):
-                if w < 180 or h < 120:
-                    continue
-                if page_text is None:
-                    page_text = page.get_text()
-                figures.append((page_text, content))
+    for x0, y0, x1, y1 in buf:
+        scale = min(2, MAX_FIGURE_SIDE / max(x1 - x0, y1 - y0))
+        figures.append(_png(page.render(scale=scale, crop=(x0, y0, pw - x1, ph - y1)).to_pil()))
     return figures
 
 
-def _to_png(content: bytes) -> bytes:
-    data = io.BytesIO()
-    Image.open(io.BytesIO(content)).convert("RGB").save(data, format="PNG")
-    return data.getvalue()
+def _page_text(page: pdfium.PdfPage) -> str:
+    return page.get_textpage().get_text_range()
+
+
+def _page_data(doc: pdfium.PdfDocument, index: int) -> tuple[list[bytes], str]:
+    page = doc[index]
+    figures = _page_figures(page)
+    return figures, _page_text(page) if figures else ""
 
 
 async def _actually_read_figures(storage: Storage, textbook: AsyncBufferedReader, out_dir: str, caption_concurrency: int) -> list[FigureInfo]:
@@ -87,26 +102,42 @@ async def _actually_read_figures(storage: Storage, textbook: AsyncBufferedReader
     sem = asyncio.Semaphore(caption_concurrency)
     tasks: list[asyncio.Task[FigureInfo | None]] = []
 
-    async def proc(page_text: str, figure_name: str, content: bytes):
-        storage_path = storage.path(out_dir, figure_name)
-        if await storage.exists(storage_path):
-            return None
-        data = io.BytesIO(await asyncio.to_thread(_to_png, content))
-        await storage.write_bytes(storage_path, data.getvalue())
-        return await _caption(data, figure_name, page_text, sem)
+    async def proc(page_text: str, figure_name: str, png: bytes):
+        try:
+            storage_path = storage.path(out_dir, figure_name)
+            if await storage.exists(storage_path):
+                return None
+            await storage.write_bytes(storage_path, png)
+            return await _caption(png, figure_name, page_text)
+        finally:
+            sem.release()
 
     await textbook.seek(0)
     try:
-        raw_figures = await asyncio.to_thread(_extract_figures, await textbook.read())
-    except pymupdf.FileDataError:
+        doc = await _in_pdfium(pdfium.PdfDocument, await textbook.read())
+    except pdfium.PdfiumError:
         return []
 
-    for page_text, content in raw_figures:
-        tasks.append(asyncio.create_task(proc(page_text, '%d.png' % zlib.crc32(content), content)))
+    try:
+        async with asyncio.TaskGroup() as tg:
+            for index in range(await _in_pdfium(len, doc)):
+                if len(tasks) >= settings.pres_max_figures:
+                    logger.warning("Figure limit %d reached, skipping the rest of the document", settings.pres_max_figures)
+                    break
+                figures, page_text = await _in_pdfium(_page_data, doc, index)
+                for png in figures[: settings.pres_max_figures - len(tasks)]:
+                    await sem.acquire()
+                    tasks.append(tg.create_task(proc(page_text, '%d.png' % zlib.crc32(png), png)))
+    except ExceptionGroup as eg:
+        for extra in eg.exceptions[1:]:
+            logger.warning("Figure task failed", exc_info=extra)
+        raise eg.exceptions[0] from None
+    finally:
+        _pdfium.submit(doc.close)  # queued behind any pdfium call that a cancel left running
 
-    logger.info("Captioning %d figures", len(tasks))
-    figures = await asyncio.gather(*tasks)
-    return [f for f in figures if f is not None]
+    figures = [f for f in (t.result() for t in tasks) if f is not None]
+    logger.info("Captioned %d figures", len(figures))
+    return figures
 
 
 async def read_figures(storage: Storage, textbook: AsyncBufferedReader, out_dir: str, caption_concurrency: int = 5) -> list[FigureInfo]:
@@ -120,14 +151,14 @@ async def read_figures(storage: Storage, textbook: AsyncBufferedReader, out_dir:
 
 
 def _to_markdown(data: bytes) -> str:
-    with pymupdf.open(stream=data) as doc:
-        return pymupdf4llm.to_markdown(doc)
+    with pdfium.PdfDocument(data) as doc:
+        return "\n\n".join(_page_text(page) for page in doc)
 
 
 async def _transform(content: AsyncBufferedReader, mime: str) -> str | None:
     if mime == "application/pdf":
         await content.seek(0)
-        return await asyncio.to_thread(_to_markdown, await content.read())
+        return await _in_pdfium(_to_markdown, await content.read())
     return None
 
 
