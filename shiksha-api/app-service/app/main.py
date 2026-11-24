@@ -1,17 +1,23 @@
 import asyncio
 import logging
 import signal
-
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 
-from fastmcp import FastMCP
-from fastmcp.server.http import StarletteWithLifespan
 from app.config import settings
+from app.observability import UserIdHeaderMiddleware, configure_telemetry, flush_telemetry
+
+# Telemetry must be configured before `FastAPI` is imported (the FastAPI instrumentation patches the
+# class) and before Langfuse initialises (it attaches to the global tracer provider if one exists).
+configure_telemetry(settings)
+
+from fastapi import FastAPI  # noqa: E402
+from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+from fastapi.responses import JSONResponse  # noqa: E402
+
+from fastmcp import FastMCP  # noqa: E402
+from fastmcp.server.http import StarletteWithLifespan  # noqa: E402
 from app.routers import chat_router, chat_router_mcp, presentation_router, question_paper_router, lesson_plan_router
-from langfuse import get_client
+from langfuse import get_client  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +43,7 @@ async def lifespan(app: FastAPI):
         yield
 
     get_client().flush()
+    flush_telemetry()
 
 app = FastAPI(
     title=settings.app_name,
@@ -52,6 +59,7 @@ app = FastAPI(
 app.state.MCP_APP = mcp_app
 
 
+app.add_middleware(UserIdHeaderMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  
@@ -96,7 +104,12 @@ async def health_check():
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
-    logger.error(f"Unhandled exception on {request.method} {request.url.path}: {exc}", exc_info=exc)
+    # ServerErrorMiddleware re-raises after this handler, so the request span records the exception.
+    # `telemetry_handled` keeps the App Insights log handler from reporting it a second time.
+    logger.error(
+        "Unhandled exception on %s %s: %s", request.method, request.url.path, exc,
+        exc_info=exc, extra={"telemetry_handled": True},
+    )
     return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 

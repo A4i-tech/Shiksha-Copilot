@@ -55,8 +55,7 @@ async def main(inputData: Dict[str, Any]) -> Dict[str, Any]:
             )
         except Exception as e:
             logger.error(
-                f"Error summarizing additional context: {str(e)}. Proceeding without summarization."
-            )
+                f"Error summarizing additional context: {str(e)}. Proceeding without summarization.", exc_info=True)
 
     logger.info(f"Generating section '{section_id}' using {mode} mode")
 

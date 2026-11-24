@@ -80,7 +80,7 @@ class GPTContextSummarizer:
             return summary.strip()
 
         except Exception as e:
-            self.logger.error(f"Failed to summarize lesson plan context: {str(e)}")
+            self.logger.error(f"Failed to summarize lesson plan context: {str(e)}", exc_info=True)
             # Fallback to truncated original content
             return (
                 lesson_plan_content[:max_summary_length] + "..."

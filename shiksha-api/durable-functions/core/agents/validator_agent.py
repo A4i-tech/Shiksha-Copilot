@@ -107,7 +107,7 @@ class ValidatorAgent:
                 return validation_result
 
             except Exception as e:
-                self.logger.error(f"Error parsing validation result: {str(e)}")
+                self.logger.error(f"Error parsing validation result: {str(e)}", exc_info=True)
                 return {
                     "is_valid": False,
                     "errors": [f"Error parsing validation result: {str(e)}"],
@@ -116,7 +116,7 @@ class ValidatorAgent:
                 }
 
         except Exception as e:
-            self.logger.error(f"Error in validator agent: {str(e)}")
+            self.logger.error(f"Error in validator agent: {str(e)}", exc_info=True)
             return {
                 "is_valid": False,
                 "errors": [f"Error in validator agent: {str(e)}"],

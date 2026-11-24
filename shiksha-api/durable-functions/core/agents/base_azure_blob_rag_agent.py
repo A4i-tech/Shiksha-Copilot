@@ -103,8 +103,7 @@ class BaseAzureBlobRAGAgent(abc.ABC):
                 )
             except Exception as e:
                 self.logger.error(
-                    f"Failed to clear resources at {self._local_index_path}: {e}"
-                )
+                    f"Failed to clear resources at {self._local_index_path}: {e}", exc_info=True)
 
     async def generate(self, rag_input: RAGInput) -> Union[str, Dict]:
         """
@@ -178,5 +177,5 @@ class BaseAzureBlobRAGAgent(abc.ABC):
             return content
 
         except Exception as e:
-            self.logger.error(f"Error in RAG generation: {str(e)}")
+            self.logger.error(f"Error in RAG generation: {str(e)}", exc_info=True)
             raise

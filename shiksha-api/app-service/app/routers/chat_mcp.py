@@ -6,6 +6,7 @@ from fastmcp.exceptions import ToolError
 import logging
 import uuid
 
+from app.observability import bind_user
 from app.services.general_chat_service import GeneralChatService
 from app.services.lesson_chat_service import LessonChatService
 from app.services.lesson_edit_service import LessonEditService
@@ -47,6 +48,7 @@ def router(mcp: FastMCP):
         access to web search and video search capabilities.
         """
         user_id = str(get_user_id(context))
+        bind_user(user_id)
         try:
             general_chat_svc, _ = get_services(context)
             logger.info(f"Processing general chat request for user: {user_id}")
@@ -66,10 +68,10 @@ def router(mcp: FastMCP):
             return content.getvalue()
 
         except ValueError as e:
-            logger.error(f"Configuration error in general chat: {e}")
+            logger.exception(f"Configuration error in general chat: {e}")
             raise ToolError(f"Configuration error: {str(e)}")
         except Exception as e:
-            logger.error(f"General chat failed for user {user_id}: {e}")
+            logger.exception(f"General chat failed for user {user_id}: {e}")
             raise ToolError("Failed to process chat request")
 
 
@@ -92,6 +94,7 @@ def router(mcp: FastMCP):
             index_path=chapter_index,
             messages=[ConversationMessage(role=MessageRole.USER, message=message)]
         )
+        bind_user(request.user_id)
         try:
             _, lesson_chat_svc = get_services(context)
             logger.info(
@@ -105,10 +108,10 @@ def router(mcp: FastMCP):
             return response_content[0]
 
         except ValueError as e:
-            logger.error(f"Configuration error in lesson chat: {e}")
+            logger.exception(f"Configuration error in lesson chat: {e}")
             raise ToolError(f"Configuration error: {str(e)}")
         except Exception as e:
-            logger.error(f"Lesson chat failed for user {request.user_id}: {e}")
+            logger.exception(f"Lesson chat failed for user {request.user_id}: {e}")
             raise ToolError("Failed to process lesson chat request")
 
 
@@ -127,6 +130,7 @@ def router(mcp: FastMCP):
         teacher so they can review and apply it themselves in the lesson plan editor.
         """
         user_id = str(get_user_id(context))
+        bind_user(user_id)
         service = get_lesson_edit_service(context)
 
         try:
@@ -142,5 +146,5 @@ def router(mcp: FastMCP):
             return proposed if isinstance(proposed, str) else json.dumps(proposed, ensure_ascii=False)
 
         except Exception as e:
-            logger.error(f"Lesson section enhance failed for user {user_id}: {e}")
+            logger.exception(f"Lesson section enhance failed for user {user_id}: {e}")
             raise ToolError("Failed to process lesson section enhance request")

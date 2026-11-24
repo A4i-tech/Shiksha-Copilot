@@ -55,7 +55,7 @@ class WebhookPoster:
                     self.logger.error(
                         f"Failed to post GenStatus: {gen_status.instance_id}"
                     )
-                    self.logger.error(f"Error: {e}")
+                    self.logger.error(f"Error: {e}", exc_info=True)
                     self.log_gen_status(gen_status)
 
     @staticmethod

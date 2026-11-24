@@ -88,7 +88,7 @@ async def main(
             )
 
     except Exception as e:
-        logger.error(f"Error starting lesson plan generation: {str(e)}")
+        logger.error(f"Error starting lesson plan generation: {str(e)}", exc_info=True)
         return func.HttpResponse(
             body=json.dumps({"error": str(e)}),
             mimetype="application/json",

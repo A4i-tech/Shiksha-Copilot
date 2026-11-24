@@ -38,6 +38,11 @@ class LoggerFactory:
     _configured = False
     _root_logger = None
 
+    @staticmethod
+    def _running_under_functions_host() -> bool:
+        """True inside the Azure Functions Python worker (set by the host, and by local.settings.json)."""
+        return bool(os.environ.get("FUNCTIONS_WORKER_RUNTIME"))
+
     @classmethod
     def _configure_root_logger(cls):
         """Configure the root logger once for the entire application."""
@@ -56,19 +61,18 @@ class LoggerFactory:
         for handler in cls._root_logger.handlers[:]:
             cls._root_logger.removeHandler(handler)
 
-        # Create console handler (primary handler for Azure Functions)
-        console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.setLevel(log_level)
-
-        # Set custom formatter
-        formatter = ShikshaFormatter()
-        console_handler.setFormatter(formatter)
-
-        # Add handler to root logger
-        cls._root_logger.addHandler(console_handler)
-
-        # Prevent propagation to avoid duplicate logs in Azure Functions
-        cls._root_logger.propagate = False
+        if cls._running_under_functions_host():
+            # The worker's root handler relays records to the Functions host, which reports them to
+            # Application Insights with their real severity, category and traceback. Printing to stdout
+            # as well would only add a second, severity-less copy (everything on stdout is "Information").
+            cls._root_logger.propagate = True
+        else:
+            # Standalone use (tests, scripts): log to the console.
+            console_handler = logging.StreamHandler(sys.stdout)
+            console_handler.setLevel(log_level)
+            console_handler.setFormatter(ShikshaFormatter())
+            cls._root_logger.addHandler(console_handler)
+            cls._root_logger.propagate = False
 
         # Configure third-party loggers to reduce noise
         cls._configure_third_party_loggers()

@@ -2,7 +2,7 @@ import pathlib
 from string import Template
 
 from dotenv import load_dotenv
-from pydantic import Field, PositiveInt, field_validator
+from pydantic import AliasChoices, Field, PositiveInt, field_validator
 from pydantic_ai import Agent, InstrumentationSettings
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Any, Literal, Optional
@@ -22,6 +22,19 @@ class Settings(BaseSettings):
 
     # Logging Configuration
     log_level: str = "INFO"
+
+    # Telemetry (Azure Application Insights via OpenTelemetry).
+    # Unset connection string = telemetry disabled (local dev, tests).
+    applicationinsights_connection_string: Optional[str] = Field(default=None, alias="APPLICATIONINSIGHTS_CONNECTION_STRING")
+    # Reuses LANGFUSE_TRACING_ENVIRONMENT so prod/staging need no extra setting.
+    app_env: str = Field(default="local", validation_alias=AliasChoices("APP_ENV", "LANGFUSE_TRACING_ENVIRONMENT"))
+    otel_service_name: str = "shiksha-api"  # shows up as cloud_RoleName in App Insights
+    telemetry_sampling_ratio: float = Field(default=1.0, ge=0.0, le=1.0)
+    # Hard cap on any string span attribute sent to App Insights (defence in depth against prompt/PII leakage).
+    telemetry_max_attribute_length: PositiveInt = 256
+    # Comma-separated regexes of request paths that produce no request/dependency telemetry.
+    # Matched against the full URL, so the root path is "scheme://host/".
+    telemetry_excluded_urls: str = r"/health$,^https?://[^/]+/?$"
 
     # LLM Configuration
     openai_api_key: str = Field(min_length=1)

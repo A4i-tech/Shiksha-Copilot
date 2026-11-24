@@ -9,6 +9,7 @@ import uuid
 import weakref
 from urllib.parse import quote
 from app.config import settings
+from app.observability import bind_user
 from app.services.presentation.service import PresentationService, new_default as new_pres_svc
 from fastapi import APIRouter, Depends, FastAPI, File, Form, Header, Request, status, UploadFile, HTTPException, Query
 from fastapi.responses import Response, StreamingResponse
@@ -234,6 +235,7 @@ async def events_pending(request: Request, user_id: UserId, service: Presentatio
     """
     Subscribe to pending job counter.
     """
+    bind_user(user_id)
 
     async def stream():
         count = await service.jobs.get_pending_count(user_id)
@@ -253,6 +255,7 @@ async def events_handle(request: Request, user_id: UserId, id: uuid.UUID, servic
     """
     Subscribe to job events.
     """
+    bind_user(user_id)
 
     job = await service.jobs.get(id)
     if job is None or job.user_id not in {user_id, SYSTEM_USER_ID}:
