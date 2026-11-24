@@ -1426,5 +1426,12 @@
   "Add another": "Add another",
   "Video title": "Video title",
   "Video link": "Video link",
-  "Add video": "Add video"
+  "Add video": "Add video",
+  "Change Role": "Change Role",
+  "Bulk Role Upload": "Bulk Role Upload",
+  "Select all teachers on this page": "Select all teachers on this page",
+  "Select teacher": "Select teacher",
+  "New role": "New role",
+  "Select a role": "Select a role",
+  "Each row needs the phone number of an existing teacher and the school role name, for example Power Teacher.": "Each row needs the phone number of an existing teacher and the school role name, for example Power Teacher."
 }

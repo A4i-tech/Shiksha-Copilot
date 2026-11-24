@@ -1012,5 +1012,12 @@
   "Add another": "మరొకటి జోడించండి",
   "Video title": "వీడియో శీర్షిక",
   "Video link": "వీడియో లింక్",
-  "Add video": "వీడియో జోడించండి"
+  "Add video": "వీడియో జోడించండి",
+  "Change Role": "పాత్ర మార్చండి",
+  "Bulk Role Upload": "బల్క్ పాత్ర అప్‌లోడ్",
+  "Select all teachers on this page": "ఈ పేజీలోని ఉపాధ్యాయులందరినీ ఎంచుకోండి",
+  "Select teacher": "ఉపాధ్యాయుడిని ఎంచుకోండి",
+  "New role": "కొత్త పాత్ర",
+  "Select a role": "పాత్రను ఎంచుకోండి",
+  "Each row needs the phone number of an existing teacher and the school role name, for example Power Teacher.": "ప్రతి వరుసలో ఉన్న ఉపాధ్యాయుని ఫోన్ నంబర్ మరియు పాఠశాల పాత్ర పేరు ఉండాలి, ఉదాహరణకు Power Teacher."
 }

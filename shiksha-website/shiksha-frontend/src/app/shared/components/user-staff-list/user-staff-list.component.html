@@ -15,6 +15,17 @@
 								<span class="text-nowrap">{{'Bulk Upload' | translate}}</span>
 							</div>
 					</button>
+					<button (click)="blukUpload(true)" [hasPermission]="['role.assign']"
+							*ngIf="getType()?.type === 'user'" data-testid="bulk-role-upload-btn"
+							class="btn-outline-primary h-9 w-full sm:w-auto">
+							<span class="text-nowrap">{{'Bulk Role Upload' | translate}}</span>
+					</button>
+					<button (click)="openRoleDialog()" [hasPermission]="['role.assign']"
+							*ngIf="getType()?.type === 'user'" data-testid="change-role-btn"
+							[disabled]="!selectedIds.size"
+							class="btn-outline-primary h-9 w-full sm:w-auto">
+							<span class="text-nowrap">{{'Change Role' | translate}}</span>
+					</button>
 					<button [hasPermission]="['user.create']"
 							class="btn-primary h-9 w-full sm:w-auto" (click)="openAddUserFormComp()">
 							<div class="flex items-center justify-center gap-2">
@@ -130,7 +141,11 @@
 						<div *ngIf="!usersList || usersList.length === 0" class="text-center text-content-60 py-4 border rounded-xl">{{'No items found' | translate}}</div>
 						<div *ngFor="let item of usersList; let i = index" class="rounded-xl border p-4 bg-white shadow-sm">
 								<div class="flex items-start justify-between gap-3">
-										<div class="min-w-0">
+										<input *ngIf="getType()?.type === 'user'" [hasPermission]="['role.assign']" type="checkbox" class="mt-1 h-4 w-4 shrink-0"
+													[attr.data-testid]="'select-user-card-' + item._id"
+													[attr.aria-label]="('Select teacher' | translate) + ' ' + item.identity.name"
+													[checked]="selectedIds.has(item._id)" (change)="toggleSelected(item._id, $any($event.target).checked)">
+											<div class="min-w-0 flex-1">
 												<p class="font-semibold break-words">{{ item.identity.name | titlecase }}</p>
 												<p class="text-sm text-content-60 mt-1">{{ item.identity.phone }}</p>
 										</div>
@@ -211,15 +226,26 @@
 							<table class="table-auto min-w-[900px] w-full border mt-3 rounded-lg text-content" aria-label="User list">
 							<thead>
 									<tr class="bg-primary-60 rounded-lg border-b">
+												<th *ngIf="getType()?.type === 'user'" class="text-left p-4 rounded border-r text-sm text-content w-10">
+														<input [hasPermission]="['role.assign']" type="checkbox" class="h-4 w-4" data-testid="select-all-users"
+																[attr.aria-label]="'Select all teachers on this page' | translate"
+																[checked]="allPageSelected" (change)="toggleSelectAll($any($event.target).checked)">
+												</th>
 											<th class="text-left p-4 rounded border-r text-sm text-content" *ngFor="let header of getType()?.table_headers">{{ header | translate}}</th>
 									</tr>
 							</thead>
 							<tbody>                 
 									<tr *ngIf="!usersList || usersList.length === 0">
-											<td [attr.colspan]="getType()?.type === 'user' ? 7 : 5" class="text-center text-content-60 py-2">{{'No items found' | translate}}</td>
+											<td [attr.colspan]="getType()?.type === 'user' ? 8 : 5" class="text-center text-content-60 py-2">{{'No items found' | translate}}</td>
 									</tr>
 									<ng-container>
 									<tr *ngFor="let item of usersList; let i = index" class="border-b">
+												<td *ngIf="getType()?.type === 'user'" class="text-sm p-4 border-r w-10">
+														<input [hasPermission]="['role.assign']" type="checkbox" class="h-4 w-4"
+																[attr.data-testid]="'select-user-' + item._id"
+																[attr.aria-label]="('Select teacher' | translate) + ' ' + item.identity.name"
+																[checked]="selectedIds.has(item._id)" (change)="toggleSelected(item._id, $any($event.target).checked)">
+												</td>
 											<td class="text-sm p-4 border-r w-72 max-w-[20vw] break-all">{{ item.identity.name | titlecase }}</td>
 											<td class="text-sm p-4 border-r whitespace-nowrap w-36">{{ item.identity.phone }}</td>
 											<td class="text-sm p-4 border-r max-w-[20vw] break-all" *ngIf="getType()?.type === 'user'" >{{ item.school.name }}</td>
@@ -300,8 +326,27 @@
 			</app-modal>
 
 			<app-modal *ngIf="modalService.showBlukUploadDialog">
-					<app-upload-popup [context]="getType()?.download_file " [allowedFileTypes]="uploadFileTypes" (fileUploaded)="uploadedFile($event)" (upload)="upload($event)"></app-upload-popup>
-			</app-modal>  
+					<app-upload-popup [context]="getType()?.download_file " [allowedFileTypes]="uploadFileTypes" (fileUploaded)="uploadedFile($event)" (upload)="upload($event)"
+								data-testid="upload-popup"
+								[instructions]="roleUploadMode ? roleUploadInstructions : defaultInstructions"
+								[showDownloadTemplate]="!roleUploadMode" [showExcelTemplateDownload]="roleUploadMode"
+								(downloadExcelTemplate)="excelDownloadService.downloadTemplate('teacher_role')"></app-upload-popup>
+			</app-modal>
+
+				<app-modal *ngIf="showRoleDialog">
+						<div role="dialog" aria-modal="true" aria-labelledby="change-role-title" data-testid="change-role-dialog">
+								<h1 id="change-role-title" class="font-bold text-[20px] text-content mb-4">{{'Change Role' | translate}}</h1>
+								<label for="change-role-select" class="block text-sm text-content-60 mb-1">{{'New role' | translate}}</label>
+								<select id="change-role-select" [formControl]="roleControl" class="w-full h-10 px-3 border rounded bg-white text-content" data-testid="change-role-dropdown">
+										<option [ngValue]="null" disabled>{{'Select a role' | translate}}</option>
+										<option *ngFor="let role of userRolesDropdownOptions" [ngValue]="role._id">{{ role.name }}</option>
+								</select>
+								<div class="mt-8 flex items-center justify-end gap-2">
+										<button class="w-24 btn-outline-primary" data-testid="change-role-cancel" (click)="closeRoleDialog()">{{'Cancel' | translate}}</button>
+										<button class="btn-primary w-24" data-testid="change-role-confirm" [disabled]="!roleControl.value" (click)="confirmRoleChange()">{{'Confirm' | translate}}</button>
+								</div>
+						</div>
+				</app-modal>
 				
 
 	</div>

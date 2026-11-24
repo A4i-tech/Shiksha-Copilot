@@ -11,6 +11,7 @@ const {
 	validateUserList,
 	validateSetProfile,
 	validatePreferredLanguageUpdate,
+	validateBulkRoleChange,
 } = require("../validations/user.validation.js");
 
 const userController = new UserController();
@@ -90,6 +91,24 @@ router.delete(
 	isAuthenticated,
 	requirePermission("user.delete"),
 	asyncMiddleware(userController.delete.bind(userController))
+);
+
+router.post(
+	"/users/bulk-role",
+	isAuthenticated,
+	requirePermission("user.edit"),
+	requirePermission("role.assign"),
+	validateBulkRoleChange,
+	asyncMiddleware(userController.bulkChangeRole.bind(userController))
+);
+
+router.post(
+	"/users/bulk-role/import",
+	isAuthenticated,
+	requirePermission("user.edit"),
+	requirePermission("role.assign"),
+	excelUpload,
+	asyncMiddleware(userController.bulkChangeRoleImport.bind(userController))
 );
 
 router.post(
