@@ -45,6 +45,15 @@ def _contains(a: Rect, b: Rect) -> bool:
     return a[0] <= b[0] and a[1] <= b[1] and a[2] >= b[2] and a[3] >= b[3]
 
 
+def _visible(page: pdfium.PdfPage, rect: Rect) -> Rect:
+    # object bounds are in unrotated page space, but get_size() and render() use the rotated, cropped page
+    left, bottom, right, top = page.get_cropbox()
+    w, h = right - left, top - bottom
+    to_visible = {0: lambda x, y: (x, y), 90: lambda x, y: (y, w - x), 180: lambda x, y: (w - x, h - y), 270: lambda x, y: (h - y, x)}[page.get_rotation()]
+    (ax, ay), (bx, by) = to_visible(rect[0] - left, rect[1] - bottom), to_visible(rect[2] - left, rect[3] - bottom)
+    return min(ax, bx), min(ay, by), max(ax, bx), max(ay, by)
+
+
 def _png(image: Image.Image) -> bytes:
     image.thumbnail((MAX_FIGURE_SIDE, MAX_FIGURE_SIDE))
     buf = io.BytesIO()
@@ -56,7 +65,7 @@ def _page_figures(page: pdfium.PdfPage) -> list[bytes]:
     pw, ph = page.get_size()
     figures = []
     for img in page.get_objects([pdfium_c.FPDF_PAGEOBJ_IMAGE]):
-        x0, y0, x1, y1 = img.get_bounds()
+        x0, y0, x1, y1 = _visible(page, img.get_bounds())
         w, h = img.get_px_size()
         if x1 - x0 > pw * 0.85 or y1 - y0 > ph * 0.85 or w < 180 or h < 120:
             continue
@@ -64,7 +73,7 @@ def _page_figures(page: pdfium.PdfPage) -> list[bytes]:
 
     buf: list[Rect] = []
     for path in page.get_objects([pdfium_c.FPDF_PAGEOBJ_PATH]):
-        rect = path.get_bounds()
+        rect = _visible(page, path.get_bounds())
         w, h = rect[2] - rect[0], rect[3] - rect[1]
         if w < 180 or h < 120 or w > pw * 0.85 or h > ph * 0.85 or w * h > pw * ph * 0.7:
             continue
@@ -110,7 +119,6 @@ async def _actually_read_figures(storage: Storage, textbook: AsyncBufferedReader
     except pdfium.PdfiumError:
         return []
 
-    # No `with doc`: a cancelled executor call keeps using the page, so the document must close by refcount.
     try:
         async with asyncio.TaskGroup() as tg:
             for index in range(await _in_pdfium(len, doc)):
@@ -125,6 +133,8 @@ async def _actually_read_figures(storage: Storage, textbook: AsyncBufferedReader
         for extra in eg.exceptions[1:]:
             logger.warning("Figure task failed", exc_info=extra)
         raise eg.exceptions[0] from None
+    finally:
+        _pdfium.submit(doc.close)  # queued behind any pdfium call that a cancel left running
 
     figures = [f for f in (t.result() for t in tasks) if f is not None]
     logger.info("Captioned %d figures", len(figures))

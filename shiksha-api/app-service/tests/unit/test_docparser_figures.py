@@ -1,6 +1,8 @@
 import asyncio
+import contextlib
 import ctypes
 import io
+import threading
 
 import aiofiles
 import pypdfium2 as pdfium
@@ -54,10 +56,13 @@ def test_markdown_is_the_page_text_joined_by_blank_lines():
     assert docparser._to_markdown(make_text_pdf(["First page", "Second page"])) == "First page\n\nSecond page"
 
 
-def make_vector_pdf(rects: list[tuple[float, float, float, float]]) -> bytes:
+def make_vector_pdf(rects: list[tuple[float, float, float, float]], rotation: int = 0, cropbox: tuple[float, float, float, float] | None = None) -> bytes:
     # bottom-left origin
     doc = pdfium.PdfDocument.new()
     page = doc.new_page(612, 792)
+    page.set_rotation(rotation)
+    if cropbox:
+        page.set_cropbox(*cropbox)
     for x, y, w, h in rects:
         rect = pdfium_c.FPDFPageObj_CreateNewRect(x, y, w, h)
         pdfium_c.FPDFPageObj_SetFillColor(rect, 200, 0, 0, 255)
@@ -76,6 +81,16 @@ def make_vector_pdf(rects: list[tuple[float, float, float, float]]) -> bytes:
 def test_page_figures_keeps_only_the_outer_of_nested_vector_boxes(rects):
     [png] = docparser._page_figures(pdfium.PdfDocument(make_vector_pdf(rects))[0])
     assert Image.open(io.BytesIO(png)).size == (600, 400)
+
+
+@pytest.mark.parametrize("rotation", [0, 90, 180, 270])
+@pytest.mark.parametrize("cropbox", [None, (50, 60, 562, 732)])
+def test_page_figures_crops_the_red_box_on_rotated_and_cropped_pages(rotation, cropbox):
+    pdf = pdfium.PdfDocument(make_vector_pdf([(100, 300, 300, 200)], rotation, cropbox))
+    [png] = docparser._page_figures(pdf[0])
+    image = Image.open(io.BytesIO(png)).convert("RGB")
+    assert image.size == ((600, 400) if rotation in (0, 180) else (400, 600))
+    assert {image.getpixel((x, y)) for x in (2, image.width - 3) for y in (2, image.height - 3)} == {(200, 0, 0)}
 
 
 @pytest.mark.parametrize("rect", [(10, 10, 560, 700), (10, 10, 510, 670)])
@@ -157,3 +172,20 @@ async def test_an_existing_figure_is_not_captioned_again(tmp_path, fake_caption)
     pdf = make_image_pdf([(300, 200, (7, 7, 7))])
     assert len(await read(tmp_path, pdf)) == 1
     assert await read(tmp_path, pdf) == []
+
+
+@pytest.mark.parametrize("fails", [False, True])
+async def test_the_document_closes_on_the_pdfium_thread(tmp_path, monkeypatch, fake_caption, fails):
+    closed_on = []
+    close = pdfium.PdfDocument.close
+    monkeypatch.setattr(pdfium.PdfDocument, "close", lambda self: closed_on.append(threading.current_thread()) or close(self))
+
+    async def boom(png, name, page_text):
+        raise RuntimeError("caption failed")
+
+    if fails:
+        monkeypatch.setattr(docparser, "_caption", boom)
+    with pytest.raises(RuntimeError) if fails else contextlib.nullcontext():
+        await read(tmp_path, make_image_pdf([(300, 200, (3, 3, 3))]))
+    pdfium_thread = await docparser._in_pdfium(threading.current_thread)
+    assert closed_on == [pdfium_thread]

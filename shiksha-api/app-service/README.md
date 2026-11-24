@@ -198,6 +198,7 @@ Settings:
 - `PRES_STALL_SECONDS`: time without a job write before the worker stops a silent job. Default 900. A step with no write for 5 minutes was killed, so slow steps need more time.
 - `PRES_SSE_POLL_SECONDS`: time between event stream checks. Default 2. Each open event stream queries MongoDB once per interval.
 - `PRES_RECONCILE_SECONDS`: time between checks for jobs that need a message or a final error. Default 30.
+- `PRES_MAX_FIGURES`: most figures the worker takes from one document. The worker stops reading pages after this number. Default 100.
 
 Set `PRES_MONGODB_URL`, `PRES_STORAGE_FILESYSTEM` and `PRES_STORAGE_OPTIONS` to the same values for the API and the worker. In a deployment, use blob storage. A local disk is not shared between pods.
 Give the worker its own memory limit. A worker out-of-memory kill does not stop the API.
