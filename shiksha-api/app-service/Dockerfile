@@ -57,4 +57,4 @@ USER appuser
 
 EXPOSE 5000
 
-CMD ["sh", "-c", "python -m app.main --host 0.0.0.0 --port ${PORT:-5000}"]
+CMD ["sh", "-c", "case \"$SHIKSHA_ROLE\" in worker|presentation-worker) exec python -m app.worker;; *) exec python -m app.main --host 0.0.0.0 --port ${PORT:-5000};; esac"]
