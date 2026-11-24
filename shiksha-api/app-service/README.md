@@ -188,7 +188,7 @@ The stream keeps messages for 7 days and stores at most 512 MiB. The NATS server
 
 Settings:
 
-- `NATS_URL`: address of the NATS server. Default `nats://localhost:4222`.
+- `NATS_URL`: address of the NATS server. Use a comma-separated list for several servers. Default `nats://localhost:4222`.
 - `NATS_CREDS`: path to a NATS credentials file. Default none. Deployed workers set `NATS_CREDS`, so the `nkeys` extra is required.
 - `NATS_REPLICAS`: number of stream replicas. Default 1.
 - `SHIKSHA_ROLE`: `api`, `worker` or `all`.

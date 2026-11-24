@@ -387,6 +387,15 @@ async def test_nats_connect_refuses_a_server_older_than_2_12(monkeypatch):
     nc.close.assert_awaited()
 
 
+async def test_nats_connect_splits_a_comma_separated_url(monkeypatch):
+    nc = SimpleNamespace(connected_server_version=SimpleNamespace(major=2, minor=10), close=AsyncMock())
+    connect = AsyncMock(return_value=nc)
+    monkeypatch.setattr("app.messaging.nats_broker.nats.connect", connect)
+    with pytest.raises(RuntimeError):
+        await NatsBroker("nats://a:4222, nats://b:4222", queues=["q"]).connect()
+    assert connect.call_args.args[0] == ["nats://a:4222", "nats://b:4222"]
+
+
 @pytest.mark.parametrize("retention, schedules, update_fails, match", [
     (RetentionPolicy.LIMITS, True, False, "retention"),
     (RetentionPolicy.WORK_QUEUE, False, True, "allow_msg_schedules"),

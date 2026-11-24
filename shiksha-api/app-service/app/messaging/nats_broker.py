@@ -70,8 +70,9 @@ class NatsBroker:
         return f"{self.durable}_{queue}".replace(".", "_")
 
     async def connect(self) -> None:
+        servers = [s.strip() for s in self.url.split(",") if s.strip()]
         self._nc = await nats.connect(
-            self.url, user_credentials=self.creds, max_reconnect_attempts=-1
+            servers, user_credentials=self.creds, max_reconnect_attempts=-1
         )
         try:
             version = self._nc.connected_server_version
