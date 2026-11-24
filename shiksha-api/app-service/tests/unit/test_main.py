@@ -67,6 +67,10 @@ class TestAppConfiguration:
             parse_origins("*")
         with pytest.raises(ValueError, match="https://A.com"):
             parse_origins("https://A.com")
+        with pytest.raises(ValueError, match="https://u@a.com"):
+            parse_origins("https://u@a.com")
+        with pytest.raises(ValueError, match="https://a.com:"):
+            parse_origins("https://a.com:")
 
     def test_app_includes_chat_router(self):
         """Test that chat router is included."""
