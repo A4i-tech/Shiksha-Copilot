@@ -32,9 +32,9 @@
 
     <div class="mt-10" role="region" [attr.aria-label]="'Recently Generated/Modified Plans' | translate">
       <div class="flex justify-between">
-        <h3 class="text-xl md:text-2xl font-medium text-content-100" data-testid="recent-plans-section-header">
+        <h2 class="text-xl md:text-2xl font-medium text-content-100" data-testid="recent-plans-section-header">
           {{ "Recently Generated/Modified Plans" | translate }}
-        </h3>
+        </h2>
         <p
           class="text-sm font-medium text-primary cursor-pointer"
           routerLink="/content-generation"
@@ -60,10 +60,10 @@
           </div>
           <div class="px-4 pt-3 pb-4 flex flex-col flex-1 justify-between">
             <div>
-              <h4 class="text-base text-content-70">
+              <h3 class="text-base text-content-70">
                 <span class="font-bold text-content-100">{{ "Class" | translate }} {{ plan.class }}</span>
                 {{ utiltyService.getSubjectDisplayName(plan.subjects, plan.board) }}
-              </h4>
+              </h3>
               <p class="mt-1 text-xs font-normal text-content-70 line-clamp-2">
                 {{ "Topic {{number}}:" | translate : { number: plan.chapter.orderNumber } }} {{ plan.chapter.topics }}
               </p>
@@ -84,9 +84,9 @@
           <div class="rounded-full bg-warn-50 p-4 my-8">
             <img src="assets/icons/no-file.svg" alt="" />
           </div>
-          <h4 class="text-base text-center font-medium">
+          <h3 class="text-base text-center font-medium">
             {{ "No plans found" | translate }}
-          </h4>
+          </h3>
           <button
           routerLink="/content-generation"
             class="mt-7 w-full py-2 rounded bg-warn"
