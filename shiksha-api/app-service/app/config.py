@@ -1,5 +1,6 @@
 import pathlib
 from string import Template
+from urllib.parse import urlsplit
 
 from dotenv import load_dotenv
 from pydantic import Field, PositiveInt, field_validator
@@ -8,6 +9,22 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Any, Literal, Optional
 
 import yaml
+
+
+def parse_origins(raw: str) -> list[str]:
+    origins = []
+    for origin in raw.split(","):
+        origin = origin.strip()
+        if not origin:
+            continue
+        parsed = urlsplit(origin)
+        normalized = f"{parsed.scheme}://{parsed.netloc}"
+        if parsed.scheme not in ("http", "https") or not parsed.netloc or origin != normalized.lower() or "@" in parsed.netloc or parsed.netloc.endswith(":"):
+            raise ValueError(
+                f"invalid ALLOWED_ORIGINS entry {origin!r}: use lowercase http(s)://host[:port] with no path, query, or trailing slash. Fix ALLOWED_ORIGINS and restart."
+            )
+        origins.append(origin)
+    return origins
 
 
 class Settings(BaseSettings):
@@ -19,6 +36,7 @@ class Settings(BaseSettings):
     debug: bool = False
     host: str = "0.0.0.0"
     port: int = 8000
+    allowed_origins: str = "http://localhost:4200"  # exact port, unlike shiksha-backend's localhost:<port> regex
 
     # Logging Configuration
     log_level: str = "INFO"

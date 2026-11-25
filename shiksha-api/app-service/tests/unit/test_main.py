@@ -1,5 +1,7 @@
+import pytest
 from fastapi.testclient import TestClient
 from app.main import app
+from app.config import parse_origins
 
 
 client = TestClient(app)
@@ -46,6 +48,29 @@ class TestAppConfiguration:
 
         # Check middleware is present
         assert len(app.user_middleware) > 0
+
+    def test_parse_origins_strips_spaces_and_drops_empties(self):
+        assert parse_origins("https://a.com, https://b.com,") == [
+            "https://a.com",
+            "https://b.com",
+        ]
+        assert parse_origins("") == []
+
+    def test_parse_origins_rejects_malformed_entry(self):
+        with pytest.raises(ValueError, match="not-a-url"):
+            parse_origins("not-a-url")
+
+    def test_parse_origins_rejects_non_exact_origin(self):
+        with pytest.raises(ValueError, match="https://a.com/"):
+            parse_origins("https://a.com/")
+        with pytest.raises(ValueError, match=r"\*"):
+            parse_origins("*")
+        with pytest.raises(ValueError, match="https://A.com"):
+            parse_origins("https://A.com")
+        with pytest.raises(ValueError, match="https://u@a.com"):
+            parse_origins("https://u@a.com")
+        with pytest.raises(ValueError, match="https://a.com:"):
+            parse_origins("https://a.com:")
 
     def test_app_includes_chat_router(self):
         """Test that chat router is included."""
