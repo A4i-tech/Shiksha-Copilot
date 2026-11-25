@@ -18,6 +18,7 @@ def _settings(**overrides):
         telemetry_sampling_ratio=1.0,
         telemetry_max_attribute_length=256,
         telemetry_excluded_urls="/health$",
+        log_level="info",
     )
     base.update(overrides)
     return SimpleNamespace(**base)
@@ -55,6 +56,9 @@ def test_configures_once_with_service_identity():
     assert os.environ.get("OTEL_TRACES_EXPORTER") != "none"  # restored afterwards
     assert kwargs["enable_live_metrics"] is False
     assert kwargs["logger_name"] == "app"
+    assert [type(p).__name__ for p in kwargs["log_record_processors"]] == ["RedactingLogRecordProcessor"]
+    assert logging.getLogger("app").level == logging.INFO  # INFO context must reach App Insights
+    assert "169.254.169.254" in os.environ["OTEL_PYTHON_REQUESTS_EXCLUDED_URLS"]
     attrs = kwargs["resource"].attributes
     assert attrs["service.name"] == "shiksha-api"
     assert attrs["service.version"] == "sha-abc"

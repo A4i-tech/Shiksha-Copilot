@@ -70,6 +70,29 @@ class UserSpanProcessor(SpanProcessor):
         return True
 
 
+class EnvironmentSpanProcessor(SpanProcessor):
+    """Stamps ``deployment.environment`` on every span.
+
+    Resource attributes are not exported as App Insights custom dimensions, and staging and prod
+    share one component, so without this the environment cannot be filtered on.
+    """
+
+    def __init__(self, environment: str) -> None:
+        self._environment = environment
+
+    def on_start(self, span: Span, parent_context: Optional[Context] = None) -> None:
+        span.set_attribute("deployment.environment", self._environment)
+
+    def on_end(self, span: ReadableSpan) -> None:
+        pass
+
+    def shutdown(self) -> None:
+        pass
+
+    def force_flush(self, timeout_millis: int = 30_000) -> bool:
+        return True
+
+
 class UserIdHeaderMiddleware:
     """Pure ASGI middleware (safe for SSE/streaming) that binds ``X-User-ID`` to the request span."""
 

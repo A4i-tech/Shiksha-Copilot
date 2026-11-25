@@ -25,14 +25,15 @@ from opentelemetry.sdk.resources import (
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
-from app.observability.context import UserSpanProcessor
-from app.observability.scrub import ScrubbingSpanExporter
+from app.observability.context import EnvironmentSpanProcessor, UserSpanProcessor
+from app.observability.scrub import RedactingLogRecordProcessor, ScrubbingSpanExporter
 
 logger = logging.getLogger(__name__)
 
 APP_LOGGER_NAME = "app"
 _MAX_LOG_MESSAGE_LENGTH = 4_000
-_DISTRO_CONFIG_HOST = "settings.sdk.monitor.azure.com"
+# Hosts that the Azure distro itself calls (remote config, VM metadata probe); never worth telemetry.
+_DISTRO_INTERNAL_HOSTS = "settings.sdk.monitor.azure.com,169.254.169.254"
 
 _configured = False
 
@@ -70,6 +71,7 @@ def _setup_tracing(settings: Any, resource: Resource) -> None:
 
     # NOTE: Langfuse consults this sampler too; a ratio below 1.0 also drops LLM traces from Langfuse.
     provider = TracerProvider(sampler=ApplicationInsightsSampler(settings.telemetry_sampling_ratio), resource=resource)
+    provider.add_span_processor(EnvironmentSpanProcessor(settings.app_env))
     provider.add_span_processor(UserSpanProcessor())
     exporter = AzureMonitorTraceExporter(connection_string=settings.applicationinsights_connection_string)
     provider.add_span_processor(BatchSpanProcessor(ScrubbingSpanExporter(exporter, settings.telemetry_max_attribute_length)))
@@ -100,6 +102,7 @@ def _configure_distro_without_tracing(settings: Any, resource: Resource) -> None
             resource=resource,
             enable_live_metrics=False,
             logger_name=APP_LOGGER_NAME,
+            log_record_processors=[RedactingLogRecordProcessor()],
         )
     finally:
         if previous is None:
@@ -131,15 +134,18 @@ def configure_telemetry(settings: Any) -> bool:
 
     try:
         os.environ.setdefault("OTEL_PYTHON_FASTAPI_EXCLUDED_URLS", settings.telemetry_excluded_urls)
-        # The distro polls this host for remote config; don't turn that into dependency telemetry.
-        os.environ.setdefault("OTEL_PYTHON_REQUESTS_EXCLUDED_URLS", _DISTRO_CONFIG_HOST)
-        os.environ.setdefault("OTEL_PYTHON_URLLIB3_EXCLUDED_URLS", _DISTRO_CONFIG_HOST)
+        # The distro's own calls (remote config, VM metadata probe) must not show up as dependencies.
+        os.environ.setdefault("OTEL_PYTHON_REQUESTS_EXCLUDED_URLS", _DISTRO_INTERNAL_HOSTS)
+        os.environ.setdefault("OTEL_PYTHON_URLLIB3_EXCLUDED_URLS", _DISTRO_INTERNAL_HOSTS)
         resource = _build_resource(settings)
         _setup_tracing(settings, resource)
         _configure_distro_without_tracing(settings, resource)
         for handler in logging.getLogger(APP_LOGGER_NAME).handlers:
             if type(handler).__name__ == "LoggingHandler":
                 handler.addFilter(_AppLogFilter())
+        # Without an explicit level the app logger inherits the root's WARNING, so INFO context
+        # ("Processing ... for user ...") never reached App Insights.
+        logging.getLogger(APP_LOGGER_NAME).setLevel(settings.log_level.upper())
         _instrument_extra_libraries()
     except Exception:
         logger.exception("Failed to configure Application Insights; continuing without it")
