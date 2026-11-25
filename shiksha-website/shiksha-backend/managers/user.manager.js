@@ -20,7 +20,7 @@ const School = require("../models/school.model");
 const User = require("../models/user.model");
 const { bulkUploadSchema } = require("../validations/user.validation");
 const { getRolePermissions, getPermission, schoolDependency } = require("../helper/permission.helper");
-const { dependencyMatches, assertCanAssign, assignmentDependencyFilter, hasAssignmentScope, isDependencyAllowed, isResourceAllowed, scopeFilter, permissionScopeFilter, intersectFilters } = require("../helper/scope.helper");
+const { dependencyMatches, assertCanAssign, assertCanGrant, assignmentDependencyFilter, hasAssignmentScope, isDependencyAllowed, isResourceAllowed, scopeFilter, permissionScopeFilter, intersectFilters } = require("../helper/scope.helper");
 const { ORGANISATION_SCOPE_TYPES } = require("../config/role.scope");
 const logger = require("../config/loggers");
 const AuditLog = require("../models/audit.log.model");
@@ -35,6 +35,7 @@ async function prepareAssignments(input, actor, current, teacher, permission) {
   const currentIds = new Set(current.map((assignment) => String(assignment._id)));
   const grants = getRolePermissions(actor.roles);
   const superuser = actor.roles.some((assignment) => !assignment.role.isDeleted && assignment.role.isSuperUser);
+  const delegate = Boolean(getPermission(grants, "role.delegate"));
   const seen = new Set();
   const assignments = [];
   let school;
@@ -45,7 +46,7 @@ async function prepareAssignments(input, actor, current, teacher, permission) {
     const unchanged = existing && String(existing.role._id) === assignment.roleId
       && (["GLOBAL", "UNBOUND"].includes(role.scopeType) ? assignment.dep == null : dependencyMatches(role.scopeType, existing.dep, assignment.dep));
     if (superuser && role.scopeType === "GLOBAL" && assignment.dep) throw new AppError("A role with GLOBAL scope cannot have a school or other dependency. Clear the dependency and save again.", 400);
-    const dep = unchanged ? existing.dep : superuser && role.scopeType === "GLOBAL" ? null : await assertCanAssign(grants, role, assignment.dep, permission);
+    const dep = unchanged ? existing.dep : superuser && role.scopeType === "GLOBAL" ? null : await (superuser || delegate ? assertCanAssign : assertCanGrant)(grants, role, assignment.dep, permission);
     const key = `${assignment.roleId}:${JSON.stringify(dep)}`;
     if (seen.has(key)) throw new AppError("This user already has that role at that scope. Remove the duplicate and save again.", 409);
     seen.add(key);
@@ -59,6 +60,8 @@ async function prepareAssignments(input, actor, current, teacher, permission) {
   }
   return { assignments, school };
 }
+
+const NOT_IN_SCOPE = "No user in your scope matches this entry. Check the phone number and try again.";
 
 async function canAccessUser(grants, permissions, user) {
   if (user.profiles.teacher) {
@@ -137,13 +140,17 @@ class UserManager extends BaseManager {
     if (await Role.countDocuments({ _id: { $in: roleIds }, scopeType: "SCHOOL", isDeleted: false }) !== roleIds.length) {
       throw new AppError("Pick a school-level role and try again.", 400);
     }
+    const grants = getRolePermissions(actor.roles);
+    const superuser = actor.roles.some((assignment) => !assignment.role.isDeleted && assignment.role.isSuperUser);
     const affectedIds = [];
     const failed = [];
     for (const { userId, roleId, row } of pairs) {
       try {
         const user = await this.dao.getById(userId);
-        if (!user?.profiles.teacher || user.roles.length !== 1) throw new AppError("This user is not a teacher with one school role. Change the role on the user page instead.", 400);
+        if (!user || !superuser && !await canManageUser(grants, "user.edit", user)) throw new AppError(NOT_IN_SCOPE, 404);
+        if (!user.profiles.teacher || user.roles.length !== 1) throw new AppError("This user is not a teacher with one school role. Change the role on the user page instead.", 400);
         const [assignment] = user.roles;
+        if (String(assignment.role._id) === roleId) throw new AppError("This user already has this role. No change was made.", 400);
         const result = await this.update(userId, { roles: [{ _id: String(assignment._id), roleId, dep: String(assignment.dep) }] }, actor);
         if (!result.success) throw new AppError(result.message, 400);
         affectedIds.push(user._id);
@@ -171,10 +178,11 @@ class UserManager extends BaseManager {
     const headers = worksheet.getRow(1).values.slice(1).map((header) => header?.toString().toLowerCase());
     if (headers[0] !== "phone" || headers[1] !== "role") throw new AppError("Invalid template: Column headers should be 'phone' and 'role'. Download the template and try again.", 400);
 
+    if (worksheet.actualRowCount - 1 > 500) throw new AppError("The file has more than 500 rows. Split it into files of 500 rows or fewer and try again.", 400);
     const rows = [];
     worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
       if (rowNumber === 1) return;
-      const phone = row.getCell(1).value?.toString().trim();
+      const phone = row.getCell(1).value?.toString().replace(/\s+/g, "").replace(/^\+?91(?=\d{10}$)/, "");
       const role = row.getCell(2).value?.toString().trim();
       if (phone || role) rows.push({ row: rowNumber, phone, role });
     });
@@ -193,7 +201,7 @@ class UserManager extends BaseManager {
       }
       const found = roleByName.get(role.toLowerCase());
       const user = userByPhone.get(phone);
-      const message = !found ? `Unknown school role '${role}'` : !user ? `No user with phone ${phone}` : seen.has(phone) ? `Duplicate phone ${phone} in the file` : null;
+      const message = !found ? `Unknown school role '${role}'` : !user ? NOT_IN_SCOPE : seen.has(phone) ? `Duplicate phone ${phone} in the file` : null;
       if (message) {
         errors.push({ row, message });
         continue;

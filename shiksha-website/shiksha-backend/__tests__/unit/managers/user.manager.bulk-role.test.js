@@ -13,7 +13,8 @@ jest.mock("../../../models/user.model");
 jest.mock("../../../helper/excel.export.helper", () => jest.fn().mockResolvedValue("https://errors/log.xlsx"));
 jest.mock("../../../models/audit.log.model");
 
-const actor = { _id: "actor", identity: { name: "Admin" } };
+const actor = { _id: "actor", identity: { name: "Admin" }, roles: [{ role: { isSuperUser: true } }] };
+const scopedActor = { ...actor, roles: [{ role: { scopeType: "SCHOOL", permissions: [] }, dep: "other" }] };
 const teacher = (id) => ({ _id: id, profiles: { teacher: {} }, roles: [{ _id: `a${id}`, role: { _id: "std" }, dep: `school${id}` }] });
 
 describe("UserManager.bulkChangeRole", () => {
@@ -66,6 +67,21 @@ describe("UserManager.bulkChangeRole", () => {
     const result = await manager.bulkChangeRole([{ userId: "u1", roleId: "pwr" }], actor);
     expect(result.failed).toEqual([expect.objectContaining({ userId: "u1", message: expect.not.stringContaining("db down") })]);
     expect(AuditLog.create).toHaveBeenCalledWith(expect.objectContaining({ status: "failure" }));
+  });
+
+  it("gives an out-of-scope user and a missing user the same message", async () => {
+    dao.getById.mockResolvedValueOnce(teacher("u1")).mockResolvedValueOnce(null);
+    const result = await manager.bulkChangeRole([{ userId: "u1", roleId: "pwr", row: 2 }, { userId: "gone", roleId: "pwr", row: 3 }], scopedActor);
+    expect(manager.update).not.toHaveBeenCalled();
+    expect(result.failed.map((failure) => failure.message)).toEqual([expect.stringContaining("No user in your scope"), expect.stringContaining("No user in your scope")]);
+    expect(result.failed[0].message).toBe(result.failed[1].message);
+  });
+
+  it("does not count a user who already has the role as updated", async () => {
+    dao.getById.mockResolvedValue(teacher("u1"));
+    const result = await manager.bulkChangeRole([{ userId: "u1", roleId: "std", row: 2 }], actor);
+    expect(manager.update).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ updated: 0, failed: [expect.objectContaining({ row: 2 })] });
   });
 
   it("accepts exactly 500 users", async () => {
@@ -141,5 +157,19 @@ describe("UserManager.bulkChangeRoleImport", () => {
     expect(manager.bulkChangeRole).toHaveBeenCalledWith([{ row: 2, userId: "u1", roleId: "pwr" }], actor);
     expect(result).toMatchObject({ success: true, errorUrl: "https://errors/log.xlsx", message: "Role change completed: 1 updated, 3 failed." });
     expect(AuditLog.findByIdAndUpdate).toHaveBeenCalledWith("audit", { logUrl: "https://errors/log.xlsx" });
+  });
+
+  it("accepts a phone typed with +91 and spaces", async () => {
+    const file = await sheet("teacher-role", [["phone", "role"], ["+91 98765 43210", "Power Teacher"]]);
+    await manager.bulkChangeRoleImport(file, actor);
+    expect(manager.bulkChangeRole).toHaveBeenCalledWith([{ row: 2, userId: "u1", roleId: "pwr" }], actor);
+  });
+
+  it("rejects a file with more than 500 rows before any lookup", async () => {
+    const rows = Array.from({ length: 501 }, (_, i) => [`98765${String(i).padStart(5, "0")}`, "Power Teacher"]);
+    const file = await sheet("teacher-role", [["phone", "role"], ...rows]);
+    User.find.mockClear();
+    await expect(manager.bulkChangeRoleImport(file, actor)).rejects.toMatchObject({ statusCode: 400 });
+    expect(User.find).not.toHaveBeenCalled();
   });
 });
