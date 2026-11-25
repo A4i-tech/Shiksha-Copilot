@@ -7,11 +7,11 @@
       (click)="backNavigation()"
     />
     <h1 class="text-2xl md:text-[30px] md:leading-[48px] font-bold text-content">
-      Content management
+      {{ 'Content management' | translate }}
     </h1>
   </div>
 
-  <nav class="flex flex-wrap gap-2 mt-4" aria-label="Content type">
+  <nav class="flex flex-wrap gap-2 mt-4" [attr.aria-label]="'Content type' | translate">
     <a
       *ngFor="let entity of entities"
       [routerLink]="['/content-management', entity.key]"
@@ -35,7 +35,7 @@
               id="content-search"
               type="text"
               class="appearance-none border border-content-50 rounded py-2 px-3 text-content leading-tight focus:outline-none bg-surface-muted h-full w-full"
-              [placeholder]="'Search ' + config.label.toLowerCase()"
+              [placeholder]="('Search' | translate) + ' ' + config.label.toLowerCase()"
               [ngModel]="searchText"
               (ngModelChange)="onSearch($event)"
               name="search"
@@ -53,7 +53,7 @@
           >
             <div class="flex items-center justify-center gap-2">
               <img src="assets/icons/upload.svg" alt="" />
-              <span class="text-nowrap">Bulk Upload</span>
+              <span class="text-nowrap">{{ 'Bulk Upload' | translate }}</span>
             </div>
           </button>
 
@@ -64,7 +64,7 @@
           >
             <div class="flex items-center justify-center gap-2">
               <img src="assets/icons/add.svg" alt="" />
-              <span class="text-nowrap">Add {{ config.singular.toLowerCase() }}</span>
+              <span class="text-nowrap">{{ 'Add' | translate }} {{ config.singular.toLowerCase() }}</span>
             </div>
           </a>
 
@@ -88,7 +88,7 @@
           >
             <div class="flex items-center justify-center gap-2">
               <img src="assets/icons/upload_light.svg" alt="" />
-              <span class="text-nowrap">Export selected ({{ selectedIds.size }})</span>
+              <span class="text-nowrap">{{ 'Export selected' | translate }} ({{ selectedIds.size }})</span>
             </div>
           </button>
         </div>
@@ -97,7 +97,7 @@
 
     <div class="mt-7 grid gap-3 grid-cols-1 sm:grid-cols-2 xl:grid-cols-7 mb-2 md:mb-4">
       <div class="w-full min-w-0">
-        <label class="form-control-label" for="content-state">Records</label>
+        <label class="form-control-label" for="content-state">{{ 'Records' | translate }}</label>
         <select
           id="content-state"
           class="form-control"
@@ -105,10 +105,10 @@
           (ngModelChange)="onRecordStateChange($event)"
           name="recordState"
         >
-          <option value="0">Active</option>
-          <option value="3">Draft</option>
-          <option value="4">Ready for review</option>
-          <option value="2">Deleted</option>
+          <option value="0">{{ 'Active' | translate }}</option>
+          <option value="3">{{ 'Draft' | translate }}</option>
+          <option value="4">{{ 'Ready for review' | translate }}</option>
+          <option value="2">{{ 'Deleted' | translate }}</option>
         </select>
       </div>
 
@@ -201,25 +201,25 @@
     </div>
 
     <p *ngIf="isUploading" class="py-2 text-sm text-content">
-      The check of {{ uploadFileName }} runs...
+      {{ 'The check of' | translate }} {{ uploadFileName }} {{ 'runs...' | translate }}
     </p>
 
-    <p *ngIf="isLoading" class="py-4 text-content-60">Loading records...</p>
+    <p *ngIf="isLoading" class="py-4 text-content-60">{{ 'Loading records...' | translate }}</p>
 
     <ng-container *ngIf="!isLoading">
       <div class="space-y-4 md:hidden">
         <div *ngIf="!listData.length" class="text-center text-content-60 py-4 border rounded-xl">
-          No records found.
+          {{ 'No records found.' | translate }}
         </div>
         <div *ngFor="let record of listData; let i = index" class="rounded-xl border p-4 bg-white shadow-sm">
           <label class="flex items-center gap-2 text-sm text-content-60">
             <input
               type="checkbox"
-              [attr.aria-label]="'Select this ' + config.singular.toLowerCase()"
+              [attr.aria-label]="('Select this' | translate) + ' ' + config.singular.toLowerCase()"
               [checked]="selectedIds.has(record._id)"
               (change)="toggleSelect(record._id, $any($event.target).checked)"
             />
-            <span>Select</span>
+            <span>{{ 'Select' | translate }}</span>
           </label>
 
           <div class="mt-3 space-y-3 text-sm">
@@ -255,16 +255,16 @@
       </div>
 
       <div class="hidden md:block w-full overflow-x-auto">
-        <table class="table-auto min-w-[900px] w-full border mt-3 rounded-lg text-content" aria-label="content-list">
+        <table class="table-auto min-w-[900px] w-full border mt-3 rounded-lg text-content" [attr.aria-label]="'Content list' | translate">
           <caption class="sr-only">
-            {{ config.label }} available to the admin
+            {{ config.label }} {{ 'available to the admin' | translate }}
           </caption>
           <thead>
             <tr class="bg-primary-60 rounded-lg border-b">
               <th scope="col" class="text-left p-4 rounded border-r text-sm text-content">
                 <input
                   type="checkbox"
-                  [attr.aria-label]="'Select every ' + config.label.toLowerCase() + ' on this page'"
+                  [attr.aria-label]="('Select every' | translate) + ' ' + config.label.toLowerCase() + ' ' + ('on this page' | translate)"
                   [checked]="allSelected"
                   (change)="toggleSelectAll($any($event.target).checked)"
                 />
@@ -272,7 +272,7 @@
               <th scope="col" class="text-left p-4 border-r text-sm text-content" *ngFor="let column of config.columns">
                 {{ column.label | translate }}
               </th>
-              <th scope="col" class="text-left p-4 text-sm text-content">Actions</th>
+              <th scope="col" class="text-left p-4 text-sm text-content">{{ 'Actions' | translate }}</th>
             </tr>
           </thead>
           <tbody>
@@ -280,7 +280,7 @@
               <td class="p-4 border-r align-top">
                 <input
                   type="checkbox"
-                  [attr.aria-label]="'Select this ' + config.singular.toLowerCase()"
+                  [attr.aria-label]="('Select this' | translate) + ' ' + config.singular.toLowerCase()"
                   [checked]="selectedIds.has(record._id)"
                   (change)="toggleSelect(record._id, $any($event.target).checked)"
                 />
@@ -317,7 +317,7 @@
             </tr>
             <tr *ngIf="!listData.length">
               <td class="text-center text-content-60 py-2" [attr.colspan]="config.columns.length + 2">
-                No records found.
+                {{ 'No records found.' | translate }}
               </td>
             </tr>
           </tbody>
@@ -335,7 +335,7 @@
       >
         <div class="flex items-center">
           <img class="ms-2 me-3 w-5" src="assets/icons/edit.svg" alt="" />
-          <span>{{ recordState === '3' ? 'Edit' : 'View' }}</span>
+          <span>{{ (recordState === '3' ? 'Edit' : 'View') | translate }}</span>
         </div>
       </a>
     </li>
@@ -343,7 +343,7 @@
       <button type="button" class="block w-full h-full text-left px-4 py-2 text-sm text-content" role="menuitem" (click)="exportRecord(record)">
         <div class="flex items-center">
           <img class="ms-2 me-3 w-5" src="assets/icons/download.svg" alt="" />
-          <span>Export</span>
+          <span>{{ 'Export' | translate }}</span>
         </div>
       </button>
     </li>
@@ -367,7 +367,7 @@
       <button type="button" class="block w-full h-full text-left px-4 py-2 text-sm text-content" role="menuitem" (click)="openConfirm('approve', record)">
         <div class="flex items-center">
           <img class="ms-2 me-3 w-5 invert" src="assets/icons/check.svg" alt="" />
-          <span>Approve</span>
+          <span>{{ 'Approve' | translate }}</span>
         </div>
       </button>
     </li>
@@ -383,7 +383,7 @@
       <button type="button" class="block w-full h-full text-left px-4 py-2 text-sm text-content" role="menuitem" (click)="openConfirm('sendToDraft', record)">
         <div class="flex items-center">
           <img class="ms-2 me-3 w-5" src="assets/icons/back-arrow.svg" alt="" />
-          <span>Send back to draft</span>
+          <span>{{ 'Send back to draft' | translate }}</span>
         </div>
       </button>
     </li>
@@ -391,7 +391,7 @@
       <button type="button" class="block w-full h-full text-left px-4 py-2 text-sm text-content" role="menuitem" (click)="openConfirm('restore', record)">
         <div class="flex items-center">
           <img class="ms-2 me-3 w-5" src="assets/icons/switch-on.svg" alt="" />
-          <span class="text-success">Restore</span>
+          <span class="text-success">{{ 'Restore' | translate }}</span>
         </div>
       </button>
     </li>
@@ -463,7 +463,7 @@
     <app-upload-popup
       [allowedFileTypes]="uploadFileTypes"
       [instructions]="uploadInstructions"
-      [fileHint]="'File supported .json file, up to 5MB in size'"
+      [fileHint]="'File supported .json file, up to 5MB in size' | translate"
       [showDownloadTemplate]="false"
       [showSchemaDownload]="true"
       [showSampleDownload]="true"
@@ -478,29 +478,29 @@
 
   <app-modal *ngIf="showUploadReport">
     <h2 class="text-lg font-semibold mb-2 text-content" id="modal-title">
-      Upload report of {{ uploadFileName }}
+      {{ 'Upload report of' | translate }} {{ uploadFileName }}
     </h2>
 
     <p class="mb-2 text-content">{{ uploadMessage }}</p>
 
     <p class="mb-3 text-sm text-content-60" *ngIf="uploadSummary">
-      Rows: {{ uploadSummary.total }}. Passed: {{ uploadSummary.valid }}.
-      Failed: {{ uploadSummary.invalid }}. Saved: {{ uploadSummary.inserted }}.
+      {{ 'Rows' | translate }}: {{ uploadSummary.total }}. {{ 'Passed' | translate }}: {{ uploadSummary.valid }}.
+      {{ 'Failed' | translate }}: {{ uploadSummary.invalid }}. {{ 'Saved' | translate }}: {{ uploadSummary.inserted }}.
     </p>
 
     <div class="max-h-72 overflow-y-auto mb-4">
       <table class="min-w-full text-left text-sm">
         <caption class="sr-only">
-          One row for each {{ config.singular.toLowerCase() }} of the file
+          {{ 'One row for each' | translate }} {{ config.singular.toLowerCase() }} {{ 'of the file' | translate }}
         </caption>
         <thead>
           <tr class="bg-primary-60">
-            <th scope="col" class="border-b border-content-50 px-2 py-1 text-content">Row</th>
+            <th scope="col" class="border-b border-content-50 px-2 py-1 text-content">{{ 'Row' | translate }}</th>
             <th scope="col" class="border-b border-content-50 px-2 py-1 text-content">
               {{ config.singular }}
             </th>
             <th scope="col" class="border-b border-content-50 px-2 py-1 text-content">
-              Result
+              {{ 'Result' | translate }}
             </th>
           </tr>
         </thead>
@@ -529,7 +529,7 @@
                 class="text-success"
                 *ngIf="!row.errors?.length && !row.warnings?.length"
               >
-                Ready to save.
+                {{ 'Ready to save.' | translate }}
               </p>
             </td>
           </tr>
@@ -539,7 +539,7 @@
 
     <div class="flex justify-end gap-3">
       <button type="button" class="btn-outline-primary h-9" (click)="closeUpload()">
-        Cancel
+        {{ 'Cancel' | translate }}
       </button>
       <button
         *ngIf="uploadSummary && uploadSummary.invalid"
@@ -547,7 +547,7 @@
         class="btn-outline-primary h-9"
         (click)="backToUpload()"
       >
-        Back
+        {{ 'Back' | translate }}
       </button>
       <button
         type="button"
@@ -555,7 +555,7 @@
         [disabled]="!uploadCanSave || isUploading"
         (click)="saveUpload()"
       >
-        {{ isUploading ? 'Saving...' : 'Save the ' + config.label.toLowerCase() }}
+        {{ isUploading ? ('Saving...' | translate) : (('Save the' | translate) + ' ' + config.label.toLowerCase()) }}
       </button>
     </div>
   </app-modal>

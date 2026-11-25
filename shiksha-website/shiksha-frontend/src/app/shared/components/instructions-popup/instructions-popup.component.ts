@@ -1,6 +1,7 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { TranslateModule } from '@ngx-translate/core';
 import { ModalService } from '../modal/modal.service';
 
 @Component({
@@ -8,7 +9,7 @@ import { ModalService } from '../modal/modal.service';
   templateUrl: './instructions-popup.component.html',
   styleUrls:['./instructions-popup.component.scss'],
   standalone: true,
-  imports: [CommonModule, FormsModule, ],
+  imports: [CommonModule, FormsModule, TranslateModule],
 })
 export class InstructionsPopupComponent {
   @Output() showInstructions: EventEmitter<boolean> =
