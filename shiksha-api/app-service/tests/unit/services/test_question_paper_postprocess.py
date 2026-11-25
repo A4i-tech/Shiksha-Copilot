@@ -7,6 +7,7 @@ from app.models.question_paper import (
     FourOptionsQuestion,
     GeneratedQuestionItem,
     McqOption,
+    Objective,
     TextQuestion,
     readable_strings,
 )
@@ -21,7 +22,7 @@ def make_record(text: str, slot=(0, 0)):
     item = GeneratedQuestionItem(
         unit_name="unit",
         type="ANSWER_SHORT",
-        objective="objective",
+        objective=Objective(objective="objective", description="d"),
         marks_per_question=1,
         item=TextQuestion(question=[Content.text(text)]),
     )
@@ -64,7 +65,7 @@ class TestValidateTexPostprocessor:
             answer=[Content.text(GOOD)],
             keyAnswer=[Content.text("B")],
         )
-        record = ((0, 0), GeneratedQuestionItem(unit_name="u", type="MCQ", objective="o", marks_per_question=1, item=item))
+        record = ((0, 0), GeneratedQuestionItem(unit_name="u", type="MCQ", objective=Objective(objective="o", description="d"), marks_per_question=1, item=item))
         assert len(validate_tex([record])) == 1
 
     def test_image_content_is_ignored(self):

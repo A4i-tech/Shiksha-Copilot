@@ -4,125 +4,380 @@
       "instruction": "Four alternatives are given for each of the following questions, choose the correct alternative",
       "label": "Multiple Choice Questions",
       "description": "Objective Questions (MCQ)",
-      "aliases": ["mcq"]
+      "aliases": [
+        "mcq"
+      ]
     },
     "FILL_BLANKS": {
       "instruction": "Fill in the blanks with suitable words",
       "label": "Fill in the blanks",
       "description": "Fill in the blanks",
-      "aliases": ["fill_in_the_blank", "fill_in_the_blanks"]
+      "aliases": [
+        "fill_in_the_blank",
+        "fill_in_the_blanks"
+      ]
     },
     "ANSWER_VERY_SHORT": {
       "instruction": "Answer the following in a word, phrase or sentence",
       "label": "Very Short Answer Questions",
       "description": "Very Short Answer",
-      "aliases": ["analogy", "arrange_in_chronological_order", "odd_one_out", "one_sentence_answers", "ordering", "rearrange", "true_false", "word_relation"]
+      "aliases": [
+        "analogy",
+        "arrange_in_chronological_order",
+        "odd_one_out",
+        "one_sentence_answers",
+        "ordering",
+        "rearrange",
+        "true_false",
+        "word_relation"
+      ]
     },
     "ANSWER_SHORT": {
       "instruction": "Answer the following in two or three sentences each",
       "label": "Short Answer Questions",
       "description": "Short Answer",
-      "aliases": ["short_answer", "short_answers"]
+      "aliases": [
+        "short_answer",
+        "short_answers"
+      ]
     },
     "ANSWER_MEDIUM": {
       "instruction": "Answer the following questions",
       "label": "Answer the following questions",
       "description": "Answer the following questions",
-      "aliases": ["answer_medium", "other"]
+      "aliases": [
+        "answer_medium",
+        "other"
+      ]
     },
     "ANSWER_LONG": {
       "instruction": "Answer the following question in four or five sentences",
       "label": "Long Answer Questions",
       "description": "Long Answer",
-      "aliases": ["long_answer", "long_answers", "map_activity", "map_based"]
+      "aliases": [
+        "long_answer",
+        "long_answers",
+        "map_activity",
+        "map_based"
+      ]
     },
     "MATCHING": {
       "instruction": "Match the following",
       "label": "Match the Following",
       "description": "Match the following",
-      "aliases": ["match_pairs", "match_the_following"]
+      "aliases": [
+        "match_pairs",
+        "match_the_following"
+      ]
     },
     "GRAMMAR_MCQ": {
       "instruction": "Grammar: Choose the correct option",
       "label": "Grammar: Multiple Choice Questions",
       "description": "Grammar: Multiple Choice Questions",
-      "aliases": ["grammar_mcq"]
+      "aliases": [
+        "grammar_mcq"
+      ]
     },
     "GRAMMAR_FILL_BLANKS": {
       "instruction": "Grammar: Fill in the blanks with correct words/forms",
       "label": "Grammar: Fill in the blanks",
       "description": "Grammar: Fill in the blanks",
-      "aliases": ["grammar_fill_in_the_blank", "grammar_fill_in_the_blanks"]
+      "aliases": [
+        "grammar_fill_in_the_blank",
+        "grammar_fill_in_the_blanks"
+      ]
     },
     "GRAMMAR_EDITING": {
       "instruction": "Grammar: Identify and correct the error in the sentence",
       "label": "Grammar: Identify and correct the error",
       "description": "Grammar: Identify and correct the error",
-      "aliases": ["grammar_editing"]
+      "aliases": [
+        "grammar_editing"
+      ]
     }
   },
-  "coreSubjects": ["Science", "Social Science", "Mathematics", "Evs"],
+  "coreSubjects": [
+    "Science",
+    "Social Science",
+    "Mathematics",
+    "Evs"
+  ],
   "objectives": {
     "core": [
-      { "objective": "Knowledge", "percentageDistribution": 25 },
-      { "objective": "Understanding", "percentageDistribution": 45 },
-      { "objective": "Application", "percentageDistribution": 20 },
-      { "objective": "Skill", "percentageDistribution": 10 }
+      {
+        "objective": "Knowledge",
+        "description": "Knowledge",
+        "percentageDistribution": 25
+      },
+      {
+        "objective": "Understanding",
+        "description": "Understanding",
+        "percentageDistribution": 45
+      },
+      {
+        "objective": "Application",
+        "description": "Application",
+        "percentageDistribution": 20
+      },
+      {
+        "objective": "Skill",
+        "description": "Skill",
+        "percentageDistribution": 10
+      }
     ],
     "coreGrade10": [
-      { "objective": "Knowledge", "percentageDistribution": 10 },
-      { "objective": "Understanding", "percentageDistribution": 55 },
-      { "objective": "Application", "percentageDistribution": 20 },
-      { "objective": "Skill", "percentageDistribution": 15 }
+      {
+        "objective": "Knowledge",
+        "description": "Knowledge",
+        "percentageDistribution": 10
+      },
+      {
+        "objective": "Understanding",
+        "description": "Understanding",
+        "percentageDistribution": 55
+      },
+      {
+        "objective": "Application",
+        "description": "Application",
+        "percentageDistribution": 20
+      },
+      {
+        "objective": "Skill",
+        "description": "Skill",
+        "percentageDistribution": 15
+      }
     ],
     "language": [
-      { "objective": "Knowledge", "percentageDistribution": 25 },
-      { "objective": "Comprehension", "percentageDistribution": 40 },
-      { "objective": "Expression", "percentageDistribution": 30 },
-      { "objective": "Appreciation", "percentageDistribution": 5 }
+      {
+        "objective": "Knowledge",
+        "description": "Knowledge",
+        "percentageDistribution": 25
+      },
+      {
+        "objective": "Comprehension",
+        "description": "Comprehension",
+        "percentageDistribution": 40
+      },
+      {
+        "objective": "Expression",
+        "description": "Expression",
+        "percentageDistribution": 30
+      },
+      {
+        "objective": "Appreciation",
+        "description": "Appreciation",
+        "percentageDistribution": 5
+      }
     ],
     "telangana": [
-      { "objective": "Knowledge", "percentageDistribution": 10 },
-      { "objective": "Understanding", "percentageDistribution": 20 },
-      { "objective": "Application", "percentageDistribution": 30 },
-      { "objective": "Higher order thinking", "percentageDistribution": 40 }
+      {
+        "objective": "Knowledge",
+        "description": "Knowledge",
+        "percentageDistribution": 10
+      },
+      {
+        "objective": "Understanding",
+        "description": "Understanding",
+        "percentageDistribution": 20
+      },
+      {
+        "objective": "Application",
+        "description": "Application",
+        "percentageDistribution": 30
+      },
+      {
+        "objective": "Higher order thinking",
+        "description": "Higher order thinking",
+        "percentageDistribution": 40
+      }
+    ],
+    "telangana-science": [
+      {
+        "objective": "Understanding",
+        "description": "Conceptual Understanding",
+        "percentageDistribution": 15
+      },
+      {
+        "objective": "Questioning",
+        "description": "Asking questions and making hypothesis",
+        "percentageDistribution": 14
+      },
+      {
+        "objective": "Experimentation",
+        "description": "Experimentation and field investigation",
+        "percentageDistribution": 14
+      },
+      {
+        "objective": "Info skills",
+        "description": "Information skills and Projects",
+        "percentageDistribution": 14
+      },
+      {
+        "objective": "Communication",
+        "description": "Communication through drawing, model making",
+        "percentageDistribution": 14
+      },
+      {
+        "objective": "Appreciation",
+        "description": "Appreciation and aesthetic sense, values",
+        "percentageDistribution": 14
+      },
+      {
+        "objective": "Application",
+        "description": "Application to daily life, concern to biodiversity",
+        "percentageDistribution": 15
+      }
+    ],
+    "telangana-social": [
+      {
+        "objective": "Understanding",
+        "description": "Conceptual Understanding",
+        "percentageDistribution": 20
+      },
+      {
+        "objective": "Interpretation",
+        "description": "Reading the text, understanding and interpretation",
+        "percentageDistribution": 20
+      },
+      {
+        "objective": "Info skills",
+        "description": "Information skills",
+        "percentageDistribution": 20
+      },
+      {
+        "objective": "Reflection",
+        "description": "Reflection on contemporary issues and questioning",
+        "percentageDistribution": 20
+      },
+      {
+        "objective": "Appreciation",
+        "description": "Appreciation and sensitivity",
+        "percentageDistribution": 20
+      }
+    ],
+    "telangana-math": [
+      {
+        "objective": "Problem solving",
+        "description": "Problem solving",
+        "percentageDistribution": 20
+      },
+      {
+        "objective": "Reasoning",
+        "description": "Reasoning proof",
+        "percentageDistribution": 20
+      },
+      {
+        "objective": "Communication",
+        "description": "Communication",
+        "percentageDistribution": 20
+      },
+      {
+        "objective": "Connections",
+        "description": "Connections",
+        "percentageDistribution": 20
+      },
+      {
+        "objective": "Visualization",
+        "description": "Visualization and representation",
+        "percentageDistribution": 20
+      }
     ]
   },
   "boardMarks": {
     "DEFAULT": {
-      "MCQ": [1],
-      "FILL_BLANKS": [1],
-      "MATCHING": [1],
-      "ANSWER_VERY_SHORT": [1],
-      "ANSWER_SHORT": [2],
-      "ANSWER_MEDIUM": [2],
-      "ANSWER_LONG": [5],
-      "GRAMMAR_MCQ": [1],
-      "GRAMMAR_FILL_BLANKS": [1],
-      "GRAMMAR_EDITING": [1]
+      "MCQ": [
+        1
+      ],
+      "FILL_BLANKS": [
+        1
+      ],
+      "MATCHING": [
+        1
+      ],
+      "ANSWER_VERY_SHORT": [
+        1
+      ],
+      "ANSWER_SHORT": [
+        2
+      ],
+      "ANSWER_MEDIUM": [
+        2
+      ],
+      "ANSWER_LONG": [
+        5
+      ],
+      "GRAMMAR_MCQ": [
+        1
+      ],
+      "GRAMMAR_FILL_BLANKS": [
+        1
+      ],
+      "GRAMMAR_EDITING": [
+        1
+      ]
     },
     "BSE-TG": {
-      "MCQ": [0.5, 1]
+      "MCQ": [
+        0.5,
+        1
+      ]
     }
   },
   "questionSources": {
-    "DEFAULT": ["AI"],
-    "KSEEB": ["AI", "LBA"],
-    "CBSE": ["AI", "LBA"]
+    "DEFAULT": [
+      "AI"
+    ],
+    "KSEEB": [
+      "AI",
+      "LBA"
+    ],
+    "CBSE": [
+      "AI",
+      "LBA"
+    ]
   },
   "objectivePolicies": {
     "DEFAULT": {
-      "default": "core"
+      "default": "core",
+      "subjectObjectives": {}
     },
     "KSEEB": {
       "coreSubject": "core",
       "coreSubjectGrades": {
         "10": "coreGrade10"
       },
-      "default": "language"
+      "default": "language",
+      "subjectObjectives": {}
     },
     "BSE-TG": {
-      "default": "telangana"
+      "default": "telangana",
+      "subjectObjectives": {
+        "Science": "telangana-science",
+        "Biology": "telangana-science",
+        "Physics": "telangana-science",
+        "Social": "telangana-social",
+        "Math": "telangana-math",
+        "English": "telangana"
+      }
+    }
+  },
+  "bloomVariantPolicies": {
+    "DEFAULT": {
+      "default": "general",
+      "subjectVariants": {
+        "English": "english"
+      }
+    },
+    "BSE-TG": {
+      "default": "telangana",
+      "subjectVariants": {
+        "Science": "telangana-science",
+        "Biology": "telangana-science",
+        "Physics": "telangana-science",
+        "Social": "telangana-social",
+        "Math": "telangana-math",
+        "English": "telangana"
+      }
     }
   },
   "blueprintPolicy": {
@@ -136,7 +391,24 @@
       "Skill": 3,
       "Expression": 4,
       "Appreciation": 4,
-      "Higher order thinking": 5
+      "Higher order thinking": 5,
+      "Conceptual Understanding": 1,
+      "Reading the text, understanding and interpretation": 2,
+      "Asking questions and making hypothesis": 2,
+      "Information skills": 3,
+      "Information skills and Projects": 3,
+      "Communication through drawing, model making": 3,
+      "Experimentation and field investigation": 3,
+      "Mapping Skills": 3,
+      "Problem solving": 3,
+      "Reasoning proof": 3,
+      "Communication": 3,
+      "Visualization and representation": 3,
+      "Application to daily life, concern to biodiversity": 4,
+      "Appreciation and aesthetic sense, values": 4,
+      "Appreciation and sensitivity": 4,
+      "Reflection on contemporary issues and questioning": 5,
+      "Connections": 5
     },
     "questionTypeDemand": {
       "MCQ": 1,
