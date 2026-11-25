@@ -22,6 +22,7 @@ import { DatePipe } from '@angular/common';
 import { ChartOptions } from 'chart.js';
 import { TranslateService } from '@ngx-translate/core';
 import { DropDownConfig } from 'src/app/shared/interfaces/dropdown.interface';
+import { GENERATION_OPTIONS, VisibleGenerationOption } from './generation-options.config';
 
 interface PlanStyle {
   btnColor: string;
@@ -76,6 +77,8 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   recentResoucePlans: any[] = [];
 
   recentPlans: RecentPlanCard[] = [];
+
+  generationOptions: VisibleGenerationOption[] = [];
 
   resourceColors: Record<'lesson' | 'resource', PlanStyle> = {
     lesson: {
@@ -171,6 +174,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
    * Angular oninit lifecycle hook for initialization
    */
   ngOnInit(): void {
+    this.generationOptions = this.getVisibleGenerationOptions();
     this.getRecentLessonPlan();
     this.getScheduleData(this.datePipe.transform(this.viewDate, 'yyyy-MM-dd'));
     this.getChartData(this.selectedAnalytics);
@@ -181,6 +185,21 @@ export class DashboardComponent implements OnInit, AfterViewInit {
    */
   ngAfterViewInit(): void {
     this.analyticsDropdown.selectedItem = this.selectedAnalytics;
+  }
+
+  /**
+   * Filters Home generation tiles by permission. A lone remaining primary
+   * tile spans the full row so hidden tiles never leave a gap.
+   */
+  getVisibleGenerationOptions(): VisibleGenerationOption[] {
+    const allowed = GENERATION_OPTIONS.filter((option) =>
+      option.permissions.every((permission) => this.utiltyService.hasPermission([permission])),
+    );
+    const primaryCount = allowed.filter((option) => option.primary).length;
+    return allowed.map((option) => ({
+      ...option,
+      fullWidth: !option.primary || primaryCount < 2,
+    }));
   }
 
   private toCard(entry: any, kind: 'lesson' | 'resource'): RecentPlanCard {
