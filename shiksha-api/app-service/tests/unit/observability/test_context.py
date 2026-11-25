@@ -85,6 +85,24 @@ class TestSpanHelper:
         assert [e.name for e in finished.events] == ["exception"]
 
 
+    def test_expected_exceptions_and_cancellation_are_not_errors(self, tracer_and_spans, monkeypatch):
+        import asyncio
+
+        class JobCancelled(Exception):
+            pass
+
+        tracer, memory = tracer_and_spans
+        monkeypatch.setattr("app.observability.context.trace.get_tracer", lambda name: tracer)
+        for exc in (JobCancelled(), asyncio.CancelledError()):
+            with pytest.raises(type(exc)):
+                with span("presentation.job", expected=(JobCancelled,)):
+                    raise exc
+        for finished in memory.get_finished_spans():
+            assert finished.status.status_code != StatusCode.ERROR
+            assert not [e for e in finished.events if e.name == "exception"]
+            assert finished.attributes["shiksha.interrupted"] in ("JobCancelled", "CancelledError")
+
+
 class TestMarkFailed:
     def test_sets_error_status(self, tracer_and_spans):
         tracer, memory = tracer_and_spans

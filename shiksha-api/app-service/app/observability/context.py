@@ -7,6 +7,7 @@ finds everything a user triggered. A plain span attribute is used instead of OTe
 baggage is propagated to outbound HTTP calls and would leak the id to OpenAI, Qdrant, etc.
 """
 
+import asyncio
 from contextlib import contextmanager
 from typing import Any, Iterator, Optional
 
@@ -30,15 +31,35 @@ def bind_user(user_id: object) -> None:
 
 
 @contextmanager
-def span(name: str, user_id: object = None, **attributes: Any) -> Iterator[trace.Span]:
+def span(
+    name: str,
+    user_id: object = None,
+    expected: tuple[type[BaseException], ...] = (),
+    **attributes: Any,
+) -> Iterator[trace.Span]:
     """Open a custom span (for work that has no request span, e.g. background jobs).
 
-    Attributes with a ``None`` value are skipped. An exception escaping the block is recorded on the span.
+    Attributes with a ``None`` value are skipped. An unexpected exception escaping the block is recorded
+    on the span and marks it failed. Exceptions in ``expected`` (and task cancellation) are control flow,
+    not errors: they propagate without being recorded.
     """
     tracer = trace.get_tracer("shiksha-api")
-    with tracer.start_as_current_span(name, attributes={k: v for k, v in attributes.items() if v is not None}) as current:
+    with tracer.start_as_current_span(
+        name,
+        attributes={k: v for k, v in attributes.items() if v is not None},
+        record_exception=False,
+        set_status_on_exception=False,
+    ) as current:
         bind_user(user_id)
-        yield current
+        try:
+            yield current
+        except (asyncio.CancelledError, *expected) as e:
+            current.set_attribute("shiksha.interrupted", type(e).__name__)
+            raise
+        except BaseException as e:
+            current.record_exception(e)
+            current.set_status(Status(StatusCode.ERROR, str(e)[:256]))
+            raise
 
 
 def mark_current_span_failed(description: str) -> None:
