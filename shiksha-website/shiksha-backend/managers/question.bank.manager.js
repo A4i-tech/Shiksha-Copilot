@@ -21,8 +21,7 @@ const {
   processCacheHits,
 } = require("../helper/question.bank.cache.helper");
 const QuestionBankCacheSummaryDao = require("../dao/question.bank.cache.summary.dao");
-const { addCacheJob } = require("./cache.queue.manager");
-const QuestionBankCacheSummary = require("../models/question.bank.cache.summary.model");
+const { addCacheJob, requeueFailedJobs, toCacheJob, PENDING_FILTER } = require("./cache.queue.manager");
 const logger = require("../config/loggers");
 const AppError = require("../helper/app.error");
 const PAPER_CONFIG = require("../config/question-bank-paper-config.json");
@@ -84,6 +83,8 @@ const transformWeakLbaQuestion = async (q) => {
   })) : base;
 };
 /** @extends {BaseManager<QuestionBankDao>} */
+let sweepRunning = false;
+
 class QuestionBankManager extends BaseManager {
   constructor() {
     super(new QuestionBankDao());
@@ -515,14 +516,8 @@ class QuestionBankManager extends BaseManager {
 
       const summary = await this.questionBankCacheSummaryDao.create(cacheSummaryData);
 
-      addCacheJob({
-        notFoundQuestions,
-        processedCache,
-        unitLevel,
-        newResQuestions: aiQuestionsForCache,
-        cacheSummaryId: summary._id.toString(),
-      }).catch((err) => {
-        console.error("Failed to enqueue cache update job", err);
+      addCacheJob(toCacheJob(summary)).catch((err) => {
+        logger.error("Failed to enqueue cache update job", { message: err.message, stack: err.stack });
       });
     }
   }
@@ -785,12 +780,13 @@ class QuestionBankManager extends BaseManager {
 
   async retryFailedJobs() {
     console.log("Running retry for failed cache updates...");
-    const failedJobs = await QuestionBankCacheSummary.find({
-      isCacheUpdated: false,
-      inProgress: false,
-    });
+    if (sweepRunning) {
+      return formatApiReponse(false, "A retry sweep is already running. Wait for it to finish and try again.", null);
+    }
 
-    if (!failedJobs || failedJobs.length === 0) {
+    const pending = await this.questionBankCacheSummaryDao.exists(PENDING_FILTER);
+
+    if (!pending) {
       return formatApiReponse(
         true,
         "No failed jobs to process",
@@ -798,26 +794,12 @@ class QuestionBankManager extends BaseManager {
       );
     }
 
-    const jobsToProcess = failedJobs.map((doc) => doc.toObject());
+    sweepRunning = true;
+    requeueFailedJobs()
+      .catch((err) => logger.error("Cache retry sweep failed", { message: err.message, stack: err.stack }))
+      .finally(() => { sweepRunning = false; });
 
-    for (const job of jobsToProcess) {
-      const {
-        notFoundQuestions,
-        processedCache,
-        unitLevel,
-        aiQuestionsForCache,
-        notFoundResponse,
-      } = job;
-
-      addCacheJob({
-        notFoundQuestions,
-        processedCache,
-        unitLevel,
-        newResQuestions: aiQuestionsForCache,
-        cacheSummaryId: job._id.toString(),
-      });
-    }
-    return formatApiReponse(true, "Failed job processing initiated", null);
+    return formatApiReponse(true, "Retry scheduled. Failures are logged. Rows that still fail stay in the list.", null);
   }
 
   async getQuestionTypes(subject) {
@@ -827,20 +809,10 @@ class QuestionBankManager extends BaseManager {
 
   async retryFailedJob(jobId) {
     console.log(`Running retry for failed job-${jobId}`);
-    let failedJob = await QuestionBankCacheSummary.findById(jobId);
+    const failedJob = await this.questionBankCacheSummaryDao.getById(jobId);
     if (!failedJob) throw new AppError("Job not found. Check the job ID and try again.", 404);
-    failedJob = failedJob.toObject();
 
-    const { notFoundQuestions, processedCache, unitLevel, aiQuestionsForCache, notFoundResponse } =
-      failedJob;
-
-    addCacheJob({
-      notFoundQuestions,
-      processedCache,
-      unitLevel,
-      newResQuestions: aiQuestionsForCache,
-      cacheSummaryId: failedJob._id.toString(),
-    });
+    await addCacheJob(toCacheJob(failedJob));
 
     return formatApiReponse(
       true,
