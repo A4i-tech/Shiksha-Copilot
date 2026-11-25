@@ -12,5 +12,14 @@
         "connectionStringName": "AzureWebJobsStorage"
       }
     }
+  },
+  "logging": {
+    "applicationInsights": {
+      "samplingSettings": {
+        "isEnabled": true,
+        "maxTelemetryItemsPerSecond": 20,
+        "excludedTypes": "Request;Exception"
+      }
+    }
   }
 }

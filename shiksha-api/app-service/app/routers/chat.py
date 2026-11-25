@@ -10,6 +10,7 @@ from app.models.chat import (
 from app.services.general_chat_service import GeneralChatService
 import logging
 
+from app.observability import bind_user
 from app.services.lesson_chat_service import LessonChatService
 
 logger = logging.getLogger(__name__)
@@ -40,19 +41,20 @@ async def chat(request: ChatRequest, service: GeneralChatService = Depends(gener
 
     Process general educational queries using an AI assistant with comprehensive capabilities.
     """
+    bind_user(request.user_id)
     try:
         return StreamingResponse(
             service(request.messages, user_id=request.user_id),
             media_type="text/event-stream"
         )
     except ValueError as e:
-        logger.error(f"Configuration error in general chat: {e}")
+        logger.exception(f"Configuration error in general chat: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Configuration error: {str(e)}",
         ) from e
     except Exception as e:
-        logger.error(f"General chat failed for user {request.user_id}: {e}")
+        logger.exception(f"General chat failed for user {request.user_id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to process chat request",
@@ -67,17 +69,18 @@ async def lesson_chat(request: LessonChatRequest, service: LessonChatService = D
     Process lesson-specific educational queries with deep contextual understanding
     of chapter content and curriculum alignment.
     """
+    bind_user(request.user_id)
     try:
         response, references = await service(request)
         return LessonChatResponse(user_id=request.user_id, response=response, references=references)
     except ValueError as e:
-        logger.error(f"Configuration error in lesson chat: {e}")
+        logger.exception(f"Configuration error in lesson chat: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Configuration error: {str(e)}",
         ) from e
     except Exception as e:
-        logger.error(f"Lesson chat failed for user {request.user_id}: {e}")
+        logger.exception(f"Lesson chat failed for user {request.user_id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to process lesson chat request",

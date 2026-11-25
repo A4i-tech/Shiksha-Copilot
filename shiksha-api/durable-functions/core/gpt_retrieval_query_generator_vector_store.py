@@ -64,7 +64,7 @@ class GPTRetrievalQueryGeneratorVectorStore:
             return retrieval_query.strip()
 
         except Exception as e:
-            self.logger.error(f"Failed to generate retrieval query: {str(e)}")
+            self.logger.error(f"Failed to generate retrieval query: {str(e)}", exc_info=True)
             # Fallback to basic query construction
             return self._create_fallback_query(
                 section_description, topics, learning_outcomes

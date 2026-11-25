@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import APIRouter, Body, Depends, FastAPI, Request
 
 from app.models.lesson_plan import PlanEditRequest, PlanEditRecordResponse, SectionEditRequest
+from app.observability import bind_user
 from app.services.lesson_edit_service import LessonEditService
 from pydantic import JsonValue
 
@@ -23,9 +24,11 @@ router = APIRouter(prefix="/lesson-plan", tags=["Lesson Plan"], lifespan=lifespa
 
 @router.post("/section-edit", summary="Generate an AI-edited revision of a lesson plan section")
 async def section_edit(body: SectionEditRequest = Body(...), service: LessonEditService = Depends(svc)) -> JsonValue:
+    bind_user(body.user_id)
     return await service.edit_section(body)
 
 
 @router.post("/plan-edit", summary="Generate an AI-edited revision of the entire lesson plan")
 async def plan_edit(body: PlanEditRequest = Body(...), service: LessonEditService = Depends(svc)) -> list[PlanEditRecordResponse]:
+    bind_user(body.user_id)
     return await service.edit_plan(body)

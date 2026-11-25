@@ -4,6 +4,8 @@ import logging
 
 from langfuse.openai import AsyncOpenAI
 from langfuse import propagate_attributes
+
+from app.observability import mark_current_span_failed
 import json
 from openai.types.responses import ResponseOutputMessage, ResponseOutputText, ToolParam
 from openai.types.responses.response import Response
@@ -78,6 +80,8 @@ class GeneralChatService:
 
         except Exception as e:
             logger.error(f"Error in OpenAI chat: {e}", exc_info=True)
+            # the 200 has already been sent, so the request would otherwise look successful
+            mark_current_span_failed(f"general chat stream failed: {type(e).__name__}")
             yield json.dumps({
                 "type": "error",
                 "message": str(e)

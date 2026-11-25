@@ -14,6 +14,7 @@ from app.config import settings
 from app.messaging.nats_broker import NatsBroker
 from app.services.presentation.consumer import CANCEL_SUBJECT, make_broker, publish_job, reap_dead_letters, reconcile, run_jobs
 from app.services.presentation.job import iso_z
+from app.observability import bind_user
 from app.services.presentation.service import PresentationService, new_default as new_pres_svc
 from fastapi import APIRouter, Depends, FastAPI, File, Form, Header, Request, status, UploadFile, HTTPException, Query
 from fastapi.responses import Response, StreamingResponse
@@ -270,6 +271,7 @@ async def events_pending(request: Request, user_id: UserId, service: Presentatio
     """
     Subscribe to pending job counter.
     """
+    bind_user(user_id)
 
     async def stream():
         count = None
@@ -287,6 +289,7 @@ async def events_handle(request: Request, user_id: UserId, id: uuid.UUID, servic
     """
     Subscribe to job events.
     """
+    bind_user(user_id)
 
     after: int = await service.jobs.last_log_seq(id)  # read before the job, so no event falls between them
     job = await service.jobs.get(id)

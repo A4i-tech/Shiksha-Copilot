@@ -10,6 +10,8 @@ from datetime import datetime
 from typing import Any
 
 from langfuse import get_client, observe, propagate_attributes
+
+from app.observability import span
 from pptx import presentation
 
 from app.config import settings
@@ -85,6 +87,12 @@ class PresentationService:
 
 
     async def _run_job(self, job: JobDetail):
+        attempt = job.metadata.get("error", {}).get("attempt", 0)
+        with span("presentation.job", user_id=job.user_id, expected=(JobCancelled, FenceLost), **{"shiksha.job.id": str(job.id), "shiksha.job.status": job.status, "shiksha.job.attempt": attempt}):
+            await self._run_job_traced(job)
+
+
+    async def _run_job_traced(self, job: JobDetail):
         langfuse = get_client()
         trace_id = langfuse.create_trace_id(seed=f"presentation:{job.id}")
         with langfuse.start_as_current_observation(as_type="span", name=job.status, input=job, trace_context={"trace_id": trace_id}):

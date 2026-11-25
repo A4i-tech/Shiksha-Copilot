@@ -82,7 +82,7 @@ class QdrantRAGAgent:
                 content = content_text
             return content
         except Exception as e:
-            self.logger.error(f"Error in Qdrant RAG generation: {str(e)}")
+            self.logger.error(f"Error in Qdrant RAG generation: {str(e)}", exc_info=True)
             raise
 
     def clear_resources(self):

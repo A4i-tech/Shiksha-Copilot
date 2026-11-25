@@ -13,6 +13,8 @@ from app.services.translation.language import detect_language, language_code
 from app.services.translation_service import TranslationProviderError, TranslationService
 import logging
 
+from app.observability import bind_user
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -66,7 +68,7 @@ async def translate_json_content_to_kannada(
     try:
         translated_data = await translation.translate(json_data, source_lang_code, target_iso)
     except TranslationProviderError as e:
-        logger.error("Translator returned an invalid response: %s", e)
+        logger.exception("Translator returned an invalid response: %s", e)
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Translation service returned an invalid response") from e
     except ValueError as e:
         logger.warning("Translation request validation error: %s", e)
@@ -98,14 +100,16 @@ async def generate_question_paper_by_parts(request: QuestionBankPartsGenerationR
     Creates a comprehensive question paper using AI generation with specified templates,
     learning outcomes, and question distributions across different sections.
     """
+    bind_user(request.user_id)
     try:
         logger.info(f"Processing question paper generation request for user: {request.user_id}")
         response = await service.generate_question_bank_by_parts(request)
-        logger.info(f"Successfully generated question paper for user: {request.user_id}\nResponse: {response.model_dump_json(indent=2)}")
+        # Never log the generated paper itself: it is large and would be shipped to App Insights.
+        logger.info("Successfully generated question paper for user: %s", request.user_id)
         return response
     except ValueError as e:
-        logger.error(f"Configuration error in question paper generation: {e}")
+        logger.exception(f"Configuration error in question paper generation: {e}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Configuration error: {str(e)}") from e
     except Exception as e:
-        logger.exception(e)
+        logger.exception("Question paper generation failed for user %s", request.user_id)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to generate question paper") from e
