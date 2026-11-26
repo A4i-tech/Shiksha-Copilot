@@ -20,7 +20,7 @@ const School = require("../models/school.model");
 const User = require("../models/user.model");
 const { bulkUploadSchema } = require("../validations/user.validation");
 const { getRolePermissions, getPermission, schoolDependency } = require("../helper/permission.helper");
-const { dependencyMatches, assertCanAssign, assertCanGrant, assignmentDependencyFilter, hasAssignmentScope, isDependencyAllowed, isResourceAllowed, scopeFilter, permissionScopeFilter, intersectFilters } = require("../helper/scope.helper");
+const { dependencyMatches, assertCanAssign, assignmentDependencyFilter, hasAssignmentScope, isDependencyAllowed, isResourceAllowed, scopeFilter, permissionScopeFilter, intersectFilters } = require("../helper/scope.helper");
 const { ORGANISATION_SCOPE_TYPES } = require("../config/role.scope");
 const logger = require("../config/loggers");
 const AuditLog = require("../models/audit.log.model");
@@ -35,7 +35,6 @@ async function prepareAssignments(input, actor, current, teacher, permission) {
   const currentIds = new Set(current.map((assignment) => String(assignment._id)));
   const grants = getRolePermissions(actor.roles);
   const superuser = actor.roles.some((assignment) => !assignment.role.isDeleted && assignment.role.isSuperUser);
-  const delegate = Boolean(getPermission(grants, "role.delegate"));
   const seen = new Set();
   const assignments = [];
   let school;
@@ -46,7 +45,7 @@ async function prepareAssignments(input, actor, current, teacher, permission) {
     const unchanged = existing && String(existing.role._id) === assignment.roleId
       && (["GLOBAL", "UNBOUND"].includes(role.scopeType) ? assignment.dep == null : dependencyMatches(role.scopeType, existing.dep, assignment.dep));
     if (superuser && role.scopeType === "GLOBAL" && assignment.dep) throw new AppError("A role with GLOBAL scope cannot have a school or other dependency. Clear the dependency and save again.", 400);
-    const dep = unchanged ? existing.dep : superuser && role.scopeType === "GLOBAL" ? null : await (superuser || delegate ? assertCanAssign : assertCanGrant)(grants, role, assignment.dep, permission);
+    const dep = unchanged ? existing.dep : superuser && role.scopeType === "GLOBAL" ? null : await assertCanAssign(grants, role, assignment.dep, permission);
     const key = `${assignment.roleId}:${JSON.stringify(dep)}`;
     if (seen.has(key)) throw new AppError("This user already has that role at that scope. Remove the duplicate and save again.", 409);
     seen.add(key);
@@ -182,8 +181,8 @@ class UserManager extends BaseManager {
     const rows = [];
     worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
       if (rowNumber === 1) return;
-      const phone = row.getCell(1).value?.toString().replace(/\s+/g, "").replace(/^\+?91(?=\d{10}$)/, "");
-      const role = row.getCell(2).value?.toString().trim();
+      const phone = row.getCell(1).text.replace(/\s+/g, "").replace(/^\+?91(?=\d{10}$)/, "");
+      const role = row.getCell(2).text.trim();
       if (phone || role) rows.push({ row: rowNumber, phone, role });
     });
     if (!rows.length) throw new AppError("The file has no rows. Add one teacher per row and try again.", 400);

@@ -74,8 +74,8 @@ async function assertCanAssign(grants, role, dep, permission) {
   return dep;
 }
 
-async function assertCanGrant(grants, role, dep, permission = "role.assign") {
-  const resolved = await assertCanAssign(grants, role, dep, permission);
+async function assertCanGrant(grants, role, dep) {
+  const resolved = await assertCanAssign(grants, role, dep, "role.assign");
   if (role.scopeType === "SCHOOL") {
     const school = await School.findById(resolved).lean();
     if (role.permissions.some((permission) => !isResourceAllowed(grants, permission, school))) throw new AppError(CANNOT_GRANT, 403);

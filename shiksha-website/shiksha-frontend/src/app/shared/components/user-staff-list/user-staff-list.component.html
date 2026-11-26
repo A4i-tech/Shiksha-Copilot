@@ -226,7 +226,7 @@
 							<table class="table-auto min-w-[900px] w-full border mt-3 rounded-lg text-content" aria-label="User list">
 							<thead>
 									<tr class="bg-primary-60 rounded-lg border-b">
-												<th *ngIf="getType()?.type === 'user'" class="text-left p-4 rounded border-r text-sm text-content w-10">
+												<th *ngIf="getType()?.type === 'user' && canAssignRole" class="text-left p-4 rounded border-r text-sm text-content w-10">
 														<input [hasPermission]="['role.assign']" type="checkbox" class="h-4 w-4" data-testid="select-all-users"
 																[attr.aria-label]="'Select all teachers on this page' | translate"
 																[checked]="allPageSelected" (change)="toggleSelectAll($any($event.target).checked)">
@@ -236,11 +236,11 @@
 							</thead>
 							<tbody>                 
 									<tr *ngIf="!usersList || usersList.length === 0">
-											<td [attr.colspan]="getType()?.type === 'user' ? 8 : 5" class="text-center text-content-60 py-2">{{'No items found' | translate}}</td>
+											<td [attr.colspan]="getType()?.type === 'user' ? (canAssignRole ? 8 : 7) : 5" class="text-center text-content-60 py-2">{{'No items found' | translate}}</td>
 									</tr>
 									<ng-container>
 									<tr *ngFor="let item of usersList; let i = index" class="border-b">
-												<td *ngIf="getType()?.type === 'user'" class="text-sm p-4 border-r w-10">
+												<td *ngIf="getType()?.type === 'user' && canAssignRole" class="text-sm p-4 border-r w-10">
 														<input [hasPermission]="['role.assign']" type="checkbox" class="h-4 w-4"
 																[attr.data-testid]="'select-user-' + item._id"
 																[attr.aria-label]="('Select teacher' | translate) + ' ' + item.identity.name"
@@ -336,6 +336,7 @@
 				<app-modal *ngIf="showRoleDialog">
 						<div role="dialog" aria-modal="true" aria-labelledby="change-role-title" data-testid="change-role-dialog">
 								<h1 id="change-role-title" class="font-bold text-[20px] text-content mb-4">{{'Change Role' | translate}}</h1>
+								<p class="text-sm text-content-60 mb-3" data-testid="change-role-count">{{ selectedIds.size }} {{'teachers selected' | translate}}</p>
 								<label for="change-role-select" class="block text-sm text-content-60 mb-1">{{'New role' | translate}}</label>
 								<select id="change-role-select" [formControl]="roleControl" class="w-full h-10 px-3 border rounded bg-white text-content" data-testid="change-role-dropdown">
 										<option [ngValue]="null" disabled>{{'Select a role' | translate}}</option>
@@ -343,7 +344,7 @@
 								</select>
 								<div class="mt-8 flex items-center justify-end gap-2">
 										<button class="w-24 btn-outline-primary" data-testid="change-role-cancel" (click)="closeRoleDialog()">{{'Cancel' | translate}}</button>
-										<button class="btn-primary w-24" data-testid="change-role-confirm" [disabled]="!roleControl.value" (click)="confirmRoleChange()">{{'Confirm' | translate}}</button>
+										<button class="btn-primary w-24" data-testid="change-role-confirm" [disabled]="!roleControl.value || submittingRole" (click)="confirmRoleChange()">{{'Confirm' | translate}}</button>
 								</div>
 						</div>
 				</app-modal>

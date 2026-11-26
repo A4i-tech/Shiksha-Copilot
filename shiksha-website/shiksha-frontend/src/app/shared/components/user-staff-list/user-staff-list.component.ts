@@ -1,6 +1,6 @@
 import { AfterViewInit, Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Subscription, Subject, debounceTime, distinctUntilChanged, Observable, forkJoin } from 'rxjs';
+import { Subscription, Subject, debounceTime, distinctUntilChanged, Observable, forkJoin, finalize } from 'rxjs';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { UserManagementService } from 'src/app/view/admin/user-management/user-management.service';
 import { DropDownConfig } from '../../interfaces/dropdown.interface';
@@ -147,6 +147,8 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
 
 
   selectedIds = new Set<string>();
+  private selectedNames = new Map<string, string>();
+  submittingRole = false;
   showRoleDialog = false;
   roleUploadMode = false;
   roleControl = new FormControl<string | null>(null);
@@ -423,7 +425,10 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
   }
   
   getUsersList(filter?: any, keepSelection = false): void {
-    if (!keepSelection) this.selectedIds.clear();
+    if (!keepSelection) {
+      this.selectedIds.clear();
+      this.selectedNames.clear();
+    }
     const profileType = this.getType()?.type === 'user' ? 'teacher' : 'admin';
     const observable = this.commonStaffUserService.list({
       profileType,
@@ -462,17 +467,26 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
     this.modalService.showBlukUploadDialog = true;
   }
 
+  get canAssignRole(): boolean {
+    return this.utility.hasPermission(['role.assign']);
+  }
+
   get allPageSelected(): boolean {
     return this.usersList.length > 0 && this.usersList.every((item) => this.selectedIds.has(item._id));
   }
 
   toggleSelectAll(checked: boolean) {
-    this.usersList.forEach((item) => (checked ? this.selectedIds.add(item._id) : this.selectedIds.delete(item._id)));
+    this.usersList.forEach((item) => this.toggleSelected(item._id, checked));
   }
 
   toggleSelected(id: string, checked: boolean) {
-    if (checked) this.selectedIds.add(id);
-    else this.selectedIds.delete(id);
+    if (checked) {
+      this.selectedIds.add(id);
+      this.selectedNames.set(id, this.usersList.find((item) => item._id === id).identity.name);
+    } else {
+      this.selectedIds.delete(id);
+      this.selectedNames.delete(id);
+    }
   }
 
   openRoleDialog() {
@@ -487,11 +501,12 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
 
   confirmRoleChange() {
     const roleId = this.roleControl.value;
-    if (!roleId) return;
-    this.commonStaffUserService.bulkChangeRole([...this.selectedIds], roleId).subscribe({
+    if (!roleId || this.submittingRole) return;
+    this.submittingRole = true;
+    this.commonStaffUserService.bulkChangeRole([...this.selectedIds], roleId).pipe(finalize(() => (this.submittingRole = false))).subscribe({
       next: (res) => {
-        const reasons = [...new Set(res.data.failed.map((f: { message: string }) => f.message))].join('; ');
-        if (res.data.failed.length) this.utility.showWarning(`${res.message} ${reasons}`);
+        const details = res.data.failed.map((f: { userId: string; message: string }) => `${this.selectedNames.get(f.userId)}: ${f.message}`).join('; ');
+        if (res.data.failed.length) this.utility.showWarning(`${res.message} ${details}`);
         else this.utility.showSuccess(res.message);
         this.showRoleDialog = false;
         this.getUsersList(this.filterObj);
