@@ -1,0 +1,14 @@
+<svg width="120" height="80" viewBox="0 0 120 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M82 8H16C14.8954 8 14 8.89543 14 10V52C14 53.1046 14.8954 54 16 54H82C83.1046 54 84 53.1046 84 52V10C84 8.89543 83.1046 8 82 8Z" fill="white" stroke-width="2" stroke="#565E6C"/>
+<path d="M84 8H14V14H84V8Z" fill="#565E6C"/>
+<path d="M33 38H24V48H33V38Z" fill="#1565C0"/>
+<path d="M46 28H37V48H46V28Z" fill="#ED7D2D"/>
+<path d="M59 33H50V48H59V33Z" fill="#42AC31"/>
+<path d="M72 22H63V48H72V22Z" fill="#1976D2"/>
+<path d="M51 54H47V66H51V54Z" fill="#565E6C"/>
+<path d="M39 74L49 64L59 74" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" stroke="#565E6C"/>
+<path d="M92 50L80 40" stroke-width="2" stroke-linecap="round" stroke="#565E6C"/>
+<path d="M90 46C96 42.6667 102 42.6667 108 46L109 74H89L90 46Z" fill="#8353E2"/>
+<path d="M99 42C102.866 42 106 38.866 106 35C106 31.134 102.866 28 99 28C95.134 28 92 31.134 92 35C92 38.866 95.134 42 99 42Z" fill="#8D5524"/>
+<path d="M92 33C92.6667 28.3333 95 26 99 26C103.667 26 106 28.3333 106 33C103.333 30.6667 101 29.5 99 29.5C96.3333 29.5 94 30.6667 92 33Z" fill="#2B2B2B"/>
+</svg>

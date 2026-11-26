@@ -32,11 +32,16 @@
     justify-content: flex-start;
     min-height: 72px;
     text-align: left;
+
+    .generation-tile__image {
+      width: 72px;
+      height: 48px;
+    }
   }
 
   .generation-tile__image {
-    width: 48px;
-    height: 48px;
+    width: 96px;
+    height: 64px;
     flex-shrink: 0;
     object-fit: contain;
   }

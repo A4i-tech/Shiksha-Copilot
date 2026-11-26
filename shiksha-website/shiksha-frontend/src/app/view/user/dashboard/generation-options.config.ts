@@ -1,8 +1,7 @@
 /**
  * Home page generation tiles (issue #677).
  *
- * `image` values are temporary placeholders reusing existing project icons.
- * Swap them here when design delivers the final assets — no template change needed.
+ * `image` values are the design-approved tile illustrations (120x80 SVG, from the #677 Figma).
  */
 export interface GenerationOption {
   id: string;
@@ -27,7 +26,7 @@ export const GENERATION_OPTIONS: GenerationOption[] = [
     label: 'Generate New Period Plan',
     route: '/content-generation/lesson-plan',
     permissions: ['content.view', 'lesson-plan.generate'],
-    image: 'assets/icons/lesson-plan-black.svg',
+    image: 'assets/images/home-tile-period-plan.svg',
     primary: true,
     testId: 'generate-period-plan-tile',
   },
@@ -36,7 +35,7 @@ export const GENERATION_OPTIONS: GenerationOption[] = [
     label: 'Generate New Question Paper',
     route: '/question-papers/generate',
     permissions: ['question-paper.generate'],
-    image: 'assets/icons/question-bank.svg',
+    image: 'assets/images/home-tile-question-paper.svg',
     primary: true,
     testId: 'generate-question-paper-tile',
   },
@@ -45,7 +44,7 @@ export const GENERATION_OPTIONS: GenerationOption[] = [
     label: 'Generate New Lesson Resource',
     route: '/content-generation/lesson-resources',
     permissions: ['content.view', 'lesson-resource.generate'],
-    image: 'assets/icons/docs_p.svg',
+    image: 'assets/images/home-tile-lesson-resource.svg',
     primary: false,
     testId: 'generate-lesson-resource-tile',
   },
@@ -54,7 +53,7 @@ export const GENERATION_OPTIONS: GenerationOption[] = [
     label: 'Generate New Presentation',
     route: '/content-generation/presentation',
     permissions: ['content.view', 'presentation.generate.arbitrary'],
-    image: 'assets/icons/ppt-file.svg',
+    image: 'assets/images/home-tile-presentation.svg',
     primary: false,
     testId: 'generate-presentation-tile',
   },
