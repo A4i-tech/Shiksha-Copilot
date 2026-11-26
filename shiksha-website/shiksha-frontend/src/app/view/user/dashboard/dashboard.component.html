@@ -11,39 +11,29 @@
   class="dashboard-wrapper grid grid-cols-1 md:grid-cols-10 md:gap-[22px] p-4 lg:p-0"
 >
   <div class="w-full col-span-6">
-    <div class="dashboard-landing-card">
-      <div class="flex flex-col md:flex-row gap-6 mx-7 my-7">
-        <img
-          class="h-[186px]"
-          src="assets/images/dashboard-computer.png"
-          alt=""
-        />
-        <div>
-          <h2 class="mt-1 text-xl text-white font-semibold" data-testid="landing-card-title">
-            {{ 'Lesson Plan Generation' | translate }}
-          </h2>
-          <p class="mt-3 text-white text-sm">
-            {{
-              "Generating Comprehensive Lesson Plans: Strategies for Creating Engaging and Effective Learning Experiences in the Classroom"
-                | translate
-            }}
-          </p>
-          <button
-            routerLink="/content-generation/lesson-plan"
-            class="text-primary bg-white px-7 py-2 mt-7 rounded font-medium text-sm"
-            data-testid="generate-lesson-plan-btn"
-          >
-            <span>{{ "Generate" | translate }}</span>
-          </button>
-        </div>
-      </div>
-    </div>
+    <nav
+      *ngIf="generationOptions.length"
+      class="generation-grid grid grid-cols-2 gap-3 md:gap-4"
+      data-testid="generation-options-grid"
+      [attr.aria-label]="'Generation options' | translate"
+    >
+      <a
+        appGenerationTile
+        *ngFor="let option of generationOptions"
+        [routerLink]="option.route"
+        [class.col-span-2]="option.fullWidth"
+        [attr.data-testid]="option.testId"
+        [image]="option.image"
+        [label]="option.label"
+        [layout]="option.primary ? 'stacked' : 'row'"
+      ></a>
+    </nav>
 
     <div class="mt-10" role="region" [attr.aria-label]="'Recently Generated/Modified Plans' | translate">
       <div class="flex justify-between">
-        <h3 class="text-xl md:text-2xl font-medium text-content-100" data-testid="recent-plans-section-header">
+        <h2 class="text-xl md:text-2xl font-medium text-content-100" data-testid="recent-plans-section-header">
           {{ "Recently Generated/Modified Plans" | translate }}
-        </h3>
+        </h2>
         <p
           class="text-sm font-medium text-primary cursor-pointer"
           routerLink="/content-generation"
@@ -69,10 +59,10 @@
           </div>
           <div class="px-4 pt-3 pb-4 flex flex-col flex-1 justify-between">
             <div>
-              <h4 class="text-base text-content-70">
+              <h3 class="text-base text-content-70">
                 <span class="font-bold text-content-100">{{ "Class" | translate }} {{ plan.class }}</span>
                 {{ utiltyService.getSubjectDisplayName(plan.subjects, plan.board) }}
-              </h4>
+              </h3>
               <p class="mt-1 text-xs font-normal text-content-70 line-clamp-2">
                 {{ "Topic {{number}}:" | translate : { number: plan.chapter.orderNumber } }} {{ plan.chapter.topics }}
               </p>
@@ -93,9 +83,9 @@
           <div class="rounded-full bg-warn-50 p-4 my-8">
             <img src="assets/icons/no-file.svg" alt="" />
           </div>
-          <h4 class="text-base text-center font-medium">
+          <h3 class="text-base text-center font-medium">
             {{ "No plans found" | translate }}
-          </h4>
+          </h3>
           <button
           routerLink="/content-generation"
             class="mt-7 w-full py-2 rounded bg-warn"

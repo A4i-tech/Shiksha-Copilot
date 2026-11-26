@@ -1012,5 +1012,10 @@
   "Add another": "మరొకటి జోడించండి",
   "Video title": "వీడియో శీర్షిక",
   "Video link": "వీడియో లింక్",
-  "Add video": "వీడియో జోడించండి"
+  "Add video": "వీడియో జోడించండి",
+  "Generation options": "రూపకల్పన ఎంపికలు",
+  "Generate New Period Plan": "కొత్త పీరియడ్ ప్రణాళికను రూపొందించండి",
+  "Generate New Question Paper": "కొత్త ప్రశ్నపత్రాన్ని రూపొందించండి",
+  "Generate New Lesson Resource": "కొత్త పాఠ్య వనరును రూపొందించండి",
+  "Generate New Presentation": "కొత్త ప్రెజెంటేషన్‌ను రూపొందించండి"
 }

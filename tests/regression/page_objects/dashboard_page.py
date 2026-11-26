@@ -9,9 +9,11 @@ class DashboardPage(BasePage):
         self.welcome_header = page.get_by_test_id("welcome-header")
         self.teacher_toolkit_subtitle = page.get_by_test_id("teacher-toolkit-subtitle")
 
-        # Landing Card (Lesson Plan Generation)
+        # Generation options grid (issue #677) - replaces the old single landing card
+        self.generation_options_grid = page.get_by_test_id("generation-options-grid")
+
+        # Legacy landing card - kept only to assert it is gone
         self.landing_card_title = page.get_by_test_id("landing-card-title")
-        self.generate_lesson_plan_btn = page.get_by_test_id("generate-lesson-plan-btn")
 
         # Recently Generated Section
         self.recent_plans_section = page.get_by_test_id("recent-plans-section-header")
@@ -39,9 +41,13 @@ class DashboardPage(BasePage):
         self.page.goto(f"{base_url}/#/home")
         self.welcome_header.wait_for()
 
-    def click_generate_lesson_plan(self):
-        """Clicks the generate button in the main landing card."""
-        self.click_robust(self.generate_lesson_plan_btn)
+    def generation_tile(self, test_id: str):
+        """Returns a generation tile locator by its data-testid."""
+        return self.page.get_by_test_id(test_id)
+
+    def click_generation_tile(self, test_id: str):
+        """Clicks a generation tile on the Home page."""
+        self.click_robust(self.generation_tile(test_id))
 
     def get_recent_plan_count(self) -> int:
         """Returns the number of recently generated plan cards visible."""

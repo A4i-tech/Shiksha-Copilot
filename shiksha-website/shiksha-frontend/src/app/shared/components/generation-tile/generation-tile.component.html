@@ -1,0 +1,9 @@
+<img class="generation-tile__image" [src]="image" alt="" aria-hidden="true" />
+<span class="generation-tile__label">{{ label | translate }}</span>
+<img
+  *ngIf="layout === 'row'"
+  class="generation-tile__chevron"
+  src="assets/icons/Chevron right large.svg"
+  alt=""
+  aria-hidden="true"
+/>
