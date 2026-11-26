@@ -60,7 +60,7 @@ function firstValidAssignment(curriculum) {
  */
 async function createEphemeralTeacher(rootToken, permissions) {
   const schoolsRes = await request(baseURL)
-    .get("/api/school/list?limit=50&includeDeleted=0")
+    .get("/api/school/list?limit=50&sortOrder=asc&includeDeleted=0")
     .set("Authorization", rootToken);
   if (!schoolsRes.body.success) {
     throw new Error(`school/list failed: ${JSON.stringify(schoolsRes.body)}`);
