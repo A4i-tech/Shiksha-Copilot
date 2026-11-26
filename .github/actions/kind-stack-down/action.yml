@@ -5,6 +5,9 @@ inputs:
   name:
     description: Suffix that makes the log artifact name unique in the run
     required: true
+  failed:
+    description: Pass job.status == 'failure' so the logs upload only when the job failed
+    required: true
 
 runs:
   using: composite
@@ -16,12 +19,12 @@ runs:
         [ -x "$run" ] || exit 0
         mkdir -p "$RUNNER_TEMP/kind-logs"
         "$run" kubectl -n shiksha get pods,events > "$RUNNER_TEMP/kind-logs/state.txt" 2>&1 || true
-        for app in be api fe mongo; do
+        for app in be api fe mongo presentation-worker; do
           "$run" kubectl -n shiksha logs "deploy/shiksha-$app" --all-containers --tail=500 > "$RUNNER_TEMP/kind-logs/$app.log" 2>&1 || true
         done
 
     - uses: actions/upload-artifact@v4
-      if: failure()
+      if: inputs.failed == 'true'
       with:
         name: kind-logs-${{ inputs.name }}
         path: ${{ runner.temp }}/kind-logs/

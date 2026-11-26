@@ -130,3 +130,4 @@ jobs:
         if: always()
         with:
           name: ${{ inputs.suite }}
+          failed: ${{ job.status == 'failure' }}
