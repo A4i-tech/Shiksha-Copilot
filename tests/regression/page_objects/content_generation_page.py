@@ -12,6 +12,9 @@ class ContentGenerationPage(BasePage):
             "generate-lesson-resource-btn"
         )
         self.generate_plan_btn = page.get_by_test_id("generate-lesson-plan-btn")
+        self.generate_heading = page.get_by_test_id("generate-new-content-heading")
+        self.search_section = page.get_by_test_id("search-pre-created-content")
+        self.search_heading = page.get_by_test_id("search-pre-created-heading")
         self.search_input = page.get_by_test_id("content-search-input")
         self.content_cards = page.get_by_test_id("content-card")
         self.no_items_msg = page.get_by_test_id("no-items-message")

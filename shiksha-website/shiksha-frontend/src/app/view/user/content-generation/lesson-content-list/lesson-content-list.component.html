@@ -45,8 +45,19 @@
     </div>
   </div>
 
-  <div class="flex items-center justify-between mt-5 gap-4 flex-wrap">
-    <div class="flex gap-2 flex-wrap items-center">
+  <!-- Hidden (display:none) by hasPermission when the user holds none of the three permissions. -->
+  <section
+    data-testid="generate-new-content"
+    class="mt-6"
+    [hasPermission]="['lesson-resource.generate', 'lesson-plan.generate', 'presentation.generate.arbitrary']"
+  >
+    <h2
+      data-testid="generate-new-content-heading"
+      class="text-lg md:text-xl font-semibold text-content"
+    >
+      {{ "Generate New Content" | translate }}
+    </h2>
+    <div class="flex gap-2 flex-wrap items-center mt-3">
       <button data-testid="generate-lesson-resource-btn" [hasPermission]="['lesson-resource.generate']" class="btn-primary flex gap-2 items-center justify-center md:justify-start w-full md:w-fit border border-primary" routerLink="/content-generation/lesson-resources">
         <img src="assets/icons/edit_light.svg" alt="" />
         <span class="text-sm md:text-base">{{"Generate Lesson Resource" | translate}}</span>
@@ -60,8 +71,29 @@
         <span class="text-sm md:text-base">{{"Generate Presentation" | translate}}</span>
       </button>
     </div>
+  </section>
 
-    <div class="relative w-full md:w-72">
+  <!-- Searches content the teacher already created; it never generates anything new. -->
+  <section
+    data-testid="search-pre-created-content"
+    aria-labelledby="search-pre-created-heading"
+    class="mt-8 pt-6 border-t border-shade-80"
+  >
+  <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+    <div>
+      <h2
+        id="search-pre-created-heading"
+        data-testid="search-pre-created-heading"
+        class="text-lg md:text-xl font-semibold text-content"
+      >
+        {{ "Search Pre-Created Content" | translate }}
+      </h2>
+      <p data-testid="search-pre-created-description" class="text-sm text-content-70 mt-1">
+        {{ "Find content you have already created. This does not create new content." | translate }}
+      </p>
+    </div>
+
+    <div class="relative w-full md:w-72 shrink-0">
       <input
         data-testid="content-search-input"
         [(ngModel)]="searchText"
@@ -349,6 +381,7 @@
       </div>
     </div>
   </div>
+  </section>
 </div>
 
 <!-- Define the reusable template -->
@@ -387,6 +420,7 @@
 
     <div class="w-full md:w-28 cursor-pointer capitalize md:flex-1">
       <app-dropdown
+        data-testid="medium-dropdown"
         [dropDownValues]="mediumDropdownOptions"
         #mediumDropDown
         (valueUpdate)="onMediumChange($event)"
@@ -396,6 +430,7 @@
 
     <div class="w-full md:w-28 cursor-pointer md:flex-1">
       <app-dropdown
+        data-testid="class-dropdown"
         [dropDownValues]="classDropdownOptions"
         #classDropDown
         (valueUpdate)="onClassChange($event)"
@@ -405,6 +440,7 @@
 
     <div class="w-full md:w-28 cursor-pointer md:flex-1">
       <app-dropdown
+        data-testid="subject-dropdown"
         [dropDownValues]="subjectDropdownOptions"
         #subjectDropDown
         (valueUpdate)="onSubjectChange($event)"
