@@ -18,16 +18,15 @@
       [attr.aria-label]="'Generation options' | translate"
     >
       <a
+        appGenerationTile
         *ngFor="let option of generationOptions"
         [routerLink]="option.route"
-        class="generation-tile"
         [class.col-span-2]="option.fullWidth"
-        [class.generation-tile--row]="!option.primary"
         [attr.data-testid]="option.testId"
-      >
-        <img class="generation-tile__image" [src]="option.image" alt="" aria-hidden="true" />
-        <span class="generation-tile__label">{{ option.label | translate }}</span>
-      </a>
+        [image]="option.image"
+        [label]="option.label"
+        [layout]="option.primary ? 'stacked' : 'row'"
+      ></a>
     </nav>
 
     <div class="mt-10" role="region" [attr.aria-label]="'Recently Generated/Modified Plans' | translate">

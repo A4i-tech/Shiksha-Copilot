@@ -15,6 +15,7 @@ import { ProfileImageComponent } from 'src/app/shared/components/profile-image/p
 import { GenerationStatusComponent } from './generation-status/generation-status.component';
 import { PaginationComponent } from 'src/app/shared/components/pagination/pagination.component';
 import { RouterModule } from '@angular/router';
+import { GenerationTileComponent } from 'src/app/shared/components/generation-tile/generation-tile.component';
 
 
 @NgModule({
@@ -39,6 +40,7 @@ import { RouterModule } from '@angular/router';
     ProfileImageComponent,
     PaginationComponent,
     RouterModule,
+    GenerationTileComponent,
   ]
 })
 export class UserModule { }

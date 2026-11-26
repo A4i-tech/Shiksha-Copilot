@@ -1,7 +1,9 @@
+import { GENERATION_TILE_IMAGES } from 'src/app/shared/components/generation-tile/generation-tile.component';
+
 /**
  * Home page generation tiles (issue #677).
  *
- * `image` values are the design-approved tile illustrations (120x80 SVG, from the #677 Figma).
+ * Images come from the shared GENERATION_TILE_IMAGES map (design-approved #677 illustrations).
  */
 export interface GenerationOption {
   id: string;
@@ -26,7 +28,7 @@ export const GENERATION_OPTIONS: GenerationOption[] = [
     label: 'Generate New Period Plan',
     route: '/content-generation/lesson-plan',
     permissions: ['content.view', 'lesson-plan.generate'],
-    image: 'assets/images/home-tile-period-plan.svg',
+    image: GENERATION_TILE_IMAGES.periodPlan,
     primary: true,
     testId: 'generate-period-plan-tile',
   },
@@ -35,7 +37,7 @@ export const GENERATION_OPTIONS: GenerationOption[] = [
     label: 'Generate New Question Paper',
     route: '/question-papers/generate',
     permissions: ['question-paper.generate'],
-    image: 'assets/images/home-tile-question-paper.svg',
+    image: GENERATION_TILE_IMAGES.questionPaper,
     primary: true,
     testId: 'generate-question-paper-tile',
   },
@@ -44,7 +46,7 @@ export const GENERATION_OPTIONS: GenerationOption[] = [
     label: 'Generate New Lesson Resource',
     route: '/content-generation/lesson-resources',
     permissions: ['content.view', 'lesson-resource.generate'],
-    image: 'assets/images/home-tile-lesson-resource.svg',
+    image: GENERATION_TILE_IMAGES.lessonResource,
     primary: false,
     testId: 'generate-lesson-resource-tile',
   },
@@ -53,7 +55,7 @@ export const GENERATION_OPTIONS: GenerationOption[] = [
     label: 'Generate New Presentation',
     route: '/content-generation/presentation',
     permissions: ['content.view', 'presentation.generate.arbitrary'],
-    image: 'assets/images/home-tile-presentation.svg',
+    image: GENERATION_TILE_IMAGES.presentation,
     primary: false,
     testId: 'generate-presentation-tile',
   },

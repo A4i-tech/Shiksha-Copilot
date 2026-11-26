@@ -13,6 +13,7 @@ import { RouterLink } from '@angular/router';
 
 import { DashboardComponent } from './dashboard.component';
 import { UtilityService } from 'src/app/core/services/utility.service';
+import { GenerationTileComponent } from 'src/app/shared/components/generation-tile/generation-tile.component';
 
 const ALL_GENERATION_PERMISSIONS = [
   'content.view',
@@ -46,7 +47,7 @@ describe('DashboardComponent', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [MatSnackBarModule, NgIdleModule.forRoot(), TranslateModule.forRoot(), RouterTestingModule, ToastrModule.forRoot(), HttpClientTestingModule],
+      imports: [MatSnackBarModule, NgIdleModule.forRoot(), TranslateModule.forRoot(), RouterTestingModule, ToastrModule.forRoot(), HttpClientTestingModule, GenerationTileComponent],
       declarations: [DashboardComponent],
       providers: [DatePipe],
       schemas: [NO_ERRORS_SCHEMA, CUSTOM_ELEMENTS_SCHEMA]
@@ -131,6 +132,27 @@ describe('DashboardComponent', () => {
     setPermissions(['question-paper.generate']);
     render();
     expect((tile('generate-question-paper-tile').nativeElement as HTMLElement).classList).toContain('col-span-2');
+  });
+
+  it('renders first-row tiles stacked and second-row tiles as rows with a chevron', () => {
+    render();
+    const isRow = (id: string) => (tile(id).nativeElement as HTMLElement).classList.contains('generation-tile--row');
+    const hasChevron = (id: string) => !!(tile(id).nativeElement as HTMLElement).querySelector('.generation-tile__chevron');
+    expect(isRow('generate-period-plan-tile')).toBeFalse();
+    expect(isRow('generate-question-paper-tile')).toBeFalse();
+    expect(hasChevron('generate-period-plan-tile')).toBeFalse();
+    expect(isRow('generate-lesson-resource-tile')).toBeTrue();
+    expect(isRow('generate-presentation-tile')).toBeTrue();
+    expect(hasChevron('generate-presentation-tile')).toBeTrue();
+  });
+
+  it('uses the approved illustrations', () => {
+    render();
+    const src = (id: string) => (tile(id).nativeElement as HTMLElement).querySelector('img')?.getAttribute('src');
+    expect(src('generate-period-plan-tile')).toBe('assets/images/home-tile-period-plan.svg');
+    expect(src('generate-question-paper-tile')).toBe('assets/images/home-tile-question-paper.svg');
+    expect(src('generate-lesson-resource-tile')).toBe('assets/images/home-tile-lesson-resource.svg');
+    expect(src('generate-presentation-tile')).toBe('assets/images/home-tile-presentation.svg');
   });
 
   it('hides the grid entirely when no generation permission is held', () => {
