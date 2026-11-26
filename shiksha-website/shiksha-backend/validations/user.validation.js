@@ -62,6 +62,7 @@ const bulkUploadSchema = Joi.object({
 	profiles: Joi.object({ teacher: teacherProfileSchema.required() }).required(),
 });
 
+const validateBulkRoleChange = validateRequest(Joi.object({ userIds: Joi.array().items(objectId).unique().min(1).required(), roleId: objectId.required() }));
 const validatePreferredLanguageUpdate = validateRequest(Joi.object({ preferredLanguage: Joi.string().valid("en", "kn", "tg").required() }));
 const validateUserCreate = validateRequest(userSchema);
 const validateUserGetByPhone = validateRequest(Joi.object({ phone: Joi.string().pattern(phoneNumberPattern).required() }));
@@ -94,6 +95,7 @@ module.exports = {
 	validateUserGetByPhone,
 	validateUserList,
 	validateUserUpdate,
+	validateBulkRoleChange,
 	validateSetProfile,
 	validatePreferredLanguageUpdate,
 };

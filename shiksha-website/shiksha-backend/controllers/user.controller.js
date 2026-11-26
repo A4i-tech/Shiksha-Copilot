@@ -62,6 +62,18 @@ class UserController extends BaseController {
     handleError(result, res);
   }
 
+  async bulkChangeRole(req, res) {
+    const { userIds, roleId } = req.body;
+    const { updated, failed } = await this.manager.bulkChangeRole(userIds.map((userId) => ({ userId, roleId })), req.user);
+    res.status(200).json({ success: true, message: `Role change completed: ${updated} updated, ${failed.length} failed.`, data: { updated, failed } });
+  }
+
+  async bulkChangeRoleImport(req, res) {
+    if (!req.file) return res.status(400).json({ success: false, message: "File not provided. Choose an .xlsx file and upload again." });
+    const result = await this.manager.bulkChangeRoleImport(req.file.buffer, req.user);
+    res.status(result.success ? 200 : 400).json(result);
+  }
+
   async setProfile(req, res) {
     let result = await this.manager.setProfile(req.user, req.body);
 
