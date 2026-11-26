@@ -70,7 +70,8 @@ runs:
         jq --arg jwt "$(openssl rand -hex 24)" --arg pin "$(openssl rand -hex 24)" --arg blob "$blob"           '. + {JWT_SECRET: $jwt, PIN_SECRET_KEY: $pin, SHIKSHA_DEVTOOLS: "true",
                 AZURE_STORAGE_CONNECTION_STRING: $blob, AZURE_STORAGE_CONTAINER_NAME: "shiksha"}'           <<<"$BE_SECRET_JSON" > "$secrets/shiksha-be-dev-secret.json"
         jq --arg blob "$blob"           '. + {BLOB_STORE_CONNECTION_STRING: $blob,
-                PRES_MONGODB_URL: "mongodb://shiksha-mongo.shiksha.svc.cluster.local:27017/shiksha_viz"}'           <<<"$API_SECRET_JSON" > "$secrets/shiksha-api-dev-secret.json"
+                PRES_MONGODB_URL: "mongodb://shiksha-mongo.shiksha.svc.cluster.local:27017/shiksha_viz",
+        NATS_URL: "nats://nats.shiksha.svc.cluster.local:4222"}'           <<<"$API_SECRET_JSON" > "$secrets/shiksha-api-dev-secret.json"
 
         export SHIKSHA_REPO_DIR="$GITHUB_WORKSPACE/infra-ops" SHIKSHA_SECRETS_DIR="$secrets" \
           SKIP_MONGO_RESTORE=1 SHIKSHA_BE_IMAGE=shiksha-backend-local \
