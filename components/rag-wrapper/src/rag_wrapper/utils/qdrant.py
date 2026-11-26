@@ -38,41 +38,14 @@ class QdrantUtils:
         self.payload_fields = payload_fields or []
         self.vector_store_kwargs = vector_store_kwargs or {}
         self.logger = logger or logging.getLogger(__name__)
-        self._sync_client: Optional[QdrantClient] = None
-        self._async_client: Optional[AsyncQdrantClient] = None
-        self._closed = False
 
-    @property
-    def sync_client(self) -> QdrantClient:
-        if self._closed:
-            raise RuntimeError("QdrantUtils is closed. Build a new instance to query.")
-        if self._sync_client is None:
-            self._sync_client = QdrantClient(url=self.url, api_key=self.api_key)
-        return self._sync_client
+    def create_sync_client(self) -> QdrantClient:
+        """Create a synchronous Qdrant client."""
+        return QdrantClient(url=self.url, api_key=self.api_key)
 
-    @property
-    def async_client(self) -> AsyncQdrantClient:
-        if self._closed:
-            raise RuntimeError("QdrantUtils is closed. Build a new instance to query.")
-        if self._async_client is None:
-            self._async_client = AsyncQdrantClient(url=self.url, api_key=self.api_key)
-        return self._async_client
-
-    async def close(self) -> None:
-        """Close both clients. Never raises."""
-        self._closed = True
-        aclient, self._async_client = self._async_client, None
-        client, self._sync_client = self._sync_client, None
-        if aclient is not None:
-            try:
-                await aclient.close()
-            except Exception as exc:
-                self.logger.warning(f"Failed to close async Qdrant client: {exc}")
-        if client is not None:
-            try:
-                client.close()
-            except Exception as exc:
-                self.logger.warning(f"Failed to close sync Qdrant client: {exc}")
+    def create_async_client(self) -> AsyncQdrantClient:
+        """Create an asynchronous Qdrant client."""
+        return AsyncQdrantClient(url=self.url, api_key=self.api_key)
 
     def get_vector_store_config(
         self, dense_vector_name: str = DEFAULT_DENSE_VECTOR_NAME
@@ -83,13 +56,13 @@ class QdrantUtils:
         """
         return {
             "collection_name": self.collection_name,
-            "client": self.sync_client,
-            "aclient": self.async_client,
+            "client": self.create_sync_client(),
+            "aclient": self.create_async_client(),
             "dense_vector_name": dense_vector_name,
             **self.vector_store_kwargs,
         }
 
-    def create_payload_indexes(self) -> None:
+    def create_payload_indexes(self, client: QdrantClient) -> None:
         """Create keyword payload indexes for all configured payload fields.
 
         This is a noop when no payload fields are configured. Any errors are
@@ -101,7 +74,7 @@ class QdrantUtils:
 
         for field_name in self.payload_fields:
             try:
-                self.sync_client.create_payload_index(
+                client.create_payload_index(
                     collection_name=self.collection_name,
                     field_name=field_name,
                     field_schema=PayloadSchemaType.KEYWORD,
@@ -117,7 +90,7 @@ class QdrantUtils:
     async def index_exists(self) -> bool:
         """Asynchronously check whether the target collection exists."""
         try:
-            aclient = self.async_client
+            aclient = self.create_async_client()
             collections = await aclient.get_collections()
             collection_names = [c.name for c in collections.collections]
             exists = self.collection_name in collection_names
@@ -134,7 +107,7 @@ class QdrantUtils:
 
         Also attempts to create configured payload indexes.
         """
-        client = self.sync_client
+        client = self.create_sync_client()
         client.create_collection(
             collection_name=self.collection_name,
             vectors_config={
@@ -144,7 +117,7 @@ class QdrantUtils:
             },
         )
         # try to create payload indexes (safe to call even if no fields)
-        self.create_payload_indexes()
+        self.create_payload_indexes(client)
         self.logger.info(
             f"Created Qdrant collection: {self.collection_name} (dim={dim})"
         )
@@ -169,7 +142,7 @@ class QdrantUtils:
         if not metadata_filter:
             return
 
-        aclient = self.async_client
+        aclient = self.create_async_client()
         qf = self.to_qdrant_filter(metadata_filter)
 
         points, _ = await aclient.scroll(

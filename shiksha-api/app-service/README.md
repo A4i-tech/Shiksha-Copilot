@@ -110,7 +110,6 @@ QDRANT_API_KEY=your_qdrant_api_key
 - `AZURE_BING_GROUNDING_CONNECTION_ID`: Azure AI Foundry Bing connection ID (for web search capabilities)
 - `QDRANT_URL`: Qdrant vector database URL (if using QdrantRagOpsAdapter)
 - `QDRANT_API_KEY`: Qdrant API key (if authentication required)
-- `RAG_ADAPTER_CACHE_SIZE`: Maximum cached RAG adapters. Default is 32. The value must be greater than 0. Each of the three services has its own cache, so the limit applies per service.
 
 ### Running the Application
 
@@ -547,12 +546,13 @@ Implements an LRU (Least Recently Used) cache for RAG adapter instances:
 class RagAdapterCache:
     """LRU cache for RAG adapter instances with automatic cleanup."""
 
-    def __init__(self, builder, size: int = settings.rag_adapter_cache_size):
+    def __init__(self, max_size: int = 32):
+        # Initialize cache with maximum size
 
-    def lease(self, index_path, completion_llm, embedding_llm):
-        # Async context manager. Holds the adapter until the block exits.
+    async def get_or_create_adapter(self, cache_key: str, adapter_factory) -> BaseRagAdapter:
+        # Get existing adapter or create new one
 
-    async def cleanup(self) -> None:
+    async def cleanup_all(self) -> None:
         # Clean up all cached adapters
 ```
 
@@ -561,7 +561,7 @@ class RagAdapterCache:
 - **Automatic Eviction**: Removes least recently used adapters when cache is full
 - **Resource Cleanup**: Automatically cleans up adapter resources on eviction
 - **Thread Safety**: Safe for concurrent access
-- **Lease Counting**: An evicted adapter closes after its last lease ends
+- **Configurable Size**: Default maximum of 32 cached adapters
 
 ### RAG Integration Flow
 
@@ -796,7 +796,7 @@ logger.error("Failed to generate questions", exc_info=True)
    - Monitor token usage patterns
 
 4. **Memory issues with RAG cache**
-   - Reduce RAG_ADAPTER_CACHE_SIZE
+   - Reduce RAG_ADAPTER_CACHE max_size
    - Monitor adapter cleanup in logs
    - Consider using QdrantRagOpsAdapter for production
 
