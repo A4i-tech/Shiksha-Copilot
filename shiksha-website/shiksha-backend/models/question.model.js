@@ -95,6 +95,7 @@ QuestionSchema.index({ marksPerQuestion: 1, difficulty: 1, answerType: 1 });
 // Full text search - added groupHeading
 QuestionSchema.index({ text: 'text', 'chapter.title': 'text', groupHeading: 'text' });
 QuestionSchema.index({ isDeleted: 1, status: 1, createdBy: 1 });
+QuestionSchema.index({ chapterId: 1, isDeleted: 1, status: 1 });
 
 // Sanitize before save
 QuestionSchema.pre('validate', function (next) {

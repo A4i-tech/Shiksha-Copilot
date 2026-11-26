@@ -5,6 +5,7 @@ const Question = require("../models/question.model");
 const Chapter = require("../models/chapter.model");
 const formatApiReponse = require("../helper/response");
 const { checkRow } = require("../validations/question.bulk.validation");
+const { CHAPTER_ACCEPTS_CONTENT } = require("../constants/content-status");
 
 /** @extends {BaseManager<QuestionDao>} */
 class QuestionManager extends BaseManager {
@@ -32,7 +33,7 @@ class QuestionManager extends BaseManager {
 
 			const existingChapters = await Chapter.find({
 				_id: { $in: chapterIds },
-				isDeleted: { $ne: true },
+				...CHAPTER_ACCEPTS_CONTENT,
 			})
 				.select("_id")
 				.lean();

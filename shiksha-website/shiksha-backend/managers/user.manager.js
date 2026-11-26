@@ -60,6 +60,8 @@ async function prepareAssignments(input, actor, current, teacher, permission) {
   return { assignments, school };
 }
 
+const NOT_IN_SCOPE = "No user in your scope matches this entry. Check the phone number and try again.";
+
 async function canAccessUser(grants, permissions, user) {
   if (user.profiles.teacher) {
     const school = await School.findById(schoolDependency(user.roles)).lean();
@@ -129,6 +131,101 @@ class UserManager extends BaseManager {
     });
 
     return { success: true, data: result, message: "User created" };
+  }
+
+  async bulkChangeRole(pairs, actor) {
+    if (pairs.length > 500) throw new AppError("Change at most 500 teachers at a time. Remove some teachers and try again.", 400);
+    const roleIds = [...new Set(pairs.map((pair) => pair.roleId))];
+    if (await Role.countDocuments({ _id: { $in: roleIds }, scopeType: "SCHOOL", isDeleted: false }) !== roleIds.length) {
+      throw new AppError("Pick a school-level role and try again.", 400);
+    }
+    const grants = getRolePermissions(actor.roles);
+    const superuser = actor.roles.some((assignment) => !assignment.role.isDeleted && assignment.role.isSuperUser);
+    const affectedIds = [];
+    const failed = [];
+    for (const { userId, roleId, row } of pairs) {
+      try {
+        const user = await this.dao.getById(userId);
+        if (!user || !superuser && !await canManageUser(grants, "user.edit", user)) throw new AppError(NOT_IN_SCOPE, 404);
+        if (!user.profiles.teacher || user.roles.length !== 1) throw new AppError("This user is not a teacher with one school role. Change the role on the user page instead.", 400);
+        const [assignment] = user.roles;
+        if (String(assignment.role._id) === roleId) throw new AppError("This user already has this role. No change was made.", 400);
+        const result = await this.update(userId, { roles: [{ _id: String(assignment._id), roleId, dep: String(assignment.dep) }] }, actor);
+        if (!result.success) throw new AppError(result.message, 400);
+        affectedIds.push(user._id);
+      } catch (error) {
+        const expected = error instanceof AppError;
+        if (!expected) logger.error("Bulk role change failed for a user", { userId: String(userId), row, stack: error.stack });
+        failed.push({ row, userId, message: expected ? error.message : "The server could not change this user. Try this user again later." });
+      }
+    }
+    const audit = await AuditLog.create({
+      eventType: "Teachers Role Change",
+      status: affectedIds.length ? "success" : "failure",
+      userId: actor._id,
+      name: actor.identity.name,
+      metadata: { processedRows: pairs.length, roleIds, affectedIds },
+    });
+    return { updated: affectedIds.length, failed, auditId: audit._id };
+  }
+
+  async bulkChangeRoleImport(fileBuffer, actor) {
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(fileBuffer);
+    const worksheet = workbook.getWorksheet(1);
+    if (worksheet?.name !== "teacher-role") throw new AppError("Invalid template: Sheet name should be 'teacher-role'. Download the template and try again.", 400);
+    const headers = worksheet.getRow(1).values.slice(1).map((header) => header?.toString().toLowerCase());
+    if (headers[0] !== "phone" || headers[1] !== "role") throw new AppError("Invalid template: Column headers should be 'phone' and 'role'. Download the template and try again.", 400);
+
+    if (worksheet.actualRowCount - 1 > 500) throw new AppError("The file has more than 500 rows. Split it into files of 500 rows or fewer and try again.", 400);
+    const rows = [];
+    worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+      if (rowNumber === 1) return;
+      const phone = row.getCell(1).text.replace(/\s+/g, "").replace(/^\+?91(?=\d{10}$)/, "");
+      const role = row.getCell(2).text.trim();
+      if (phone || role) rows.push({ row: rowNumber, phone, role });
+    });
+    if (!rows.length) throw new AppError("The file has no rows. Add one teacher per row and try again.", 400);
+
+    const roleByName = new Map((await Role.find({ isDeleted: false, scopeType: "SCHOOL" }).select("_id name")).map((role) => [role.name.toLowerCase(), role]));
+    const userByPhone = new Map((await User.find({ "identity.phone": { $in: rows.map((row) => row.phone) } }).select("_id identity.phone").lean()).map((user) => [user.identity.phone, user]));
+    const seen = new Set();
+    const errors = [];
+    const pairs = [];
+    for (const { row, phone, role } of rows) {
+      const missing = !phone ? "Phone is missing. Enter the teacher's phone number." : !role ? "Role is missing. Enter a school role name such as Power Teacher." : null;
+      if (missing) {
+        errors.push({ row, message: missing });
+        continue;
+      }
+      const found = roleByName.get(role.toLowerCase());
+      const user = userByPhone.get(phone);
+      const message = !found ? `Unknown school role '${role}'` : !user ? NOT_IN_SCOPE : seen.has(phone) ? `Duplicate phone ${phone} in the file` : null;
+      if (message) {
+        errors.push({ row, message });
+        continue;
+      }
+      seen.add(phone);
+      pairs.push({ row, userId: user._id, roleId: String(found._id) });
+    }
+
+    const result = await this.bulkChangeRole(pairs, actor);
+    errors.push(...result.failed);
+    errors.sort((a, b) => a.row - b.row);
+    let errorUrl;
+    if (errors.length) {
+      errorUrl = await exportExcel({
+        filename: `Teacher-Role-Error-Log-${actor._id}-${Date.now()}`,
+        worksheets: [{
+          name: "Validation Errors",
+          rows: errors,
+          columns: [{ header: "Row Number", key: "row", width: 15 }, { header: "Error Message", key: "message", width: 50 }],
+          toRow: (error) => error,
+        }],
+      });
+      await AuditLog.findByIdAndUpdate(result.auditId, { logUrl: errorUrl });
+    }
+    return { success: result.updated > 0, message: `Role change completed: ${result.updated} updated, ${errors.length} failed.`, errorUrl };
   }
 
   async getProfileById(id, grants, actorId) {

@@ -294,6 +294,34 @@ describe("BaseManager", () => {
     });
   });
 
+  describe("approve", () => {
+    beforeEach(() => {
+      mockDao.Model = { findOneAndUpdate: jest.fn() };
+    });
+
+    it("moves a record under review to approved and live in one atomic update", async () => {
+      mockDao.Model.findOneAndUpdate.mockResolvedValue({ _id: "r1", status: "approved", isDeleted: false });
+
+      const result = await manager.approve({ params: { id: "r1" } });
+
+      expect(result.success).toBe(true);
+      expect(mockDao.Model.findOneAndUpdate).toHaveBeenCalledWith(
+        { _id: "r1", isDeleted: true, status: "under_review" },
+        { $set: { status: "approved", isDeleted: false } },
+        { new: true }
+      );
+    });
+
+    it("fails with a next step when the record is not under review", async () => {
+      mockDao.Model.findOneAndUpdate.mockResolvedValue(null);
+
+      const result = await manager.approve({ params: { id: "r1" } });
+
+      expect(result.success).toBe(false);
+      expect(result.message).toMatch(/not ready for review.*Reload/);
+    });
+  });
+
   describe("deactivate", () => {
     it("should deactivate a record (if implemented)", async () => {
       // BaseManager may have deactivate method similar to delete

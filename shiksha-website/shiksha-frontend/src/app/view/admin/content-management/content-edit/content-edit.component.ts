@@ -1,32 +1,47 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { TranslateService } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { Subscription, of, switchMap } from 'rxjs';
+import { EMPTY, Subscription, catchError, map, of, switchMap } from 'rxjs';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { DropdownComponent } from 'src/app/shared/components/dropdown/dropdown.component';
 import { DropDownConfig } from 'src/app/shared/interfaces/dropdown.interface';
 import {
+  CURATOR_HIDDEN_FIELDS,
   ContentEntityConfig,
   ContentField,
+  ContentFieldType,
   ContentSelectOption,
+  LessonVideo,
   getContentEntityConfig,
   localizeEntity,
 } from '../content-management.config';
-import { ContentManagementService } from '../content-management.service';
+import { ContentManagementService, CurationChapter } from '../content-management.service';
 import { ChapterPickerComponent } from '../chapter-picker/chapter-picker.component';
 import { CONTENT_STATUS } from '../content-status.constants';
 import { UmamiService } from 'src/app/shared/services/umami.service';
+import { SectionEditorComponent } from 'src/app/shared/components/section-editor/section-editor.component';
+import { blankSections, filledSections } from 'src/app/shared/utility/section-content.util';
+import { ContentGenerationService } from 'src/app/view/user/content-generation/content-generation.service';
+import { CURATION_URL } from 'src/app/view/curator/curation-routes';
 
 /** the fixed A-D option row set an MCQ answer type needs, matching McqOption in question_paper.py */
 const MCQ_OPTION_LABELS = ['A', 'B', 'C', 'D'];
+
+type NewRecordFields = ({ name: string } | { lessonName: string }) & {
+  subTopics: string[];
+  isAll: false;
+  templateId: string;
+};
+
+const WIDE_FIELD_TYPES: ContentFieldType[] = ['json', 'textarea', 'question-content', 'mcq-options', 'sections', 'videos'];
 
 @Component({
   selector: 'app-content-edit',
   templateUrl: './content-edit.component.html',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, ChapterPickerComponent, DropdownComponent],
+  imports: [CommonModule, FormsModule, RouterModule, ChapterPickerComponent, DropdownComponent, TranslateModule, SectionEditorComponent],
 })
 export class ContentEditComponent implements OnInit, OnDestroy {
   config!: ContentEntityConfig;
@@ -36,6 +51,12 @@ export class ContentEditComponent implements OnInit, OnDestroy {
   /** true when the route id is `new`, so the form adds a record */
   isCreate = false;
   isReadonly = false;
+  curatorMode = false;
+  chapterId = '';
+  chapter?: CurationChapter;
+  subTopic = '';
+  private newRecordFields?: NewRecordFields;
+  templatePending = false;
 
   /** form value of each field, as the control shows it */
   formValues: { [field: string]: any } = {};
@@ -50,14 +71,16 @@ export class ContentEditComponent implements OnInit, OnDestroy {
 
   private original: { [field: string]: any } = {};
   private subscriptions: Subscription[] = [];
+  private recordLoad = Subscription.EMPTY;
 
   constructor(
     private route: ActivatedRoute,
     private router: Router,
-    private contentService: ContentManagementService,
+    public contentService: ContentManagementService,
     private utilityService: UtilityService,
     private translateService: TranslateService,
-    private umamiService: UmamiService
+    private umamiService: UmamiService,
+    private contentGenerationService: ContentGenerationService
   ) {
     this.subscriptions.push(
       translateService.onLangChange.subscribe(() => {
@@ -67,6 +90,8 @@ export class ContentEditComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.curatorMode = this.route.snapshot.data['curatorMode'] === true;
+
     this.subscriptions.push(
       this.route.paramMap.subscribe((params) => {
         const entity = getContentEntityConfig(params.get('entity'));
@@ -81,9 +106,15 @@ export class ContentEditComponent implements OnInit, OnDestroy {
         this.config = localizeEntity(entity, this.translateService);
         this.recordId = id;
         this.isCreate = id === 'new';
+        if (this.curatorMode) this.chapterId = params.get('chapterId')!;
 
         if (entity.fields.some((field) => field.type === 'subject-select')) {
           this.loadSubjectOptions();
+        }
+
+        if (this.curatorMode) {
+          this.loadCuratorRecord();
+          return;
         }
 
         if (this.isCreate) {
@@ -97,6 +128,7 @@ export class ContentEditComponent implements OnInit, OnDestroy {
           return;
         }
 
+        if (entity.key === 'chapters') this.loadCurators();
         this.loadRecord();
       })
     );
@@ -104,6 +136,7 @@ export class ContentEditComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.subscriptions.forEach((subscription) => subscription.unsubscribe());
+    this.recordLoad.unsubscribe();
   }
 
   // One option per board a subject applies to, so "Science" under two boards shows twice.
@@ -120,6 +153,10 @@ export class ContentEditComponent implements OnInit, OnDestroy {
       },
       error: (err: any) => this.utilityService.handleError(err),
     });
+  }
+
+  loadCurators(): void {
+    this.contentService.listCurators().subscribe({ error: (err: any) => this.utilityService.handleError(err) });
   }
 
   loadRecord(): void {
@@ -139,8 +176,100 @@ export class ContentEditComponent implements OnInit, OnDestroy {
     });
   }
 
+  // Records load from the list tab of the chapter status.
+  private loadCuratorRecord(): void {
+    this.isLoading = true;
+    this.recordLoad.unsubscribe();
+
+    const children = this.isCreate ? [] : [{ segment: this.config.segment, filters: { _id: this.recordId } }];
+
+    this.recordLoad = this.contentService.loadCuratorChapter(this.chapterId, children).subscribe({
+      next: ({ chapter, lists }) => {
+        this.isLoading = false;
+        const record = chapter && !this.isCreate ? lists[0][0] : {};
+        if (!chapter || !record) {
+          this.utilityService.showError(
+            this.translateService.instant('This chapter is not available to you. Open the chapter from your dashboard, then try again.')
+          );
+          this.router.navigate(chapter ? ['/curation/chapters', this.chapterId] : ['/curation']);
+          return;
+        }
+        if (this.isCreate && this.hasSubTopic) {
+          const subTopic = this.route.snapshot.queryParamMap.get('subTopic');
+          if (!subTopic) {
+            this.router.navigate([this.selectionUrl]);
+            return;
+          }
+          this.subTopic = subTopic;
+        }
+        this.chapter = chapter;
+        this.record = record;
+        this.isReadonly = chapter.status !== CONTENT_STATUS.DRAFT;
+        if (!this.isCreate && this.hasSubTopic) this.subTopic = record.subTopics.join(' | ');
+        this.fillForm(this.record);
+        if (this.hasSubTopic && !record[this.sectionsField]?.length) this.loadSectionTemplate(chapter);
+      },
+      error: (err: any) => {
+        this.isLoading = false;
+        this.utilityService.handleError(err);
+      },
+    });
+  }
+
+  private get isPlan(): boolean {
+    return this.config.key === 'lesson-plans';
+  }
+
+  get hasSubTopic(): boolean {
+    return this.isPlan || this.config.key === 'resources';
+  }
+
+  private get sectionsField(): string {
+    return this.isPlan ? 'sections' : 'resources';
+  }
+
+  private get selectionUrl(): string {
+    return this.isPlan ? CURATION_URL.lessonPlan : CURATION_URL.lessonResources;
+  }
+
+  private loadSectionTemplate(chapter: CurationChapter): void {
+    this.templatePending = true;
+    this.subscriptions.push(
+      this.contentGenerationService
+        .getSectionTemplate(chapter, this.isPlan ? 'lesson_plan' : 'lesson_resource')
+        .pipe(map((template) => ({ template, sections: blankSections(template.sections) })))
+        .subscribe({
+          next: ({ template, sections }) => {
+            this.templatePending = false;
+            this.formValues[this.sectionsField] = sections;
+            if (this.isCreate) this.newRecordFields = this.buildNewRecordFields(chapter, template._id);
+          },
+          error: (err: any) =>
+            err instanceof Error ? this.utilityService.showError(err.message) : this.utilityService.handleError(err),
+        })
+    );
+  }
+
+  fieldType(field: ContentField): ContentFieldType {
+    return (this.curatorMode && field.curatorType) || field.type;
+  }
+
   isDropdownField(field: ContentField): boolean {
-    return field.type === 'select' || field.type === 'subject-select';
+    const type = this.fieldType(field);
+    return type === 'select' || type === 'subject-select';
+  }
+
+  isWideField(field: ContentField): boolean {
+    return WIDE_FIELD_TYPES.includes(this.fieldType(field));
+  }
+
+  addVideo(field: ContentField): void {
+    const video: LessonVideo = { title: '', url: '', selected: true };
+    this.formValues[field.field].push(video);
+  }
+
+  removeVideo(field: ContentField, index: number): void {
+    this.formValues[field.field].splice(index, 1);
   }
 
   dropdownConfig(field: ContentField): DropDownConfig {
@@ -156,6 +285,7 @@ export class ContentEditComponent implements OnInit, OnDestroy {
 
   get visibleFields(): ContentField[] {
     return this.config.fields.filter((field) => {
+      if (this.curatorMode && CURATOR_HIDDEN_FIELDS.includes(field.field)) return false;
       if (!this.isCreate && field.createOnly) return false;
       if (field.visibleWhen && !field.visibleWhen.values.includes(this.formValues[field.visibleWhen.field])) {
         return false;
@@ -171,6 +301,8 @@ export class ContentEditComponent implements OnInit, OnDestroy {
       ? this.buildCreateBody()
       : this.buildChangedBody();
 
+    if (body && this.curatorMode && this.isCreate) Object.assign(body, { chapterId: this.chapterId }, this.newRecordFields);
+
     if (Object.keys(this.fieldErrors).length) {
       this.utilityService.showError(
         'Correct the fields marked with an error before you save.'
@@ -180,17 +312,21 @@ export class ContentEditComponent implements OnInit, OnDestroy {
 
     if (!body) return;
 
-    if (!Object.keys(body).length) {
+    // A curator sends the whole chapter for review. The server rejects a status field on a record.
+    const submitChapter = this.curatorMode && targetStatus === CONTENT_STATUS.UNDER_REVIEW;
+    const unchanged = !Object.keys(body).length;
+
+    if (unchanged && !submitChapter) {
       this.utilityService.showError('No field has changed.');
       return;
     }
 
     this.isSaving = true;
 
-    const request = this.isCreate
-      ? this.contentService.create(this.config.segment, body).pipe(
+    const saved = this.isCreate
+      ? this.contentService.create(this.config.segment, body, this.curatorMode).pipe(
           switchMap((res: any) => {
-            if (targetStatus === CONTENT_STATUS.DRAFT) return of(res);
+            if (targetStatus === CONTENT_STATUS.DRAFT || this.curatorMode) return of(res);
 
             const id = res?.data?.insertedIds?.[0];
             if (!id) throw new Error('The record was created but its ID was not returned.');
@@ -200,7 +336,21 @@ export class ContentEditComponent implements OnInit, OnDestroy {
             });
           })
         )
-      : this.contentService.update(this.config.segment, this.recordId, body);
+      : unchanged
+        ? of(null)
+        : this.contentService.update(this.config.segment, this.recordId, body, this.curatorMode);
+
+    const request = submitChapter
+      ? saved.pipe(
+          switchMap(() => this.contentService.submit(this.chapterId)),
+          catchError((err: any) => {
+            // The record is already saved as a draft, so leave the form to avoid a duplicate on retry.
+            this.utilityService.handleError(err);
+            this.leave();
+            return EMPTY;
+          })
+        )
+      : saved;
 
     request.subscribe({
       next: (res: any) => {
@@ -212,7 +362,7 @@ export class ContentEditComponent implements OnInit, OnDestroy {
               ? `${this.config.singular} added successfully`
               : `${this.config.singular} updated successfully`)
         );
-        this.router.navigate(['/content-management', this.config.key]);
+        this.leave();
       },
       error: (err: any) => {
         this.isSaving = false;
@@ -225,6 +375,12 @@ export class ContentEditComponent implements OnInit, OnDestroy {
         this.utilityService.handleError(err);
       },
     });
+  }
+
+  private buildNewRecordFields(chapter: CurationChapter, templateId: string): NewRecordFields {
+    const { subject, board, standard, topics } = chapter;
+    const name = `${subject[0].subjectName}-${board} Class${standard} ${topics}`;
+    return { ...(this.isPlan ? { name } : { lessonName: name }), subTopics: [this.subTopic], isAll: false, templateId };
   }
 
   // The backend runs the same check as the bulk upload, so this sends the values as they are.
@@ -268,13 +424,20 @@ export class ContentEditComponent implements OnInit, OnDestroy {
   }
 
   cancel(): void {
-    this.router.navigate(['/content-management', this.config.key]);
+    if (this.curatorMode && this.isCreate && this.hasSubTopic) this.router.navigate([this.selectionUrl]);
+    else this.leave();
+  }
+
+  private leave(): void {
+    this.router.navigate(
+      this.curatorMode ? ['/curation/chapters', this.chapterId] : ['/content-management', this.config.key]
+    );
   }
 
   onFieldChange(field: ContentField, value: any): void {
     this.formValues[field.field] = value;
 
-    if (field.type !== 'json') {
+    if (this.fieldType(field) !== 'json') {
       delete this.fieldErrors[field.field];
       return;
     }
@@ -306,27 +469,30 @@ export class ContentEditComponent implements OnInit, OnDestroy {
   }
 
   private toControlValue(field: ContentField, value: any): any {
-    if (field.type === 'boolean') return value === true;
+    const type = this.fieldType(field);
+    if (type === 'boolean') return value === true;
+
+    if (type === 'sections' || type === 'videos') return structuredClone(value ?? []);
 
     if (value === null || value === undefined) return '';
 
-    if (field.type === 'list') {
+    if (type === 'list') {
       return Array.isArray(value) ? value.join('\n') : `${value}`;
     }
 
-    if (field.type === 'json') {
+    if (type === 'json') {
       return JSON.stringify(value, null, 2);
     }
 
-    if (field.type === 'question-content') {
+    if (type === 'question-content') {
       return this.parseQuestionContent(value);
     }
 
-    if (field.type === 'mcq-options') {
+    if (type === 'mcq-options') {
       return this.parseMcqOptions(value);
     }
 
-    if (field.type === 'chapter-reference') {
+    if (type === 'chapter-reference') {
       return { chapterNumber: value?.chapterNumber ?? '', title: value?.title ?? '' };
     }
 
@@ -362,7 +528,18 @@ export class ContentEditComponent implements OnInit, OnDestroy {
   private toRecordValue(field: ContentField): any {
     const raw = this.formValues[field.field];
 
-    switch (field.type) {
+    switch (this.fieldType(field)) {
+      case 'sections':
+        return filledSections(raw);
+      case 'videos': {
+        delete this.fieldErrors[field.field];
+        const videos = (raw as LessonVideo[]).filter((video) => video.title.trim() || video.url.trim());
+        if (videos.some((video) => !video.url.trim())) {
+          this.fieldErrors[field.field] = 'Add a link to every video, or remove the row.';
+          return null;
+        }
+        return videos;
+      }
       case 'boolean':
         return raw === true;
       case 'number':
@@ -403,7 +580,7 @@ export class ContentEditComponent implements OnInit, OnDestroy {
     const body: { [key: string]: any } = {};
 
     this.visibleFields.forEach((field) => {
-      if (this.fieldErrors[field.field]) return;
+      if (this.fieldErrors[field.field] && this.fieldType(field) === 'json') return;
 
       let next: any;
 
@@ -428,10 +605,12 @@ export class ContentEditComponent implements OnInit, OnDestroy {
 
   // A record that never had this field must not count as changed when the control is empty.
   private emptyOf(field: ContentField): any {
-    switch (field.type) {
+    switch (this.fieldType(field)) {
       case 'boolean':
         return false;
       case 'list':
+      case 'sections':
+      case 'videos':
         return [];
       case 'number':
         return null;

@@ -2,7 +2,7 @@
 	<div class="flex gap-2 items-center">
 		<img src="assets/icons/back-arrow.svg" alt="" class="cursor-pointer" (click)="backNavigation()" />
 		<h1 class="text-xl md:text-3xl font-bold text-content leading-[48px]">
-			{{(getLessonType()?.type === 'plan' ? 'Lesson Plan Details':'Lesson Resources') | translate}}
+			{{(getLessonType()?.type === 'plan' ? 'Lesson Plan Details' : 'Lesson Resources') | translate}}
 		</h1>
 	</div>
 	<p class="text-content-60 text-sm md:text-base mt-2 pb-4 border-b-[3px] border-shade-80">{{'Info' | translate}}: {{(getLessonType()?.type === 'plan' ? 'Lesson Plan' : 'Resource Plan') | translate}}, {{'Board' | translate}}-{{getBoards()}} </p>
@@ -67,7 +67,12 @@
 										[dropDownValues]="subtopicsDropdownOptions" [config]="subtopicsDropdownconfig"
 										[submitted]="submitted"></app-dropdown>
 							</div>                
+							<div *ngIf="curatorMode" class="px-4 py-2 bg-primary-50 rounded mt-7 flex gap-2 items-start">
+								<img class="w-5" src="assets/icons/info-primary.svg" alt="">
+								<p class="text-content text-sm md:text-base">{{'Pick one of your assigned chapters, then the subtopic to write.' | translate}}</p>
+							</div>
 					</div>
+					<ng-container *ngIf="!curatorMode">
 					<hr class="border-b-[3px] mt-7 border-shade-80">
 					<div class="mt-7" *ngIf="getLessonType()?.type !== 'plan'">
 							<div class="flex items-center">
@@ -146,6 +151,8 @@
 									{{submitBtnTxt | translate}}
 							</button>  
 					</div>
+
+					</ng-container>
 
 			</form>
 	</div>

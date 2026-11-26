@@ -44,6 +44,8 @@ export class StaffUserCommonService extends BaseRestService {
   deactivate(id: string) { return this.http.put(`${this.baseUrl}/users/${id}/deactivate`, {}); }
   activate(id: string) { return this.http.put(`${this.baseUrl}/users/${id}/activate`, {}); }
   importUsers(formdata: any) { return this.http.post(`${this.baseUrl}/users/import`, formdata); }
+  bulkChangeRole(userIds: string[], roleId: string) { return this.http.post<any>(`${this.baseUrl}/users/bulk-role`, { userIds, roleId }); }
+  importRoleChanges(formdata: any) { return this.http.post<any>(`${this.baseUrl}/users/bulk-role/import`, formdata); }
 
   list(opts: { profileType: 'teacher' | 'admin'; page?: number; limit?: number; filters?: any; search?: string }): Observable<any> {
     let params = this.buildFilterParams(opts.filters, opts.search).set('filter[profileType]', opts.profileType);

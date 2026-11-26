@@ -20,6 +20,23 @@ const ChapterSchema = new mongoose.Schema(
     status: { type: String, enum: CONTENT_STATUSES, default: CONTENT_STATUS.APPROVED },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 
+    assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    assignmentHistory: [
+      {
+        _id: false,
+        assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        assignedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        assignedAt: { type: Date },
+        unassignedAt: { type: Date, default: null }
+      }
+    ],
+    submittedAt: { type: Date },
+    reviewComment: {
+      text: { type: String },
+      by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      at: { type: Date }
+    },
+
     learningOutcomes: { type: [String], default: [] },
 
     topicsLearningOutcomes: [
@@ -40,5 +57,6 @@ const ChapterSchema = new mongoose.Schema(
 
 ChapterSchema.index({ standard: 1, medium: 1, board: 1, subjectId: 1 });
 ChapterSchema.index({ isDeleted: 1, status: 1, createdBy: 1 });
+ChapterSchema.index({ assignedTo: 1, isDeleted: 1, status: 1 });
 
 module.exports = mongoose.model('Chapters', ChapterSchema, 'chapters');
