@@ -17,6 +17,7 @@ interface ScopeSelection {
   district: FormControl;
   block: FormControl;
   roles: any[];
+  scopeType?: string;
   states: any[];
   zones: any[];
   districts: any[];
@@ -135,7 +136,12 @@ export class UserManageComponent implements OnInit {
   }
 
   assignmentChanged(index: number) {
+    const scope = this.scopes[index];
+    const scopeType = this.assignmentRole(index)?.scopeType;
+    const sameScope = scope.scopeType === scopeType;
+    scope.scopeType = scopeType;
     this.setDependencyValidator(index);
+    if (sameScope) return;
     this.assignments.at(index).get('dep')!.setValue(null);
     this.resetScope(index);
     this.setStateOptions(index);
@@ -358,6 +364,7 @@ export class UserManageComponent implements OnInit {
         if (!this.canAssign) this.roles = assignments.map((assignment: any) => assignment.role);
         assignments.forEach((assignment: any, index: number) => {
           this.appendAssignment({ _id: assignment._id, roleId: assignment.role._id, dep: assignment.dep });
+          this.scopes[index].scopeType = assignment.role.scopeType;
           this.setDependencyValidator(index);
           this.setExistingScope(index, assignment.role.scopeType, assignment.dep);
           this.setRoleOptions(index);
