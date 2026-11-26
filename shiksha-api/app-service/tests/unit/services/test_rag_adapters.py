@@ -58,7 +58,7 @@ class TestInMemRagOpsAdapter:
         assert adapter.index_path == index_path
         assert adapter.completion_llm == mock_completion_llm
         assert adapter.embedding_llm == mock_embedding_llm
-        assert adapter.persist_dir.endswith(index_path.replace("/", "_"))
+        assert os.path.basename(adapter.persist_dir).startswith(index_path.replace("/", "_"))
 
     @pytest.mark.asyncio
     async def test_initialize_creates_rag_ops(self, mock_completion_llm, mock_embedding_llm):

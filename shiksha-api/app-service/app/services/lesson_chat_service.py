@@ -46,38 +46,36 @@ class LessonChatService:
         """
         chapter_details = self._extract_details(request.chapter_id)
         try:
-            # Get or create cached RAG adapter instance
-            rag_adapter = await self._rags.get(request.index_path, self._rag_llm, self._rag_embed)
+            async with self._rags.lease(request.index_path, self._rag_llm, self._rag_embed) as rag_adapter:
+                # Build system message using already-extracted chapter details
+                system_message = self._prompt_template.get_prompt_with_variables(
+                    "lesson_chat", **chapter_details
+                )
 
-            # Build system message using already-extracted chapter details
-            system_message = self._prompt_template.get_prompt_with_variables(
-                "lesson_chat", **chapter_details
-            )
+                # Convert request messages to chat format
+                chat_messages = [
+                    ChatMessage(role=message.role.value, content=message.message)
+                    for message in request.messages
+                ]
 
-            # Convert request messages to chat format
-            chat_messages = [
-                ChatMessage(role=message.role.value, content=message.message)
-                for message in request.messages
-            ]
+                # Build chat history with system message and previous messages
+                chat_history = [
+                    ChatMessage(role=MessageRole.SYSTEM, content=system_message)
+                ] + chat_messages[:-1]
 
-            # Build chat history with system message and previous messages
-            chat_history = [
-                ChatMessage(role=MessageRole.SYSTEM, content=system_message)
-            ] + chat_messages[:-1]
+                # Get response from RAG system using current message and chat history
+                with propagate_attributes(user_id=request.user_id, tags=[
+                    "chat_type:lesson",
+                    f"board:{chapter_details['BOARD']}",
+                    f"grade:{chapter_details['GRADE']}",
+                    f"subject:{chapter_details['SUBJECT']}",
+                ]):
+                    result = await rag_adapter.chat_with_index(curr_message=chat_messages[-1].content, chat_history=chat_history)
 
-            # Get response from RAG system using current message and chat history
-            with propagate_attributes(user_id=request.user_id, tags=[
-                "chat_type:lesson",
-                f"board:{chapter_details['BOARD']}",
-                f"grade:{chapter_details['GRADE']}",
-                f"subject:{chapter_details['SUBJECT']}",
-            ]):
-                result = await rag_adapter.chat_with_index(curr_message=chat_messages[-1].content, chat_history=chat_history)
-
-            return result.response, [
-                Reference(title="Textbook", text=truncate_text(node.node.get_content(), 200), url=None)
-                for node in result.source_nodes
-            ]
+                return result.response, [
+                    Reference(title="Textbook", text=truncate_text(node.node.get_content(), 200), url=None)
+                    for node in result.source_nodes
+                ]
         except Exception as e:
             logger.error(f"Error in lesson chat service: {e}", exc_info=True)
             raise
