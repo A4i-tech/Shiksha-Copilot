@@ -15,6 +15,7 @@ from llama_index.core import MockEmbedding
 from llama_index.core.llms import MockLLM
 
 
+os.environ.setdefault("STORAGE_BACKEND", "object-store")
 if not os.getenv("OPENAI_API_KEY"):
     os.environ["OPENAI_API_KEY"] = "sk-xxxx"
 

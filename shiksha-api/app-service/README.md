@@ -23,7 +23,7 @@ app-service/
 │   │   ├── rag_adapters.py       # RAG adapter implementations
 │   │   └── rag_adapter_cache.py  # LRU cache for RAG adapters
 │   └── utils/           # Utility functions
-│       ├── blob_store.py    # Azure Blob Storage utilities
+│       ├── blob_store.py    # Blob storage (object store or Azure)
 │       ├── logger.py        # Logging utilities
 │       └── prompt_template.py   # Prompt template handling
 ├── prompts/             # Prompt templates
@@ -57,6 +57,8 @@ curl -sSL https://install.python-poetry.org | python3 -
 poetry install
 ```
 
+For `STORAGE_BACKEND=azure`: Needs the azure extra: poetry install --extras azure
+
 3. Activate the virtual environment:
 
 ```bash
@@ -87,7 +89,14 @@ AZURE_OPENAI_EMBED_MODEL=your_embedding_model_deployment
 AZURE_PROJECT_ENDPOINT=https://your-project.eastus2.ai.azure.com
 AZURE_BING_GROUNDING_CONNECTION_ID=your_bing_connection_id
 
-# Azure Blob Storage Configuration (Required for RAG)
+# Blob Storage Configuration (Required for RAG)
+STORAGE_BACKEND=object-store
+
+OBJECT_STORE_ENDPOINT_URL=http://localhost:9000
+OBJECT_STORE_ACCESS_KEY_ID=your_object_store_access_key_id
+OBJECT_STORE_SECRET_ACCESS_KEY=your_object_store_secret_access_key
+OBJECT_STORE_REGION=us-east-1
+
 BLOB_STORE_CONNECTION_STRING=your_azure_storage_connection_string
 BLOB_STORE_URL=https://yourstorageaccount.blob.core.windows.net/
 
@@ -103,7 +112,12 @@ QDRANT_API_KEY=your_qdrant_api_key
 - `AZURE_OPENAI_DEPLOYMENT_NAME`: Completion model deployment name
 - `AZURE_OPENAI_EMBED_MODEL`: Embedding model deployment name
 - `AZURE_PROJECT_ENDPOINT`: Azure AI Foundry project endpoint URL
-- `BLOB_STORE_CONNECTION_STRING`: Azure Storage connection string (for RAG index files)
+- `STORAGE_BACKEND`: Required. Storage provider for RAG index files, `object-store` or `azure`. The app does not start when it is unset.
+- `OBJECT_STORE_ENDPOINT_URL`, `OBJECT_STORE_ACCESS_KEY_ID`, `OBJECT_STORE_SECRET_ACCESS_KEY`, `OBJECT_STORE_REGION`: object store settings (`STORAGE_BACKEND=object-store`). Remove `OBJECT_STORE_ENDPOINT_URL` to use AWS.
+- Credentials: a custom `OBJECT_STORE_ENDPOINT_URL` needs both static keys. Without an endpoint, the Python provider can use the default AWS credential chain. The Node backend always needs static keys.
+- The object store bucket must exist before the first upload. The app does not create it.
+- Presentation storage needs `STORAGE_BACKEND=azure` until the `s3fs` package is added.
+- `BLOB_STORE_CONNECTION_STRING`: Azure Storage connection string (`STORAGE_BACKEND=azure` only)
 
 **Optional Environment Variables:**
 
@@ -290,7 +304,7 @@ curl -X POST "http://localhost:8000/chat/lesson" \
 
 - Uses `InMemRagOps` for RAG operations with local persistence
 - Implements LRU cache for RAG instances to optimize performance
-- Downloads index files from Azure Blob Storage when needed
+- Downloads index files from blob storage when needed
 - Extracts chapter metadata to customize system prompts
 - Supports conversational context with message history
 
@@ -529,7 +543,7 @@ class BaseRagAdapter(ABC):
 1. **InMemRagOpsAdapter**
 
    - Uses local in-memory vector storage
-   - Downloads index files from Azure Blob Storage
+   - Downloads index files from blob storage
    - Suitable for development and testing
    - Automatic cleanup of temporary files
 
@@ -568,7 +582,7 @@ class RagAdapterCache:
 1. **Request Processing**: User sends lesson chat request with chapter information
 2. **Cache Lookup**: System checks if RAG adapter exists in cache for the chapter
 3. **Adapter Creation**: If not cached, creates new adapter with chapter-specific configuration
-4. **Index Download**: Downloads index files from Azure Blob Storage if needed
+4. **Index Download**: Downloads index files from blob storage if needed
 5. **RAG Operations**: Initializes RAG operations with downloaded index
 6. **Context Retrieval**: Retrieves relevant context based on user query
 7. **Response Generation**: Generates contextual response using Azure OpenAI
@@ -576,11 +590,11 @@ class RagAdapterCache:
 
 ### Blob Storage Integration
 
-The system integrates with Azure Blob Storage for index file management:
+The system integrates with an object store or Azure Blob Storage (`STORAGE_BACKEND=azure`) for index file management:
 
 ```python
 class BlobStore:
-    """Azure Blob Storage utilities for downloading index files."""
+    """Blob storage utilities for downloading index files."""
 
     async def download_blob_to_local_directory(self, blob_path: str, local_dir: str) -> str:
         # Download blob contents to local directory

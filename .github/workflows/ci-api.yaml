@@ -56,13 +56,14 @@ jobs:
         working-directory: shiksha-api/app-service
         env:
           OPENAI_API_KEY: dummy-key-for-testing
+          STORAGE_BACKEND: azure
           BLOB_STORE_CONNECTION_STRING: DefaultEndpointsProtocol=https;AccountName=dummyaccount;AccountKey=dummykey;EndpointSuffix=core.windows.net
           QDRANT_URL: http://localhost:6333
           QDRANT_API_KEY: dummy-qdrant-key
         run: |
           export PATH="$HOME/.local/bin:$PATH"
           for i in 1 2 3; do
-            poetry install && break
+            poetry install --extras azure && break
             if [ "$i" -eq 3 ]; then
               echo "::error::poetry install failed after 3 attempts" >&2
               exit 1

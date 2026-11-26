@@ -12,7 +12,7 @@ const SchoolClass = require("../models/school.class.model");
 const TeacherTrainingBatch = require("../models/teacher.training.batch.model");
 const User = require("../models/user.model");
 const authHelper = require("../helper/auth.helper");
-const { deleteFromStorage } = require("../services/azure.blob.service");
+const { deleteFromStorage } = require("../services/storage.service");
 
 exports.session = async function session(req, res) {
   const user = await User.findById(req.body.userId);

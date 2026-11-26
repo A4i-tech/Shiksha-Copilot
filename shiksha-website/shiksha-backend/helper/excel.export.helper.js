@@ -1,6 +1,6 @@
 const ExcelJS = require("exceljs");
 const { PassThrough } = require("stream");
-const { uploadStreamToStorage } = require("../services/azure.blob.service");
+const { uploadStreamToStorage } = require("../services/storage.service");
 
 async function exportExcel({ filename, worksheets, onProgress }) {
   const fileStream = new PassThrough();

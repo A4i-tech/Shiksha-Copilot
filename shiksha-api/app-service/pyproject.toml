@@ -28,7 +28,10 @@ pymupdf = "^1.27.2.3"
 pillow = "^12.2.0"
 pymupdf4llm = "^1.27.2.3"
 fsspec = "^2026.4.0"
-adlfs = "^2026.5.0"
+adlfs = { version = "^2026.5.0", optional = true }
+aiobotocore = "^2.25.1"
+azure-storage-blob = { version = ">=12.17.0", extras = ["aio"], optional = true }
+azure-identity = { version = "*", optional = true }
 tenacity = "^9.1.4"
 python-magic = "^0.4.27"
 langfuse = "3.14.6"
@@ -38,7 +41,7 @@ llama-index-embeddings-openai = "^0.7.0"
 lark = "^1.3.1"
 
 [tool.poetry.extras]
-azure = ["azure-ai-translation-text"]
+azure = ["azure-ai-translation-text", "adlfs", "azure-storage-blob", "azure-identity"]
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.4.2"
@@ -98,9 +101,10 @@ strict_optional = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--import-mode=importlib -ra -v --strict-markers --tb=short -m 'not integration' --cov=app --cov-report=term-missing --cov-report=html:htmlcov --cov-report=xml --cov-branch --asyncio-mode=auto"
+addopts = "--import-mode=importlib -ra -v --strict-markers --tb=short -m 'not integration and not object_store' --cov=app --cov-report=term-missing --cov-report=html:htmlcov --cov-report=xml --cov-branch --asyncio-mode=auto"
 markers = [
   "integration: marks tests as integration tests",
+  "object_store: needs a live object store, run only by object-store-tests.yaml",
 ]
 
 [tool.coverage.run]

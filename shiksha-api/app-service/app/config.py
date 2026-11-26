@@ -2,7 +2,14 @@ import pathlib
 from string import Template
 
 from dotenv import load_dotenv
-from pydantic import Field, PositiveInt, field_validator
+from pydantic import (
+    AnyHttpUrl,
+    Field,
+    PositiveInt,
+    SecretStr,
+    field_validator,
+    model_validator,
+)
 from pydantic_ai import Agent, InstrumentationSettings
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Any, Literal, Optional
@@ -32,8 +39,13 @@ class Settings(BaseSettings):
     question_paper_model: str = "gpt-5.6-luna"
 
     # Blob Store Configuration
-    blob_store_connection_string: Optional[str] = None
-    blob_store_url: Optional[str] = None
+    storage_backend: Literal["azure", "object-store"]
+    blob_store_connection_string: Optional[SecretStr] = None
+    blob_store_url: Optional[AnyHttpUrl] = None
+    object_store_endpoint_url: Optional[AnyHttpUrl] = None
+    object_store_access_key_id: Optional[str] = None
+    object_store_secret_access_key: Optional[SecretStr] = None
+    object_store_region: str = "us-east-1"
 
     qdrant_url: Optional[str] = None
     qdrant_api_key: Optional[str] = None
@@ -73,12 +85,60 @@ class Settings(BaseSettings):
     # Commons
     youtube_api_key: str | None = None
 
+    @field_validator("object_store_endpoint_url", "object_store_access_key_id", "blob_store_url", "blob_store_connection_string", mode="before")
+    @classmethod
+    def _empty_to_none(cls, value):
+        return value or None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _require_storage_backend(cls, data):
+        if data.get("storage_backend") not in ("azure", "object-store"):
+            value = data.get("storage_backend")
+            raise ValueError(
+                f"STORAGE_BACKEND is {f'{value!r}' if value else 'unset'}. "
+                "Set STORAGE_BACKEND to 'object-store' or 'azure'."
+            )
+        return data
+
+    @model_validator(mode="after")
+    def _check_storage(self):
+        if self.storage_backend == "azure":
+            if not (self.blob_store_connection_string or self.blob_store_url):
+                raise ValueError(
+                    "STORAGE_BACKEND=azure needs BLOB_STORE_CONNECTION_STRING or BLOB_STORE_URL. "
+                    "Set one of them, or set STORAGE_BACKEND=object-store."
+                )
+        else:
+            has_key, has_secret = bool(self.object_store_access_key_id), bool(
+                self.object_store_secret_access_key
+            )
+            if has_key != has_secret:
+                raise ValueError(
+                    "OBJECT_STORE_ACCESS_KEY_ID and OBJECT_STORE_SECRET_ACCESS_KEY must be set together. "
+                    "Set both, or leave both empty to use the default AWS credentials."
+                )
+            if (
+                self.blob_store_connection_string or self.blob_store_url
+            ) and not (self.object_store_endpoint_url or has_key):
+                raise ValueError(
+                    "STORAGE_BACKEND=object-store found Azure settings and no OBJECT_STORE_* settings. "
+                    "Set STORAGE_BACKEND=azure, or set the two OBJECT_STORE key settings. Add OBJECT_STORE_ENDPOINT_URL unless you use AWS."
+                )
+            if self.object_store_endpoint_url and not has_key:
+                raise ValueError(
+                    "OBJECT_STORE_ENDPOINT_URL needs OBJECT_STORE_ACCESS_KEY_ID and OBJECT_STORE_SECRET_ACCESS_KEY. "
+                    "Set both keys, or remove OBJECT_STORE_ENDPOINT_URL to use AWS."
+                )
+        return self
+
 
 load_dotenv()
 settings = Settings()
 
 if settings.debug:
     import logfire
+
     logfire.configure()
     logfire.instrument_pydantic_ai()
 else:

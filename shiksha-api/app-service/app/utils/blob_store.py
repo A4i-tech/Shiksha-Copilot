@@ -1,41 +1,116 @@
 import os
-from typing import List
+from typing import AsyncIterator, List, Optional, Tuple, Union
 
-from azure.core.exceptions import AzureError
-from azure.identity.aio import DefaultAzureCredential
-from azure.storage.blob.aio import BlobServiceClient as AsyncBlobServiceClient
 import aiofiles
+from aiobotocore.session import get_session
+from botocore.config import Config
+from botocore.exceptions import BotoCoreError, ClientError
 
 from app.config import settings
 
+_OBJECT_STORE_CONFIG = Config(
+    s3={"addressing_style": "path"},
+    request_checksum_calculation="when_required",
+    response_checksum_validation="when_required",
+)
 
-class BlobStore:
+
+class _AzureBackend:
     """
-    Async helper for interacting with Azure Blob Storage.
-
     Auth:
       - connection string (local/dev)
       - DefaultAzureCredential + account URL (prod/Azure)
     """
 
     def __init__(self):
+        from azure.core.exceptions import AzureError
+        from azure.identity.aio import DefaultAzureCredential
+        from azure.storage.blob.aio import BlobServiceClient as AsyncBlobServiceClient
+
+        self._azure_error = AzureError
         connection_string = settings.blob_store_connection_string
-        account_url = settings.blob_store_url
 
         if connection_string:
             # async client from connection string
             self._async_svc = AsyncBlobServiceClient.from_connection_string(
-                connection_string
-            )
-        elif account_url:
-            cred = DefaultAzureCredential()
-            self._async_svc = AsyncBlobServiceClient(
-                account_url=account_url, credential=cred
+                connection_string.get_secret_value()
             )
         else:
-            raise ValueError(
-                "Either BLOB_STORE_CONNECTION_STRING or BLOB_STORE_URL must be set."
+            cred = DefaultAzureCredential()
+            self._async_svc = AsyncBlobServiceClient(
+                account_url=str(settings.blob_store_url), credential=cred
             )
+
+    async def iter_blobs(
+        self, container: str, prefix: str
+    ) -> AsyncIterator[Tuple[str, bytes]]:
+        try:
+            async with self._async_svc.get_container_client(
+                container
+            ) as container_client:
+                # list_blobs is async iterable
+                async for blob_props in container_client.list_blobs(
+                    name_starts_with=prefix
+                ):
+                    if blob_props.name.endswith("/"):
+                        continue
+                    blob_client = container_client.get_blob_client(blob_props.name)
+                    stream = await blob_client.download_blob()
+                    yield blob_props.name, await stream.readall()
+        except self._azure_error as e:
+            raise RuntimeError(f"Failed to download blobs asynchronously: {e}") from e
+
+
+class _ObjectStoreBackend:
+    def __init__(self):
+        self._session = get_session()
+        secret = settings.object_store_secret_access_key
+        endpoint = settings.object_store_endpoint_url
+        self._client_args = dict(
+            service_name="s3",
+            endpoint_url=str(endpoint) if endpoint else None,
+            aws_access_key_id=settings.object_store_access_key_id,
+            aws_secret_access_key=secret.get_secret_value() if secret else None,
+            region_name=settings.object_store_region,
+            config=_OBJECT_STORE_CONFIG,
+        )
+
+    async def iter_blobs(
+        self, bucket: str, prefix: str
+    ) -> AsyncIterator[Tuple[str, bytes]]:
+        try:
+            async with self._session.create_client(**self._client_args) as client:
+                paginator = client.get_paginator("list_objects_v2")
+                async for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+                    if "Contents" not in page:
+                        continue
+                    for obj in page["Contents"]:
+                        key = obj["Key"]
+                        if key.endswith("/"):
+                            continue
+                        response = await client.get_object(Bucket=bucket, Key=key)
+                        async with response["Body"] as body:
+                            yield key, await body.read()
+        except (BotoCoreError, ClientError) as e:
+            raise RuntimeError(
+                f"Failed to download objects from object store bucket '{bucket}' with prefix '{prefix}': {e}"
+            ) from e
+
+
+class BlobStore:
+    """
+    Async helper for downloading blobs from an object store or Azure Blob Storage.
+
+    STORAGE_BACKEND selects the backend: "object-store" or "azure".
+    """
+
+    def __init__(self, backend: Optional[Union[_AzureBackend, _ObjectStoreBackend]] = None):
+        if backend is not None:
+            self._backend = backend
+        elif settings.storage_backend == "azure":
+            self._backend = _AzureBackend()
+        else:
+            self._backend = _ObjectStoreBackend()
 
     async def download_blobs_to_folder(
         self, prefix: str, target_folder: str = "blob_downloads"
@@ -60,24 +135,16 @@ class BlobStore:
         container_name, blob_prefix = prefix.split("/", 1)
         downloaded_files: List[str] = []
 
-        try:
-            async with self._async_svc.get_container_client(container_name) as container_client:
-                # list_blobs is async iterable
-                async for blob_props in container_client.list_blobs(name_starts_with=blob_prefix):
-                    blob_name = blob_props.name
-                    blob_client = container_client.get_blob_client(blob_name)
-                    stream = await blob_client.download_blob()
-                    data = await stream.readall()
+        async for blob_name, data in self._backend.iter_blobs(
+            container_name, blob_prefix
+        ):
+            file_name = blob_name.split("/")[-1]
+            local_path = os.path.join(target_folder, file_name)
+            os.makedirs(os.path.dirname(local_path), exist_ok=True)
 
-                    file_name = blob_name.split("/")[-1]
-                    local_path = os.path.join(target_folder, file_name)
-                    os.makedirs(os.path.dirname(local_path), exist_ok=True)
+            # write without blocking the event loop
+            async with aiofiles.open(local_path, "wb") as f:
+                await f.write(data)
 
-                    # write without blocking the event loop
-                    async with aiofiles.open(local_path, "wb") as f:
-                        await f.write(data)
-
-                    downloaded_files.append(local_path)
-            return downloaded_files
-        except AzureError as e:
-            raise RuntimeError(f"Failed to download blobs asynchronously: {e}") from e
+            downloaded_files.append(local_path)
+        return downloaded_files
