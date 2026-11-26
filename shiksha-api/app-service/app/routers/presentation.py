@@ -2,101 +2,52 @@ import asyncio
 from contextlib import asynccontextmanager
 import io
 import json
-import logging
 import pathlib
-import time
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Annotated, AsyncIterator
 import uuid
 import weakref
 from urllib.parse import quote
 from app.config import settings
-from app.messaging.nats_broker import NatsBroker
-from app.services.presentation.consumer import CANCEL_SUBJECT, make_broker, publish_job, reap_dead_letters, reconcile, run_jobs
-from app.services.presentation.job import iso_z
 from app.services.presentation.service import PresentationService, new_default as new_pres_svc
 from fastapi import APIRouter, Depends, FastAPI, File, Form, Header, Request, status, UploadFile, HTTPException, Query
 from fastapi.responses import Response, StreamingResponse
 
-from app.models.presentation import SYSTEM_USER_ID, JobDetail, JobInfo, JobStatus, ToolInfo, UserId, to_info
+from app.models.presentation import SYSTEM_USER_ID, JobDetail, JobStatus, ToolInfo, UserId
 from app.services.presentation.agent import planner, designer, finalizer, designer_toolset
-from app.services.presentation.docparser import OFFICE_MIME_SUFFIXES
 from app.services.presentation.utils import LibreOffice, LibreOfficeOutputFormat, save_file_with_hash
-
-
-logger = logging.getLogger(__name__)
-
-
-async def _connect(broker: NatsBroker, connected: asyncio.Event):
-    while True:
-        try:
-            await broker.connect()
-            break
-        except Exception:
-            logger.exception("Could not reach NATS. Retrying in 5 seconds.")
-            await asyncio.sleep(5)
-    connected.set()
-
-
-async def _after_connect(connected: asyncio.Event, fn, *args, **kwargs):
-    await connected.wait()
-    try:
-        await fn(*args, **kwargs)
-    except Exception:
-        logger.exception("Presentation background task %s failed", fn.__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    svc = app.state.pres_svc = new_pres_svc()
-    broker = app.state.broker = make_broker()
-    stop, connected = asyncio.Event(), asyncio.Event()
-    every = settings.pres_reconcile_seconds
-    async with svc.jobs:
-        tasks = [
-            asyncio.create_task(_connect(broker, connected)),
-            asyncio.create_task(_after_connect(connected, reap_dead_letters, broker, svc.jobs)),
-            asyncio.create_task(_after_connect(connected, reconcile, broker, svc.jobs, every, every)),
-        ]
-        if settings.shiksha_role == "all":
-            tasks.append(asyncio.create_task(_after_connect(connected, run_jobs, svc, broker, stop)))
-        try:
-            yield
-        finally:
-            stop.set()
-            for task in tasks:
-                task.cancel()
-            await asyncio.gather(*tasks, return_exceptions=True)
-            await broker.close()
+    app.state.pres_svc = new_pres_svc()
+    async with app.state.pres_svc.run():
+        yield
 
 
 router = APIRouter(tags=["Presentation Generation"], prefix="/presentation", lifespan=lifespan)
 XUserIDHeader = Annotated[UserId, Header(alias="X-User-ID")]
 libre_office = LibreOffice()
 
-# mime -> label shown to the user when an upload is rejected
 ALLOWED_MIMES = {
-    "application/pdf": "PDF",
-    "application/msword": "DOC",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "DOCX",
-    "application/vnd.ms-powerpoint": "PPT",
-    "application/vnd.openxmlformats-officedocument.presentationml.presentation": "PPTX",
-    "text/plain": "TXT",
-    "text/markdown": "MD",
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-powerpoint",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "text/plain",
+    "text/markdown",
 }
-
-
-def allowed_upload_mimes() -> dict[str, str]:
-    # office files are only usable after conversion; without it they would reach the planner as raw bytes
-    return ALLOWED_MIMES if settings.pres_do_transform else {m: label for m, label in ALLOWED_MIMES.items() if m not in OFFICE_MIME_SUFFIXES}
 
 
 def pres(request: Request) -> PresentationService:
     return request.app.state.pres_svc
 
 
-def get_broker(request: Request) -> NatsBroker:
-    return request.app.state.broker
+def annotate_idle(service: PresentationService, job: JobDetail):
+    if job.status not in {"complete", "error"} and job.id.bytes not in service.processing:
+        job.status = "idle"
+    return job
 
 
 ja_conversions_sem = asyncio.Semaphore(settings.pres_max_file_conversions)
@@ -119,8 +70,7 @@ async def create_job(
     slides: int | None = Form(None, ge=1, le=settings.pres_max_slide_count),
     instruction: str | None = Form(None, max_length=settings.pres_max_instruction_size),
     tags: list[str] = Form(default_factory=list, max_length=16),
-    service: PresentationService = Depends(pres),
-    broker: NatsBroker = Depends(get_broker),
+    service: PresentationService = Depends(pres)
 ) -> JobDetail:
     """ Schedule a new PPTX generation job. """
     if user_id != SYSTEM_USER_ID and settings.pres_max_jobs_per_user != -1 and (n_jobs := await service.jobs.get_pending_count(user_id)) >= settings.pres_max_jobs_per_user:
@@ -130,64 +80,50 @@ async def create_job(
     if not filename: raise HTTPException(status_code=400, detail="Unsupported file type (cannot read filename)")
     if textbook_file.size is not None and textbook_file.size > settings.pres_upload_max_filesize: raise HTTPException(status_code=400, detail="Bad file size")  # bail early
     try:
-        textbook_path, textbook_mime = await save_file_with_hash(service.storage, textbook_file, filename, allowed_upload_mimes(), settings.pres_download_chunk_size, settings.pres_upload_max_filesize)
+        textbook_path, textbook_mime = await save_file_with_hash(service.storage, textbook_file, filename, ALLOWED_MIMES, settings.pres_download_chunk_size, settings.pres_upload_max_filesize)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    job = await service.jobs.create(user_id, textbook_path, textbook_mime, slides, instruction, tags)
-    try:
-        await publish_job(broker, service.jobs, job, msg_id=f"{job.id}:0")
-    except Exception:
-        logger.exception("Could not queue job %s", job.id)
-        await service.jobs.delete(job, unleased=True)
-        raise HTTPException(status_code=503, detail="The presentation queue is not reachable. Wait a minute and try again.")
-    return job
+    return await service.jobs.create(user_id, textbook_path, textbook_mime, slides, instruction, tags)
 
 
 @router.get("/job")
-async def get_job(user_id: XUserIDHeader, id: uuid.UUID, service: PresentationService = Depends(pres)) -> JobInfo | None:
+async def get_job(user_id: XUserIDHeader, id: uuid.UUID, service: PresentationService = Depends(pres)) -> JobDetail | None:
     """ Get details about a specific job. """
     job = await service.jobs.get(id)
     if job is not None and job.user_id not in {user_id, SYSTEM_USER_ID}:
         raise HTTPException(status_code=404, detail="Job not found")
-    return to_info(job) if job is not None else None
+    if job is not None:
+        annotate_idle(service, job)
+    return job
 
 
 @router.get("/job/retry")
-async def retry_job(user_id: XUserIDHeader, id: uuid.UUID, service: PresentationService = Depends(pres), broker: NatsBroker = Depends(get_broker)) -> bool:
+async def retry_job(user_id: XUserIDHeader, id: uuid.UUID, service: PresentationService = Depends(pres)) -> bool:
     """ List available jobs. """
     job = await service.jobs.get(id)
     if job is not None and job.user_id not in {user_id, SYSTEM_USER_ID}:
         raise HTTPException(status_code=404, detail="Job not found")
     if job is not None and job.status == "error" and "error" in job.metadata and not job.metadata["error"]["attempting_recovery"]:
-        await service.jobs.update_unfenced(job.id, {"status": "init", "message": "Retrying", "enqueued": False}, ["metadata.error"])
-        try:
-            await publish_job(broker, service.jobs, job, msg_id=f"{job.id}:retry:{int(time.time())}")
-        except Exception:
-            logger.warning("Could not queue retry of job %s. The reconcile loop will publish it.", job.id, exc_info=True)
+        await service.jobs.update(job.id, fields_unset=["metadata.error"])
         return True
     return False
 
 
 @router.get("/jobs")
-async def list_jobs(user_id: XUserIDHeader, offset: int = Query(0, ge=0), limit: int = Query(20, ge=1, le=100), textbook_file: str | None = Query(None), status: JobStatus | None = Query(None), created_after: datetime | None = Query(None), created_before: datetime | None = Query(None), tags: list[str] | None = Query(None), service: PresentationService = Depends(pres)) -> list[JobInfo]:
+async def list_jobs(user_id: XUserIDHeader, offset: int = Query(0, ge=0), limit: int = Query(20, ge=1, le=100), textbook_file: str | None = Query(None), status: JobStatus | None = Query(None), created_after: datetime | None = Query(None), created_before: datetime | None = Query(None), tags: list[str] | None = Query(None), service: PresentationService = Depends(pres)) -> list[JobDetail]:
     """ List available jobs. """
     jobs = await service.jobs.list(user_id, offset, limit, textbook_file, status, created_after, created_before, tags)
-    return [to_info(job) for job in jobs]
+    list(map(lambda job: annotate_idle(service, job), jobs))
+    return jobs
 
 
 @router.delete("/job")
-async def delete_job(user_id: XUserIDHeader, id: uuid.UUID, service: PresentationService = Depends(pres), broker: NatsBroker = Depends(get_broker)) -> bool:
+async def delete_job(user_id: XUserIDHeader, id: uuid.UUID, service: PresentationService = Depends(pres)) -> bool:
     """ Terminate and delete a job. """
     job = await service.jobs.get(id)
     if job is None or job.user_id not in {user_id, SYSTEM_USER_ID}:
         raise HTTPException(status_code=404, detail="Job not found")
-    cancelled = await service.jobs.request_cancel(job)
-    if cancelled:
-        try:
-            await broker.notify(CANCEL_SUBJECT, str(id).encode())
-        except Exception:
-            logger.warning("Could not signal the worker to cancel job %s. It stops at its next job write.", id, exc_info=True)
-    return cancelled
+    return await service.jobs.delete(job)
 
 
 ARTIFACT_MEDIA_TYPES: dict[LibreOfficeOutputFormat, str] = {
@@ -233,7 +169,7 @@ async def download_job_artifact(
             stream = [content]
         else:
             size = await service.storage.size(storage_path)
-            stream = service.storage.read_stream(storage_path, settings.pres_download_chunk_size, size)
+            stream = service.storage.read_stream(storage_path, size=size)
 
     etag = '"%s-%s"' % (job_id, file_format)
     headers = {
@@ -259,10 +195,31 @@ async def get_tools() -> list[ToolInfo]:
     }.values())
 
 
-async def _until_disconnected(request: Request) -> AsyncIterator[None]:
-    while not request.app.state.sigint.done() and not await request.is_disconnected():
-        yield
-        await asyncio.sleep(settings.pres_sse_poll_seconds)
+async def _wait_disconnected(request: Request):
+    while not await request.is_disconnected():
+        await asyncio.sleep(5)
+
+
+async def _safe_stream_job_logs(request: Request, service: PresentationService) -> AsyncIterator[dict]:
+    q = asyncio.Queue(maxsize=settings.pres_sse_buffer_limit)
+    stop = asyncio.create_task(_wait_disconnected(request))
+    get = asyncio.create_task(q.get())
+    service.jobs.log_subscribers.add(q)
+    try:
+        while True:
+            done, _ = await asyncio.wait({get, stop, request.app.state.sigint}, return_when=asyncio.FIRST_COMPLETED)
+            get.cancel()
+            if stop in done or request.app.state.sigint in done:
+                break
+
+            event = get.result()
+            if event is None: break
+            yield event
+            get = asyncio.create_task(q.get())
+    finally:
+        service.jobs.log_subscribers.discard(q)
+        get.cancel()
+        stop.cancel()
 
 
 @router.get("/events/pending/{user_id}")
@@ -272,8 +229,10 @@ async def events_pending(request: Request, user_id: UserId, service: Presentatio
     """
 
     async def stream():
-        count = None
-        async for _ in _until_disconnected(request):
+        count = await service.jobs.get_pending_count(user_id)
+        yield f"data: {count}\n\n"
+        async for e in _safe_stream_job_logs(request, service):
+            if e["type"] not in {"create", "complete", "terminate"} or e["data"]["user_id"] != str(user_id): continue
             new_count = await service.jobs.get_pending_count(user_id)
             if count != new_count:
                 count = new_count
@@ -288,24 +247,15 @@ async def events_handle(request: Request, user_id: UserId, id: uuid.UUID, servic
     Subscribe to job events.
     """
 
-    after: int = await service.jobs.last_log_seq(id)  # read before the job, so no event falls between them
     job = await service.jobs.get(id)
     if job is None or job.user_id not in {user_id, SYSTEM_USER_ID}:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    last = await service.jobs.last_snapshot(id)
-    if last:
-        after = last.seq
-
     async def stream():
-        nonlocal after
-        data = last.data if last else json.loads(job.model_dump_json())
-        snapshot = {"id": str(id), "type": "update", "data": data, "timestamp": iso_z(datetime.now(timezone.utc))}
-        yield f"data: {json.dumps(snapshot)}\n\n"
-        async for _ in _until_disconnected(request):
-            for entry in await service.jobs.logs_after(id, after):
-                after = entry.seq
-                e = {"id": str(id), "type": entry.type, "data": entry.data, "timestamp": iso_z(entry.timestamp)}
-                yield f"data: {json.dumps(e)}\n\n"
+        id_ = str(id)
+        await service.jobs.pub(id)
+        async for e in _safe_stream_job_logs(request, service):
+            if e["id"] != id_: continue
+            yield f"data: {json.dumps(e)}\n\n"
 
     return StreamingResponse(stream(), media_type="text/event-stream")
