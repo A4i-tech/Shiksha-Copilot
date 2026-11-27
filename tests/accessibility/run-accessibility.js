@@ -68,7 +68,7 @@ async function performLogin(page, phone, otp) {
   await page.getByRole('button', { name: 'Continue' }).click();
   // ng-otp-input needs per-cell fill + input event to trigger Angular CD
   const otpInputs = page.locator('input.otp-input');
-  await otpInputs.first().waitFor({ state: 'attached', timeout: 15000 });
+  await otpInputs.first().waitFor({ state: 'visible', timeout: 15000 });
   for (let i = 0; i < otp.length; i++) {
     const cell = otpInputs.nth(i);
     await cell.focus();

@@ -1,0 +1,51 @@
+pipeline_id: shiksha_chapter_index
+description: OCR each chapter page, split into chunks, embed, and index.
+parameters:
+  properties:
+    chapter_id:
+      type: string
+      description: Qdrant chapter_id value written to every chunk
+    chunk_chars:
+      type: integer
+      minimum: 500
+      default: 4000
+      description: Maximum characters per chunk
+steps:
+  - agent: page_chunking
+    description: Split the chapter PDF into one item per page
+    config:
+      mode: pdf
+  - agent: ocr
+    description: Transcribe each page with the configured OCR engine
+    config:
+      format: markdown
+  - agent: transform
+    description: Write the chapter id into every page
+    config:
+      update: [items]
+      value: .items |= [.[] | .metadata.chapter_id = "${.config.chapter_id}"]
+  - agent: transform
+    description: Split each page into chunks under the character limit
+    config:
+      update: [items]
+      value: >
+        def lines: split("\n") | length as $k | [to_entries[] | .value + (if .key < $k - 1 then "\n" else "" end) | select(. != "")];
+        def hard($n): if length > $n then [range(0; length; $n) as $i | .[$i:$i+$n]] else [.] end;
+        .items |= [
+          .[] as $item
+          | if $item.text == null then $item else
+            [ $item.text | lines[] | hard(${.config.chunk_chars})[] ] as $pieces
+            | [ foreach ($pieces[], null) as $p ({cur: "", out: null};
+                if $p == null then {cur: "", out: .cur}
+                elif (.cur | length) > 0 and ((.cur | length) + ($p | length)) > ${.config.chunk_chars} then {cur: $p, out: .cur}
+                else {cur: (.cur + $p), out: null}
+                end;
+                .out | select(. != null and . != ""))
+              ][] as $c
+            | $item | del(.id) | .text = $c
+            end
+        ]
+  - agent: embedding
+    description: Embed each chunk
+    config:
+      model: openai:text-embedding-ada-002

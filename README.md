@@ -99,7 +99,7 @@ flowchart LR
 ```
 
 ## Key Features
-- **Multi-Source Content Ingestion:** Processes curriculum textbooks and external open-source educational materials through an intelligent [ingestion pipeline](shiksha-ingestion/) with human curator oversight for quality assurance.
+- **Multi-Source Content Ingestion:** Processes curriculum textbooks and external open-source educational materials through an intelligent [ingestion pipeline](ingestion/) with human curator oversight for quality assurance.
 - **Comprehensive Knowledge Base:** Maintains curriculum content across vector, graph, and document datastores enabling rich contextual retrieval and cross-referenced learning materials.
 - **Curriculum-Aligned Content Creation:** Automatically generates lesson content strictly grounded in the curated knowledge base, enhancing relevance and coherence with educational standards and learning objectives.
 - **Interactive Pedagogical Tools:** Supports the generation of multiple forms of educational content including interactive activities, analogies, real-world examples, and hands-on exercises to cater to diverse learner needs and teaching contexts.
@@ -133,11 +133,7 @@ flowchart LR
 Shiksha Copilot follows a modular architecture with clear separation between offline content processing and online user services:
 
 ### Offline Content Processing
-- **[Curriculum Ingestion](shiksha-ingestion/)** - Processes textbooks and external educational materials into structured knowledge
-- **[Ingestion Pipeline Components](components/ingestion-pipeline/README.md)** - Core text extraction and processing engines
-  - [MinerU Pipeline](components/ingestion-pipeline-mineru/README.md) - Advanced document processing
-  - [SmolDocLing Pipeline](components/ingestion-pipeline-smoldocling/README.md) - Lightweight document processing  
-  - [OlmOCR Pipeline](components/ingestion-pipeline-olmocr/README.md) - OCR-based text extraction
+- **[Curriculum Ingestion](ingestion/README.md)** - Processes textbooks and external educational materials into structured knowledge
 
 ### Online User Services
 - **[Shiksha Website Frontend](shiksha-website/shiksha-frontend/)** - React-based user interface
