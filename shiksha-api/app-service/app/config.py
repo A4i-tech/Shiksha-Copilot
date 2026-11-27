@@ -2,7 +2,7 @@ import pathlib
 from string import Template
 
 from dotenv import load_dotenv
-from pydantic import Field, PositiveInt, field_validator
+from pydantic import Field, PositiveInt, field_validator, model_validator
 from pydantic_ai import Agent, InstrumentationSettings
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Any, Literal, Optional
@@ -64,9 +64,11 @@ class Settings(BaseSettings):
     pres_max_tasks_finalizer: PositiveInt = 2
     pres_mongodb_url: str = "mongodb://localhost:27017/shiksha_viz"
     pres_sse_poll_seconds: PositiveInt = 2
+    queue_provider: Literal["mongo", "nats", "azure_storage_queue"] = "mongo"
     nats_url: str = "nats://localhost:4222"
     nats_creds: str | None = None
     nats_replicas: PositiveInt = 1
+    azure_storage_queue_connection_string: str = Field(default="", repr=False)
     shiksha_role: Literal["api", "worker", "presentation-worker", "all"] = "api"
     pres_ack_wait_seconds: PositiveInt = 60
     pres_max_deliver: PositiveInt = 5
@@ -79,6 +81,15 @@ class Settings(BaseSettings):
     pres_download_chunk_size: PositiveInt = 1024 * 1024  # 1 MiB
     pres_upload_max_filesize: int = 5_242_880  # 5 MiB
     pres_do_transform: bool = True
+
+    @model_validator(mode="after")
+    def _check_queue_settings(self) -> "Settings":
+        if self.queue_provider == "azure_storage_queue" and not self.azure_storage_queue_connection_string.strip():
+            raise ValueError(
+                "AZURE_STORAGE_QUEUE_CONNECTION_STRING is empty. Set it when QUEUE_PROVIDER is "
+                "'azure_storage_queue', or set QUEUE_PROVIDER to 'mongo' or 'nats'."
+            )
+        return self
 
     # Commons
     youtube_api_key: str | None = None

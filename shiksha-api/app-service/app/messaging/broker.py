@@ -1,12 +1,16 @@
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Protocol, Self
 
 from app.messaging.message import JobMessage
 
 
 class LockLost(Exception):
     pass
+
+
+def lost(ident: str) -> LockLost:
+    return LockLost(f"message {ident} is no longer locked by this worker")
 
 
 class Delivery(Protocol):
@@ -28,6 +32,18 @@ class DeadLetter:
 
 
 class Broker(Protocol):
+    async def connect(self) -> None:
+        ...
+
+    async def close(self) -> None:
+        ...
+
+    async def __aenter__(self) -> Self:
+        ...
+
+    async def __aexit__(self, *exc_info: object) -> None:
+        ...
+
     async def publish(
         self,
         queue: str,

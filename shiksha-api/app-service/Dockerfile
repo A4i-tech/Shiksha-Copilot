@@ -21,7 +21,7 @@ COPY shiksha-api/app-service/pyproject.toml shiksha-api/app-service/poetry.lock*
 
 WORKDIR /src/shiksha-api/app-service
 
-RUN poetry install --only main --no-root --no-interaction --no-ansi --extras azure
+RUN poetry install --only main --no-root --no-interaction --no-ansi --extras azure --extras azure-queue
 
 WORKDIR /src
 

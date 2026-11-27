@@ -4,7 +4,7 @@ from collections import defaultdict
 from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass, field
 
-from app.messaging.broker import DeadLetter, Delivery, LockLost
+from app.messaging.broker import DeadLetter, Delivery, lost
 from app.messaging.message import JobMessage
 
 
@@ -38,7 +38,7 @@ class _MemoryDelivery:
         item = self._queue.in_flight.get(self._seq)
         now = self._broker.clock()
         if not item or item.num_delivered != self.num_delivered or item.deadline <= now:
-            raise LockLost(f"message {self.fence} is no longer locked by this worker")
+            raise lost(self.fence)
         return item
 
     async def ack(self) -> None:

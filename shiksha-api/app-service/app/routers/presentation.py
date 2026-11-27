@@ -11,7 +11,7 @@ import uuid
 import weakref
 from urllib.parse import quote
 from app.config import settings
-from app.messaging.nats_broker import NatsBroker
+from app.messaging.broker import Broker
 from app.services.presentation.consumer import CANCEL_SUBJECT, make_broker, publish_job, reap_dead_letters, reconcile, run_jobs
 from app.services.presentation.job import iso_z
 from app.services.presentation.service import PresentationService, new_default as new_pres_svc
@@ -26,13 +26,13 @@ from app.services.presentation.utils import LibreOffice, LibreOfficeOutputFormat
 logger = logging.getLogger(__name__)
 
 
-async def _connect(broker: NatsBroker, connected: asyncio.Event):
+async def _connect(broker: Broker, connected: asyncio.Event):
     while True:
         try:
             await broker.connect()
             break
         except Exception:
-            logger.exception("Could not reach NATS. Retrying in 5 seconds.")
+            logger.exception("Could not reach the %s queue broker. Retrying in 5 seconds.", settings.queue_provider)
             await asyncio.sleep(5)
     connected.set()
 
@@ -88,7 +88,7 @@ def pres(request: Request) -> PresentationService:
     return request.app.state.pres_svc
 
 
-def get_broker(request: Request) -> NatsBroker:
+def get_broker(request: Request) -> Broker:
     return request.app.state.broker
 
 
@@ -113,7 +113,7 @@ async def create_job(
     instruction: str | None = Form(None, max_length=settings.pres_max_instruction_size),
     tags: list[str] = Form(default_factory=list, max_length=16),
     service: PresentationService = Depends(pres),
-    broker: NatsBroker = Depends(get_broker),
+    broker: Broker = Depends(get_broker),
 ) -> JobDetail:
     """ Schedule a new PPTX generation job. """
     if user_id != SYSTEM_USER_ID and settings.pres_max_jobs_per_user != -1 and (n_jobs := await service.jobs.get_pending_count(user_id)) >= settings.pres_max_jobs_per_user:
@@ -146,7 +146,7 @@ async def get_job(user_id: XUserIDHeader, id: uuid.UUID, service: PresentationSe
 
 
 @router.get("/job/retry")
-async def retry_job(user_id: XUserIDHeader, id: uuid.UUID, service: PresentationService = Depends(pres), broker: NatsBroker = Depends(get_broker)) -> bool:
+async def retry_job(user_id: XUserIDHeader, id: uuid.UUID, service: PresentationService = Depends(pres), broker: Broker = Depends(get_broker)) -> bool:
     """ List available jobs. """
     job = await service.jobs.get(id)
     if job is not None and job.user_id not in {user_id, SYSTEM_USER_ID}:
@@ -169,7 +169,7 @@ async def list_jobs(user_id: XUserIDHeader, offset: int = Query(0, ge=0), limit:
 
 
 @router.delete("/job")
-async def delete_job(user_id: XUserIDHeader, id: uuid.UUID, service: PresentationService = Depends(pres), broker: NatsBroker = Depends(get_broker)) -> bool:
+async def delete_job(user_id: XUserIDHeader, id: uuid.UUID, service: PresentationService = Depends(pres), broker: Broker = Depends(get_broker)) -> bool:
     """ Terminate and delete a job. """
     job = await service.jobs.get(id)
     if job is None or job.user_id not in {user_id, SYSTEM_USER_ID}:

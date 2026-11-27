@@ -148,8 +148,8 @@ The API will be available at:
 
 ### Presentation worker
 
-The API does not generate presentations. It saves the job in MongoDB and publishes a message to NATS JetStream. A separate worker process takes one message at a time and runs the job.
-If a worker stops, NATS sends the message to another worker. The job continues from its last saved step.
+The API does not generate presentations. It saves the job in MongoDB and publishes a message to the queue. A separate worker process takes one message at a time and runs the job.
+If a worker stops, the queue sends the message to another worker after `PRES_ACK_WAIT_SECONDS`. The job continues from its last saved step.
 `NatsBroker` never raises `LockLost`. A lost lock shows up only through the `alive` check and the fence watch.
 
 Set `SHIKSHA_ROLE` to choose what a container runs:
@@ -164,13 +164,27 @@ Start a worker outside a container:
 poetry run python -m app.worker
 ```
 
+Set `QUEUE_PROVIDER` to choose the queue. Every provider implements the `Broker` protocol in `app/messaging/broker.py`.
+
+| `QUEUE_PROVIDER` | Needs | Notes |
+|---|---|---|
+| `mongo` (default) | `PRES_MONGODB_URL` | No extra service. Idle workers poll MongoDB every 50 ms. |
+| `nats` | `PRES_MONGODB_URL`, `NATS_URL`, optional `NATS_CREDS` | Needs NATS 2.12 or newer. Push delivery. |
+| `azure_storage_queue` | `PRES_MONGODB_URL`, `AZURE_STORAGE_QUEUE_CONNECTION_STRING`, extra `azure-queue` | Run `poetry install --extras azure-queue`. Use a storage account. Idle workers poll every 1 s. No dedupe by message id. A cancel reaches a worker at its next job write. |
+
+To add a provider, do these 3 steps:
+
+1. Write one class that implements `Broker`.
+2. Add the provider name to the `QUEUE_PROVIDER` `Literal` in `app/config.py`.
+3. Add one `case` to `make_broker()` in `app/services/presentation/consumer.py`.
+
 Start NATS locally:
 
 ```bash
 docker run -d -p 4222:4222 nats:2 -js
 ```
 
-Delayed retries need NATS server 2.12 or newer. The app refuses to start on an older server.
+Delayed retries need NATS server 2.12 or newer. On an older server, the app logs the error and retries every 5 seconds. It runs no jobs.
 
 The NATS user needs these JetStream permissions:
 
@@ -188,11 +202,13 @@ The stream keeps messages for 7 days and stores at most 512 MiB. The NATS server
 
 Settings:
 
+- `QUEUE_PROVIDER`: `mongo`, `nats` or `azure_storage_queue`. Default `mongo`.
+- `AZURE_STORAGE_QUEUE_CONNECTION_STRING`: connection string of the storage account. Required for `azure_storage_queue`.
 - `NATS_URL`: address of the NATS server. Use a comma-separated list for several servers. Default `nats://localhost:4222`.
-- `NATS_CREDS`: path to a NATS credentials file. Default none. Deployed workers set `NATS_CREDS`, so the `nkeys` extra is required.
+- `NATS_CREDS`: path to a NATS credentials file. Default none. Deployed workers set `NATS_CREDS` only when `QUEUE_PROVIDER` is `nats`. The `nkeys` extra is then required.
 - `NATS_REPLICAS`: number of stream replicas. Default 1.
 - `SHIKSHA_ROLE`: `api`, `worker` or `all`.
-- `PRES_ACK_WAIT_SECONDS`: time without a sign of life before NATS sends the job again. Default 60.
+- `PRES_ACK_WAIT_SECONDS`: time without a sign of life before the queue sends the job again. Default 60.
 - `PRES_MAX_DELIVER`: number of tries before the job fails for good. Default 5.
 - `PRES_DRAIN_SECONDS`: time a stopping worker waits for its job to finish. Default 25.
 - `PRES_STALL_SECONDS`: time without a job write before the worker stops a silent job. Default 900. A step with no write for 5 minutes was killed, so slow steps need more time.

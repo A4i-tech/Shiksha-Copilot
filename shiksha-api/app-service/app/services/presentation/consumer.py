@@ -4,12 +4,12 @@ import time
 import uuid
 from collections.abc import Callable
 from pathlib import Path
+from typing import assert_never
 
 from app.config import settings
-from app.messaging.broker import LockLost
+from app.messaging.broker import Broker, LockLost
 from app.messaging.consumer import Handler, run_consumer
 from app.messaging.message import JobMessage
-from app.messaging.nats_broker import NatsBroker
 from app.services.presentation.job import JobManager, lease_owner
 from app.services.presentation.service import PresentationService
 
@@ -20,15 +20,30 @@ CANCEL_SUBJECT = "pres.cancel"
 LIVENESS_FILE = Path("/tmp/worker-alive")
 
 
-def make_broker() -> NatsBroker:
-    return NatsBroker(
-        settings.nats_url,
-        queues=[JOBS_QUEUE],
-        ack_wait=settings.pres_ack_wait_seconds,
-        max_deliver=settings.pres_max_deliver,
-        replicas=settings.nats_replicas,
-        creds=settings.nats_creds,
-    )
+def make_broker() -> Broker:
+    logger.info("Queue provider: %s", settings.queue_provider)
+    ack_wait, max_deliver = settings.pres_ack_wait_seconds, settings.pres_max_deliver
+    match settings.queue_provider:
+        case "nats":
+            from app.messaging.nats_broker import NatsBroker
+
+            return NatsBroker(
+                settings.nats_url, replicas=settings.nats_replicas, creds=settings.nats_creds,
+                queues=[JOBS_QUEUE], ack_wait=ack_wait, max_deliver=max_deliver,
+            )
+        case "azure_storage_queue":
+            from app.messaging.azure_storage_queue_broker import AzureStorageQueueBroker
+
+            return AzureStorageQueueBroker(
+                settings.azure_storage_queue_connection_string,
+                queues=[JOBS_QUEUE], ack_wait=ack_wait, max_deliver=max_deliver,
+            )
+        case "mongo":
+            from app.messaging.mongo_broker import MongoBroker
+
+            return MongoBroker(settings.pres_mongodb_url, ack_wait=ack_wait, max_deliver=max_deliver)
+        case _:
+            assert_never(settings.queue_provider)
 
 
 async def publish_job(broker, jobs: JobManager, job, *, msg_id: str) -> None:

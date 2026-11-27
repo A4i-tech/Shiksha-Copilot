@@ -435,6 +435,28 @@ typing-extensions = ">=4.6.0"
 aio = ["azure-core[aio] (>=1.37.0)"]
 
 [[package]]
+name = "azure-storage-queue"
+version = "12.18.1"
+description = "Microsoft Corporation Azure Storage Queue Client Library for Python"
+optional = true
+python-versions = ">=3.10"
+groups = ["main"]
+markers = "extra == \"azure-queue\""
+files = [
+    {file = "azure_storage_queue-12.18.1-py3-none-any.whl", hash = "sha256:791ed52e2aae4b136ded3e530414fda2fdaf4ab356891b017cf77b337609a2a4"},
+    {file = "azure_storage_queue-12.18.1.tar.gz", hash = "sha256:ed52931a9fbff1383a198d2d90b9692535a31e0339193ccfd5aa75cdc1808d1d"},
+]
+
+[package.dependencies]
+azure-core = ">=1.38.3"
+cryptography = ">=2.1.4"
+isodate = ">=0.6.1"
+typing-extensions = ">=4.6.0"
+
+[package.extras]
+aio = ["azure-core[aio] (>=1.38.3)"]
+
+[[package]]
 name = "backoff"
 version = "2.2.1"
 description = "Function decoration for backoff and retry"
@@ -6517,8 +6539,9 @@ type = ["pytest-mypy"]
 
 [extras]
 azure = ["azure-ai-translation-text"]
+azure-queue = ["azure-storage-queue"]
 
 [metadata]
 lock-version = "2.1"
 python-versions = "~3.11"
-content-hash = "fe00c503aa6fcade79e23693a07c2bfd1c44feca6dc7505c9ba9d7c1f267229f"
+content-hash = "58919b40dc6b060028c523bae374cd6b9e35c812ef5f0819b77250b5e5177f38"
