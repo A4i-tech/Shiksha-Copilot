@@ -1,6 +1,10 @@
 .codex
 .vscode/
 .pytest_cache/
+shiksha-ingestion/.env
+shiksha-ingestion/pipeline_steps/__pycache__/
+shiksha-ingestion/scert_action_verbs_prohibited.json
+shiksha-ingestion/scert_action_verbs.json
 
 # Unit test / coverage reports
 htmlcov/
