@@ -1,6 +1,8 @@
 const BaseManager = require("./base.manager");
 const LessonFeedbackDao = require("../dao/feedback.lesson.dao");
 const formatApiReponse = require("../helper/response");
+const AppError = require("../helper/app.error");
+const { isTeacherInScope, getScopedFeedback, updateScopedFeedback, OUT_OF_SCOPE } = require("../helper/training.scope.helper");
 
 /** @extends {BaseManager<LessonFeedbackDao>} */
 class LessonFeedbackManager extends BaseManager {
@@ -47,24 +49,18 @@ class LessonFeedbackManager extends BaseManager {
 		);
 	}
 
-	async getByTeacher(teacherId) {
+	async getByTeacher(teacherId, permissions) {
+		if (!await isTeacherInScope(permissions, "content.manage", teacherId)) throw new AppError(OUT_OF_SCOPE, 403);
 		const feedbacks = await this.dao.getByTeacher(teacherId);
-		if (!feedbacks) {
-			return formatApiReponse(false, "failed to load feedbacks", null);
-		}
 		return formatApiReponse(true, "", feedbacks);
 	}
 
-	async update(id, updates) {
-		const updatedFeedback = await this.dao.update(id, updates);
-		if (!updatedFeedback) {
-			return formatApiReponse(
-				false,
-				"failed to update lesson feedback",
-				null
-			);
-		}
-		return formatApiReponse(true, "", updatedFeedback);
+	getById(req) {
+		return getScopedFeedback(this.dao, req);
+	}
+
+	update(id, updates, permissions) {
+		return updateScopedFeedback(this.dao, id, updates, permissions);
 	}
 }
 

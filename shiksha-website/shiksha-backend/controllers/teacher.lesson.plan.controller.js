@@ -1,9 +1,9 @@
-const axios = require("axios");
 const handleError = require("../helper/handleError.js");
 const TeacherLessonPlanManager = require("../managers/teacher.lesson.plan.manager.js");
 const BaseController = require("./base.controller.js");
 const { intersectFilters } = require("../helper/scope.helper");
 const escapeRegExp = require("lodash/escapeRegExp");
+
 /** @extends {BaseController<TeacherLessonPlanManager>} */
 class TeacherLessonPlanController extends BaseController {
 	constructor() {
@@ -133,49 +133,13 @@ class TeacherLessonPlanController extends BaseController {
 	}
 
 	async getLessonPlanPresentation(req, res) {
-		const { lessonPlanId } = req.params;
-		const pythonUrl = process.env.LLM_API_BASE_URL;
-		const response = await axios.get(`${pythonUrl}/presentation/jobs`, {
-			headers: {"X-User-ID": "0".repeat(24)},
-			params: {tags: `lesson-plan-${lessonPlanId}`, limit: 1}
-		});
-		if (response.data.length > 0) {
-			return res.status(200).json(response.data[0]);
-		} else {
-			return res.status(404).json({ message: "Presentation not found" });
-		}
+		const result = await this.manager.getPresentation(req.user._id, req.params.lessonPlanId);
+		return result.success ? res.status(200).json(result.data) : res.status(404).json({ message: result.message });
 	}
 
 	async generateLessonPlanPresentation(req, res) {
-		const { lessonPlanId } = req.params;
-		const teacherId = req.user._id;
-
-		const pythonUrl = process.env.LLM_API_BASE_URL;
-		let response = await axios.get(`${pythonUrl}/presentation/jobs`, {
-			headers: {"X-User-ID": "0".repeat(24)},
-			params: {tags: `lesson-plan-${lessonPlanId}`, limit: 1}
-		});
-		if (response.data.length > 0) {
-			return res.status(200).json(response.data[0]);
-		}
-
-		const [authorized, lessonPlan] = await Promise.all([
-			this.manager.dao.getLessonPlanById(teacherId, lessonPlanId), // test whether teacher have access to this lp
-			this.manager.masterLessonDao.getById(lessonPlanId)
-		]);
-		if (!authorized || !lessonPlan) {
-			return res.status(404).json({ message: "Lesson plan not found" });
-		}
-
-		// this prefix is sufficient to evade libmagic's content-based file mime inference
-		const blob = new Blob(["Lesson plan content:\n", JSON.stringify(lessonPlan)], { type: 'text/plain' });
-		const formData = new FormData();
-		formData.append("textbook_file", blob, `lesson-plan-${lessonPlanId}.json.txt`);
-		formData.append("slides", 16);
-		formData.append("tags", `lesson-plan-${lessonPlanId}`);
-		formData.append("instruction", "");
-		response = await axios.post(`${pythonUrl}/presentation/job`, formData, {headers: {"Content-Type": "multipart/form-data", "X-User-ID": "0".repeat(24)}});
-		return res.status(200).json(response.data);
+		const result = await this.manager.generatePresentation(req.user._id, req.params.lessonPlanId);
+		return result.success ? res.status(200).json(result.data) : res.status(404).json({ message: result.message });
 	}
 
 	async getResourcePlanById(req, res) {
@@ -275,7 +239,10 @@ class TeacherLessonPlanController extends BaseController {
 
 	async handleWebhook(req, res) {
         const data = req.body;
-        await this.manager.processWebhookData(data);
+        const result = await this.manager.processWebhookData(data);
+        if (!result.success) {
+            return res.status(404).json(result);
+        }
         res.status(200).send({ success: true });
     }
 
@@ -335,7 +302,7 @@ class TeacherLessonPlanController extends BaseController {
 	async retryLessonPlan(req, res) {
 		const { regeneratedId, _id } = req.body;
 
-		const result = await this.manager.retryLessonPlan(regeneratedId, _id);
+		const result = await this.manager.retryLessonPlan(req.user._id, regeneratedId, _id);
 
 		if (result.success) {
 			return res.status(200).json(result);

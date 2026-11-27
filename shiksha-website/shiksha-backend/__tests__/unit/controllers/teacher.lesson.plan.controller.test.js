@@ -303,7 +303,7 @@ describe("TeacherLessonPlanController", () => {
 
   describe("handleWebhook", () => {
     it("should handle webhook successfully", async () => {
-      mockManager.processWebhookData = jest.fn().mockResolvedValue(undefined);
+      mockManager.processWebhookData = jest.fn().mockResolvedValue({ success: true });
       mockReq.body = { event: "lesson.created", data: {} };
 
       await controller.handleWebhook(mockReq, mockRes);
@@ -311,6 +311,17 @@ describe("TeacherLessonPlanController", () => {
       expect(mockManager.processWebhookData).toHaveBeenCalledWith(mockReq.body);
       expect(mockRes.status).toHaveBeenCalledWith(200);
       expect(mockRes.send).toHaveBeenCalledWith({ success: true });
+    });
+
+    it("should return 404 with the message when the lesson plan is missing", async () => {
+      const result = { success: false, message: "Lesson plan not found", data: null };
+      mockManager.processWebhookData = jest.fn().mockResolvedValue(result);
+
+      await controller.handleWebhook(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(404);
+      expect(mockRes.json).toHaveBeenCalledWith(result);
+      expect(mockRes.send).not.toHaveBeenCalled();
     });
 
     it("should propagate errors instead of swallowing them", async () => {
@@ -412,7 +423,7 @@ describe("TeacherLessonPlanController", () => {
 
       await controller.retryLessonPlan(mockReq, mockRes);
 
-      expect(mockManager.retryLessonPlan).toHaveBeenCalledWith("regen-123", "lesson-123");
+      expect(mockManager.retryLessonPlan).toHaveBeenCalledWith("teacher-123", "regen-123", "lesson-123");
       expect(mockRes.status).toHaveBeenCalledWith(200);
     });
 
