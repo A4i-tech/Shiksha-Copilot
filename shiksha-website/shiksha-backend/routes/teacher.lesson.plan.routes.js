@@ -5,7 +5,11 @@ const TeacherLessonPlanController = require("../controllers/teacher.lesson.plan.
 const { isAuthenticated, requirePermission } = require("../middlewares/auth.js");
 const {
 	validateTeacherLessonPlan,
+	validateWebhook,
+	validateRegenerate,
 } = require("../validations/teacher.lesson.plan.validation.js");
+
+const verifyWebhookSignature = require("../middlewares/webhook.signature.js");
 
 const teacherLessonPlanController = new TeacherLessonPlanController();
 
@@ -55,6 +59,7 @@ router.post(
     "/teacher-lesson-plan/regenerate",
     isAuthenticated,
     requirePermission("lesson-plan.ai-enhance"),
+    validateRegenerate,
     asyncMiddleware(
         teacherLessonPlanController.regenerateContent.bind(
             teacherLessonPlanController
@@ -97,6 +102,8 @@ router.post(
 
 router.post(
     "/teacher-lesson-plan/webhook",
+    verifyWebhookSignature,
+    validateWebhook,
     asyncMiddleware(
         teacherLessonPlanController.handleWebhook.bind(
             teacherLessonPlanController
