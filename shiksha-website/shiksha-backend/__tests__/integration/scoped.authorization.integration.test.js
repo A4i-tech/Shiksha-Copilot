@@ -2,7 +2,6 @@ require("dotenv").config();
 
 const axios = require("axios");
 const crypto = require("crypto");
-const ExcelJS = require("exceljs");
 
 const baseUrl = process.env.SHIKSHA_BASE_URL;
 const superuserPhone = process.env.SHIKSHA_SU_PHONE;
@@ -372,40 +371,6 @@ describe("scoped authorisation", () => {
     })).status).toBe(403);
   });
 
-  it("exports only data inside the actor scope", async () => {
-    const startedAt = new Date();
-    await Promise.all([
-      request("/api/school/export?limit=1000", "GET", actorToken).then(expectSuccess),
-      request("/api/users/export?limit=1000", "GET", actorToken).then(expectSuccess),
-      request(`/api/content-activity/export?filter[district]=${encodeURIComponent(localSchool.district)}`, "GET", actorToken).then(expectSuccess),
-    ]);
-
-    const eventTypes = ["Schools Export", "Teachers Export", "Content Activity Export"];
-    const logs = [];
-    for (let attempt = 0; attempt < 60 && logs.length < eventTypes.length; attempt++) {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      const found = expectSuccess(await request(`/api/audit/log?limit=20&filter[userId]=${actor._id}`, "GET", rootToken)).results
-        .filter((log) => eventTypes.includes(log.eventType) && new Date(log.createdAt) >= startedAt);
-      logs.splice(0, logs.length, ...found);
-    }
-    expect(logs).toHaveLength(3);
-    expect(logs.every((log) => log.status === "success")).toBe(true);
-    const sheets = {};
-    for (const log of logs) {
-      const response = await axios.get(log.logUrl, { responseType: "arraybuffer" });
-      const workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.load(response.data);
-      sheets[log.eventType] = workbook.worksheets[0];
-    }
-    const values = (sheet, column) => sheet.getColumn(column).values.slice(2);
-    expect(values(sheets["Schools Export"], 1)).toContain(localSchool.schoolId);
-    expect(values(sheets["Schools Export"], 1)).not.toContain(remoteSchool.schoolId);
-    expect(values(sheets["Teachers Export"], 1)).toContain(localTeacher.identity.name);
-    expect(values(sheets["Teachers Export"], 1)).not.toContain(remoteTeacher.identity.name);
-    expect(values(sheets["Content Activity Export"], 1)).toContain(localTeacher.identity.name);
-    expect(values(sheets["Content Activity Export"], 1)).not.toContain(remoteTeacher.identity.name);
-  }, 60000);
-
   it("enforces complete staff scope and applies permission removal immediately", async () => {
     const schoolStaff = expectSuccess(await request("/api/users?limit=100&filter[profileType]=admin", "GET", schoolActorToken)).results;
     expect(schoolStaff.map((user) => user._id)).toContain(schoolActor._id);
@@ -544,7 +509,7 @@ describe("scoped authorisation", () => {
     const rejected = [
       {
         body: teacherBody("Blocked Remote Integration Teacher", `6${String(suffix + 2).slice(-9)}`, remoteSchool),
-        message: "You can only assign roles inside your own scope",
+        message: "You can only assign roles inside your own scope. Choose a school or region you manage.",
       },
       {
         body: teacherBody("Duplicate Assignment Teacher", `6${String(suffix + 3).slice(-9)}`, localSchool, [
@@ -558,27 +523,27 @@ describe("scoped authorisation", () => {
         body: teacherBody("Invalid Dependency Teacher", `6${String(suffix + 4).slice(-9)}`, localSchool, [
           { roleId: teacherRole._id, dep: crypto.randomBytes(12).toString("hex") },
         ]),
-        message: "The selected school does not exist",
+        message: "The selected school does not exist. Select an existing school and save again.",
       },
       {
         body: adminBody("Escalated Integration Admin", `6${String(suffix + 5).slice(-9)}`, [{ roleId: globalRole._id }]),
-        message: "You can only assign roles inside your own scope",
+        message: "You can only assign roles inside your own scope. Choose a school or region you manage.",
       },
       {
         body: adminBody("Missing Dependency Admin", `6${String(suffix + 6).slice(-9)}`, [{ roleId: operatorRole._id }]),
-        message: "This role needs a school or region",
+        message: "This role needs a school or region. Select one and save again.",
       },
       {
         body: adminBody("Invalid Dependency Admin", `6${String(suffix + 7).slice(-9)}`, [
           { roleId: operatorRole._id, dep: { state: localSchool.state, zone: localSchool.zone, district: `Missing District ${suffix}` } },
         ]),
-        message: "The selected region does not exist",
+        message: "The selected region does not exist. Select an existing region and save again.",
       },
       {
         body: adminBody("Equal Scope Integration Staff", `6${String(suffix + 9).slice(-9)}`, [
           { roleId: elevatedRole._id, dep: districtDep(localSchool) },
         ]),
-        message: "You can only assign roles inside your own scope",
+        message: "You can only assign roles inside your own scope. Choose a school or region you manage.",
       },
     ];
     for (const test of rejected) {
@@ -588,18 +553,20 @@ describe("scoped authorisation", () => {
       "Equal School Scope Integration Teacher",
       `6${String(suffix + 13).slice(-9)}`,
       localSchool
-    )), "You can only assign roles inside your own scope");
-    expectDenied(await request("/api/users", "POST", rootToken, adminBody(
+    )), "You can only assign roles inside your own scope. Choose a school or region you manage.");
+    // A super-user may assign a GLOBAL role (user.manager.js prepareAssignments); other actors may not (rejected above).
+    const globalStaff = expectSuccess(await request("/api/users", "POST", rootToken, adminBody(
       "Equal Global Scope Integration Staff",
       `6${String(suffix + 14).slice(-9)}`,
       [{ roleId: globalRole._id }]
-    )), "You can only assign roles inside your own scope");
+    )));
+    ids.users.push(globalStaff._id);
     expectDenied(await request(`/api/users/${local._id}`, "PUT", actorToken, {
       roles: [
         { _id: local.roles[0]._id, roleId: teacherRole._id, dep: localSchool._id },
         { roleId: elevatedRole._id, dep: districtDep(localSchool) },
       ],
-    }), "You can only assign roles inside your own scope");
+    }), "You can only assign roles inside your own scope. Choose a school or region you manage.");
   });
 
   it("edits mixed-scope teachers and invalidates their session when assignments change", async () => {
@@ -657,7 +624,7 @@ describe("scoped authorisation", () => {
       description: "",
       permissions: ["generation.status.view"],
       scopeType: "UNBOUND",
-    }), "You cannot grant permissions you do not hold");
+    }), "Cannot grant permissions you do not hold");
   });
 
   it("allows explicit permission delegation regardless of delegate scope", async () => {

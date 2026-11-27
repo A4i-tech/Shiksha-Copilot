@@ -32,7 +32,7 @@ const SCORE_THRESHOLD = 0.90;
 const USER_URL_PATHS = [
   '/#/home',
   '/#/profile',
-  '/#/chatbot',
+  '/#/chat',
   '/#/help',
   '/#/generation-status',
   '/#/content-generation',
@@ -42,8 +42,8 @@ const USER_URL_PATHS = [
   '/#/content-generation/lesson-chat',
   '/#/content-generation/inspect/lesson-plan',
   '/#/content-generation/inspect/resource',
-  '/#/question-paper',
-  '/#/question-paper/generate',
+  '/#/question-papers',
+  '/#/question-papers/generate',
   '/#/schedule',
 ];
 
@@ -140,6 +140,7 @@ async function discoverDetailUrls(page) {
   // only the primary view/edit button per card should be clicked here.
   const cardButtonSelector = '.card button:not([title])';
   const cardButtons = page.locator(cardButtonSelector);
+  await cardButtons.first().waitFor({ timeout: 15000 }).catch(() => {});
   const cardCount = await cardButtons.count();
   console.log(`  Found ${cardCount} content-generation cards`);
 
@@ -179,7 +180,7 @@ async function discoverDetailUrls(page) {
   }
 
   // --- Question bank list ---
-  const qbListUrl = `${FRONTEND_URL}/#/question-paper`;
+  const qbListUrl = `${FRONTEND_URL}/#/question-papers`;
   await page.goto(qbListUrl);
   try { await page.waitForLoadState('networkidle', { timeout: 12000 }); } catch {}
   await dismissModals(page);
