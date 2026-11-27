@@ -35,6 +35,7 @@ const {
 	restructureResources,
 } = require("../helper/formatter");
 const compareChapter = require("../helper/chapter.helper");
+const { assertRegeneratedAccess } = require("../helper/regenerated.access.helper");
 const LessonPlanTemplate = require("../models/lesson.plan.template.model");
 const School = require("../models/school.model");
 const { schoolDependency } = require("../helper/permission.helper");
@@ -91,6 +92,7 @@ class MasterLessonManger extends BaseManager {
 			if (!content) {
 				return formatApiReponse(false, "Invalid lesson id", null);
 			}
+			await assertRegeneratedAccess(this.teacherLessonPlanDao, teacher._id, content);
 
 			let lessonPlan = await this.teacherLessonPlanDao.getByTeacherAndLesson(
 				teacher._id,
@@ -224,6 +226,7 @@ class MasterLessonManger extends BaseManager {
 			videos: regeneratedContent.videos,
 			documents: lessonPlan.documents,
 			interactOutput: regeneratedContent.interactOutput,
+			isRegenerated: true,
 		};
 
 		const savedNewLessonPlan = await this.dao.create(
@@ -325,6 +328,11 @@ class MasterLessonManger extends BaseManager {
 	}
 
 	async generateLessonPlan(teacherId, lessonId, filters) {
+		const lesson = await this.dao.getById(lessonId);
+		if (!lesson) {
+			throw new AppError(`Master lesson with ID ${lessonId} not found. Check the lesson ID and try again.`, 404);
+		}
+		await assertRegeneratedAccess(this.teacherLessonPlanDao, teacherId, lesson);
 		const lessonPlan = await this._getLessonPlan(teacherId, lessonId);
 
 		const regeneratedMasterLessonPlan = await this._getRegeneratedMasterLessonPlan(teacherId, lessonId);
@@ -349,6 +357,7 @@ class MasterLessonManger extends BaseManager {
 		if (!masterLesson) {
 			throw new AppError(`Master lesson with ID ${lessonId} not found. Check the lesson ID and try again.`, 404);
 		}
+		await assertRegeneratedAccess(this.teacherLessonPlanDao, userId, masterLesson);
 		const chapter = await this.chapterDao.getById(masterLesson.chapterId);
 		if (!chapter) {
 			throw new AppError(`Chapter with ID ${masterLesson.chapterId} not found. Check the lesson data and try again.`, 404);

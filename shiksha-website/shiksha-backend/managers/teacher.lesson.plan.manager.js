@@ -1,5 +1,7 @@
 const BaseManager = require("./base.manager");
 const formatApiReponse = require("../helper/response");
+const AppError = require("../helper/app.error");
+const { assertRegeneratedAccess } = require("../helper/regenerated.access.helper");
 const TeacherLessonPlanModel = require("../models/teacher.lesson.plan.model");
 const TeacherLessonPlanDao = require("../dao/teacher.lesson.plan.dao");
 const teacherLessonPlanAggregation = require("../aggregation/teacher.lesson.plan.aggregation");
@@ -21,6 +23,9 @@ const LessonPlanTemplateDao = require("../dao/lesson.plan.template.dao.js");
 const LessonPlanTemplate = require("../models/lesson.plan.template.model.js");
 const TeacherLessonPlan = require("../models/teacher.lesson.plan.model");
 const mongoose = require("mongoose");
+const axios = require("axios");
+
+const PRESENTATION_USER_ID = "0".repeat(24);
 
 /** @extends {BaseManager<TeacherLessonPlanDao>} */
 class TeacherLessonPlanManager extends BaseManager {
@@ -146,6 +151,41 @@ class TeacherLessonPlanManager extends BaseManager {
 		}
 	}
 
+	async findPresentationJob(lessonPlanId) {
+		const response = await axios.get(`${process.env.LLM_API_BASE_URL}/presentation/jobs`, {
+			headers: {"X-User-ID": PRESENTATION_USER_ID},
+			params: {tags: `lesson-plan-${lessonPlanId}`, limit: 1}
+		});
+		return response.data[0];
+	}
+
+	async getPresentation(teacherId, lessonPlanId) {
+		if (!await this.dao.getLessonPlanById(teacherId, lessonPlanId)) return formatApiReponse(false, "Lesson plan not found", null);
+		const job = await this.findPresentationJob(lessonPlanId);
+		return job ? formatApiReponse(true, "", job) : formatApiReponse(false, "Presentation not found", null);
+	}
+
+	async generatePresentation(teacherId, lessonPlanId) {
+		const [authorized, lessonPlan] = await Promise.all([
+			this.dao.getLessonPlanById(teacherId, lessonPlanId), // test whether teacher have access to this lp
+			this.masterLessonDao.getById(lessonPlanId)
+		]);
+		if (!authorized || !lessonPlan) return formatApiReponse(false, "Lesson plan not found", null);
+
+		const existingJob = await this.findPresentationJob(lessonPlanId);
+		if (existingJob) return formatApiReponse(true, "", existingJob);
+
+		// this prefix is sufficient to evade libmagic's content-based file mime inference
+		const blob = new Blob(["Lesson plan content:\n", JSON.stringify(lessonPlan)], { type: 'text/plain' });
+		const formData = new FormData();
+		formData.append("textbook_file", blob, `lesson-plan-${lessonPlanId}.json.txt`);
+		formData.append("slides", 16);
+		formData.append("tags", `lesson-plan-${lessonPlanId}`);
+		formData.append("instruction", "");
+		const response = await axios.post(`${process.env.LLM_API_BASE_URL}/presentation/job`, formData, {headers: {"Content-Type": "multipart/form-data", "X-User-ID": PRESENTATION_USER_ID}});
+		return formatApiReponse(true, "", response.data);
+	}
+
 	async generateContent(teacherId, payload) {
 		const regenerationCount = await this.regeneratedCount(teacherId);
 		if(regenerationCount >= REGENERATION_LIMIT){
@@ -155,6 +195,7 @@ class TeacherLessonPlanManager extends BaseManager {
 		if (!masterLesson) {
 			throw new Error(`Master lesson with ID ${payload.lessonId} not found`);
 		  }
+		await assertRegeneratedAccess(this.dao, teacherId, masterLesson);
 
 		const template = await this.lessonPlanTemplateDao.getById(masterLesson?.templateId)
 
@@ -365,6 +406,7 @@ class TeacherLessonPlanManager extends BaseManager {
 		if (!masterLesson) {
 			throw new Error(`Master lesson with ID ${payload.lessonId} not found`);
 		  }
+		await assertRegeneratedAccess(this.dao, teacherId, masterLesson);
 		const template = await this.lessonPlanTemplateDao.getById(masterLesson?.templateId)
 
 		const chapter = await this.chapterDao.getById(masterLesson.chapterId);
@@ -489,14 +531,14 @@ class TeacherLessonPlanManager extends BaseManager {
 			instanceId: instance_id,
 		});
 
+		if (!existingLessonPlan) {
+			return formatApiReponse(false, "Lesson plan not found", null);
+		}
+
 		const regeneratedLog = await this.regeneratedLessonResource.getOne({
 			genContentId: existingLessonPlan.lessonId,
 			recordId: existingLessonPlan._id
 		});
-
-		if (!existingLessonPlan) {
-			return formatApiReponse(false, "Lesson plan not found", null);
-		}
 		if (status.toLowerCase() === "completed") {
 			const masterLessonPlan = await this.masterLessonDao.getById(
 				existingLessonPlan.lessonId
@@ -721,25 +763,30 @@ async deleteResourceMedia(teacherId, resourceId, data) {
   }
 
 
-	async _checkStatusAndThrowError(regeneratedId, recordId) {
+	async _checkStatusAndThrowError(teacherId, regeneratedId, recordId) {
         const regeneratedLog = await this.regeneratedLessonResource.getById(regeneratedId);
         const teacherLessonPlan = await this.dao.getById(recordId);
 
-        if (!regeneratedLog || regeneratedLog.status.toLowerCase() !== "failed") {
-            throw new Error("Regeneration log is either not found or not in a failed state.");
+        // same error for non-owner and missing, so ids cannot be probed
+        const owned = teacherLessonPlan
+            && String(teacherLessonPlan.teacherId) === String(teacherId)
+            && regeneratedLog
+            && String(regeneratedLog.recordId) === String(recordId);
+        if (!owned) {
+            throw new AppError("Lesson plan or regeneration log not found. Refresh the page and try again.", 404);
         }
-        if (!teacherLessonPlan || teacherLessonPlan.status.toLowerCase() !== "failed") {
-            throw new Error("Teacher lesson plan is either not found or not in a failed state.");
+        if (regeneratedLog.status.toLowerCase() !== "failed") {
+            throw new AppError("Regeneration log is not in a failed state.", 409);
         }
-        return true;
+        if (teacherLessonPlan.status.toLowerCase() !== "failed") {
+            throw new AppError("Teacher lesson plan is not in a failed state.", 409);
+        }
+        return { regeneratedLog, teacherLessonPlan };
     }
 
 
-	async retryLessonPlan(regeneratedId, recordId) {
-        await this._checkStatusAndThrowError(regeneratedId, recordId);
-
-		const regeneratedLog = await this.regeneratedLessonResource.getById(regeneratedId);
-		const teacherLessonPlan = await this.dao.getById(recordId);
+	async retryLessonPlan(teacherId, regeneratedId, recordId) {
+        const { regeneratedLog, teacherLessonPlan } = await this._checkStatusAndThrowError(teacherId, regeneratedId, recordId);
 
         const masterLesson = await this.masterLessonDao.getById(teacherLessonPlan.lessonId);
         if (!masterLesson) {

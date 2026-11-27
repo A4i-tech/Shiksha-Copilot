@@ -4,7 +4,8 @@ const asyncMiddleware = require("../middlewares/asyncMiddleware.js");
 const { isAuthenticated, requirePermission } = require("../middlewares/auth.js");
 const TeacherResourceFeedbackController = require("../controllers/teacher.feedback.controller.js");
 const {
-	validateTeacherResourceFeedback
+	validateTeacherResourceFeedback,
+	validateTeacherResourceFeedbackUpdate
 } = require("../validations/teacher.feedback.validation.js");
 
 const teacherResourceFeedbackController = new TeacherResourceFeedbackController();
@@ -12,6 +13,7 @@ const teacherResourceFeedbackController = new TeacherResourceFeedbackController(
 router.post(
 	"/teacher-resource-feedback/create",
 	isAuthenticated,
+	requirePermission("lesson-resource.edit"),
 	validateTeacherResourceFeedback,
 	asyncMiddleware(teacherResourceFeedbackController.create.bind(teacherResourceFeedbackController))
 );
@@ -35,7 +37,7 @@ router.put(
 	"/teacher-resource-feedback/update/:id",
 	isAuthenticated,
 	requirePermission("content.manage"),
-	validateTeacherResourceFeedback,
+	validateTeacherResourceFeedbackUpdate,
 	asyncMiddleware(teacherResourceFeedbackController.update.bind(teacherResourceFeedbackController))
 );
 

@@ -13,6 +13,7 @@ const validateRequest = (schema, source = "body") => {
             });
         }
 
+        req[source] = isValid.value;
         next();
     };
 };
