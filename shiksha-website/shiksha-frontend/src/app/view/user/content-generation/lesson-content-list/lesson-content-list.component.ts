@@ -32,12 +32,16 @@ interface PresentationListItem {
   metadata: any;
 }
 
+/** Any one of these shows the Generate New Content section (one per generate button). */
+export const GENERATE_PERMISSIONS = ['lesson-resource.generate', 'lesson-plan.generate', 'presentation.generate.arbitrary'];
+
 @Component({
   selector: 'app-lesson-content-list',
   templateUrl: './lesson-content-list.component.html',
   styleUrls: ['./lesson-content-list.component.scss']
 })
 export class LessonContentListComponent implements OnInit, AfterViewInit, OnDestroy {
+  readonly generatePermissions = GENERATE_PERMISSIONS;
   currentPage = 1;
   pageSize = 6;
   totalItems = 0;

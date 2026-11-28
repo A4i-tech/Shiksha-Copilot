@@ -50,6 +50,22 @@ def test_cg_navigation_lesson_resource(content_gen, logged_in_page, step):
         )
 
 
+def test_cg_generate_and_search_sections(content_gen, logged_in_page, step):
+    """
+    Regression CG-04: 'Generate New Content' and 'Search Pre-Created Content'
+    both render, and the search section holds the search input and filters.
+    Section order is covered by the Jasmine spec. The test user needs at
+    least one generate permission; without it this fails instead of skipping.
+    """
+    with step("Verify Generate New Content Section"):
+        expect(content_gen.generate_heading).to_be_visible()
+
+    with step("Verify Search Pre-Created Content Section"):
+        expect(content_gen.search_heading).to_be_visible()
+        expect(content_gen.search_section.locator(content_gen.search_input)).to_be_visible()
+        expect(content_gen.search_section.locator(content_gen.status_dropdown)).to_be_visible()
+
+
 def test_cg_view_edit_page_elements(content_gen, logged_in_page, step):
     """
     Regression CG-02: Verify that clicking a content card opens the view/edit page
