@@ -967,5 +967,17 @@
   "Select teacher": "ಶಿಕ್ಷಕರನ್ನು ಆಯ್ಕೆಮಾಡಿ",
   "New role": "ಹೊಸ ಪಾತ್ರ",
   "Select a role": "ಪಾತ್ರವನ್ನು ಆಯ್ಕೆಮಾಡಿ",
-  "Each row needs the phone number of an existing teacher and the school role name, for example Power Teacher.": "ಪ್ರತಿ ಸಾಲಿನಲ್ಲಿ ಅಸ್ತಿತ್ವದಲ್ಲಿರುವ ಶಿಕ್ಷಕರ ಫೋನ್ ಸಂಖ್ಯೆ ಮತ್ತು ಶಾಲೆಯ ಪಾತ್ರದ ಹೆಸರು ಇರಬೇಕು, ಉದಾಹರಣೆಗೆ Power Teacher."
+  "Each row needs the phone number of an existing teacher and the school role name, for example Power Teacher.": "ಪ್ರತಿ ಸಾಲಿನಲ್ಲಿ ಅಸ್ತಿತ್ವದಲ್ಲಿರುವ ಶಿಕ್ಷಕರ ಫೋನ್ ಸಂಖ್ಯೆ ಮತ್ತು ಶಾಲೆಯ ಪಾತ್ರದ ಹೆಸರು ಇರಬೇಕು, ಉದಾಹರಣೆಗೆ Power Teacher.",
+  "Generate New Content": "ಹೊಸ ವಿಷಯವನ್ನು ರಚಿಸಿ",
+  "Generate New Lesson Resource": "ಹೊಸ ಪಾಠ ಸಂಪನ್ಮೂಲವನ್ನು ರಚಿಸಿ",
+  "Generate New Lesson Plan": "ಹೊಸ ಪಾಠ ಯೋಜನೆಯನ್ನು ರಚಿಸಿ",
+  "Generate New Period Plan": "ಹೊಸ ಪಿರಿಯಡ್ ಯೋಜನೆಯನ್ನು ರಚಿಸಿ",
+  "Generate New Presentation": "ಹೊಸ ಪ್ರೆಸೆಂಟೇಶನ್ ರಚಿಸಿ",
+  "Write the period plan for an assigned chapter": "ನಿಯೋಜಿತ ಅಧ್ಯಾಯಕ್ಕಾಗಿ ಪಿರಿಯಡ್ ಯೋಜನೆಯನ್ನು ಬರೆಯಿರಿ",
+  "includes activities, examples, extra questions": "ಚಟುವಟಿಕೆಗಳು, ಉದಾಹರಣೆಗಳು, ಹೆಚ್ಚುವರಿ ಪ್ರಶ್ನೆಗಳನ್ನು ಒಳಗೊಂಡಿದೆ",
+  "what to teach in one class": "ಒಂದು ತರಗತಿಯಲ್ಲಿ ಏನು ಕಲಿಸಬೇಕು",
+  "classroom-ready slides with images": "ಚಿತ್ರಗಳೊಂದಿಗೆ ತರಗತಿಗೆ ಸಿದ್ಧವಾದ ಸ್ಲೈಡ್‌ಗಳು",
+  "You can create {{count}} types of content:": "ನೀವು {{count}} ರೀತಿಯ ವಿಷಯವನ್ನು ರಚಿಸಬಹುದು:",
+  "You can create 1 type of content:": "ನೀವು 1 ರೀತಿಯ ವಿಷಯವನ್ನು ರಚಿಸಬಹುದು:",
+  "Presentation": "ಪ್ರೆಸೆಂಟೇಶನ್"
 }

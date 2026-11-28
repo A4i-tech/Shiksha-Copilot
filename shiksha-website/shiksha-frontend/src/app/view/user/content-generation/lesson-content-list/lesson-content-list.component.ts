@@ -21,6 +21,20 @@ interface ListParams {
   presentationStatus?: string
 }
 
+interface ContentType {
+  /** i18n keys; 'Lesson Plan' reads 'Period Plan' for Telangana via its state rule */
+  label: string;
+  description: string;
+  permission: string;
+}
+
+/** Types summarised on the landing page; same permissions as the generate buttons below it. */
+const CONTENT_TYPES: ContentType[] = [
+  { label: 'Lesson Resource', description: 'includes activities, examples, extra questions', permission: 'lesson-resource.generate' },
+  { label: 'Lesson Plan', description: 'what to teach in one class', permission: 'lesson-plan.generate' },
+  { label: 'Presentation', description: 'classroom-ready slides with images', permission: 'presentation.generate.arbitrary' },
+];
+
 interface PresentationListItem {
   id: string;
   creation_time: string;
@@ -42,6 +56,9 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
   pageSize = 6;
   totalItems = 0;
   tableHeaders = ['Date', 'Class', 'Subject', 'Type', 'Chapter', 'Sub Topics', 'Action'];
+
+  /** Content types this teacher can generate; drives the summary list and its count. */
+  allowedContentTypes: ContentType[] = [];
 
   typeDropdownOptions: { name: string; value: string }[] = [];
   boardDropdownOptions: any[] = [];
@@ -147,6 +164,7 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
   }
 
   ngOnInit(): void {
+    this.allowedContentTypes = CONTENT_TYPES.filter((type) => this.utilityservice.hasPermission([type.permission]));
     const data: string = localStorage.getItem('userData') ?? '';
     const loggedInUser = JSON.parse(data);
     this.boardDropdownOptions = this.utilityservice.formatResponse(loggedInUser.profiles.teacher.classes);

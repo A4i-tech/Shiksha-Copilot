@@ -50,6 +50,27 @@ def test_cg_navigation_lesson_resource(content_gen, logged_in_page, step):
         )
 
 
+def test_cg_navigation_presentation(content_gen, logged_in_page, step):
+    """
+    Regression CG-01c: Verify 'Generate New Presentation' navigates to the correct route.
+    HTML: routerLink="/content-generation/presentation"
+    """
+    with step("Verify List Page Loaded"):
+        content_gen.page.wait_for_load_state("networkidle")
+
+    # hasPermission hides with display:none (element stays in DOM).
+    if not content_gen.generate_presentation_btn.is_visible():
+        pytest.skip("Test user lacks presentation.generate.arbitrary permission")
+
+    with step("Click Generate New Presentation"):
+        content_gen.click_generate_presentation()
+
+    with step("Verify URL contains presentation route"):
+        expect(logged_in_page).to_have_url(
+            re.compile(r"content-generation/presentation")
+        )
+
+
 def test_cg_view_edit_page_elements(content_gen, logged_in_page, step):
     """
     Regression CG-02: Verify that clicking a content card opens the view/edit page

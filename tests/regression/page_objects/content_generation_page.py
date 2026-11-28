@@ -12,6 +12,9 @@ class ContentGenerationPage(BasePage):
             "generate-lesson-resource-btn"
         )
         self.generate_plan_btn = page.get_by_test_id("generate-lesson-plan-btn")
+        self.generate_presentation_btn = page.get_by_test_id(
+            "generate-presentation-btn"
+        )
         self.search_input = page.get_by_test_id("content-search-input")
         self.content_cards = page.get_by_test_id("content-card")
         self.no_items_msg = page.get_by_test_id("no-items-message")
@@ -72,6 +75,10 @@ class ContentGenerationPage(BasePage):
     def click_generate_lesson_resource(self):
         """Click the 'Generate Lesson Resource' button."""
         self.click_robust(self.generate_resource_btn)
+
+    def click_generate_presentation(self):
+        """Click the 'Generate New Presentation' button."""
+        self.click_robust(self.generate_presentation_btn)
 
     def click_first_card(self):
         """Click first content card in the list."""
