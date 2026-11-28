@@ -50,26 +50,20 @@ def test_cg_navigation_lesson_resource(content_gen, logged_in_page, step):
         )
 
 
-def test_cg_search_section_below_generate(content_gen, logged_in_page, step):
+def test_cg_generate_and_search_sections(content_gen, logged_in_page, step):
     """
-    Regression CG-04: 'Search Pre-Created Content' is its own section, below
-    'Generate New Content', and holds the search input and filters.
+    Regression CG-04: 'Generate New Content' and 'Search Pre-Created Content'
+    both render, and the search section holds the search input and filters.
+    Section order is covered by the Jasmine spec. The test user needs at
+    least one generate permission; without it this fails instead of skipping.
     """
-    with step("Verify Search Section Heading"):
-        expect(content_gen.search_heading).to_have_text(
-            re.compile(r"Search Pre-Created Content")
-        )
-        expect(content_gen.search_section.get_by_test_id("content-search-input")).to_be_visible()
-        expect(content_gen.search_section.get_by_test_id("status-dropdown")).to_be_visible()
+    with step("Verify Generate New Content Section"):
+        expect(content_gen.generate_heading).to_be_visible()
 
-    # hasPermission hides with display:none (element stays in DOM).
-    if not content_gen.generate_heading.is_visible():
-        pytest.skip("Test user has no generate permissions")
-
-    with step("Verify Search Section Is Below Generate Section"):
-        generate_y = content_gen.generate_heading.bounding_box()["y"]
-        search_y = content_gen.search_heading.bounding_box()["y"]
-        assert search_y > generate_y, "Search section should render below Generate New Content"
+    with step("Verify Search Pre-Created Content Section"):
+        expect(content_gen.search_heading).to_be_visible()
+        expect(content_gen.search_section.locator(content_gen.search_input)).to_be_visible()
+        expect(content_gen.search_section.locator(content_gen.status_dropdown)).to_be_visible()
 
 
 def test_cg_view_edit_page_elements(content_gen, logged_in_page, step):

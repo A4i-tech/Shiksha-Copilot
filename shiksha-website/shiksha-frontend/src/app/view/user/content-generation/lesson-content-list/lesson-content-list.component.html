@@ -45,13 +45,14 @@
     </div>
   </div>
 
-  <!-- Hidden (display:none) by hasPermission when the user holds none of the three permissions. -->
   <section
     data-testid="generate-new-content"
+    aria-labelledby="generate-new-content-heading"
     class="mt-6"
-    [hasPermission]="['lesson-resource.generate', 'lesson-plan.generate', 'presentation.generate.arbitrary']"
+    [hasPermission]="generatePermissions"
   >
     <h2
+      id="generate-new-content-heading"
       data-testid="generate-new-content-heading"
       class="text-lg md:text-xl font-semibold text-content"
     >
@@ -66,321 +67,321 @@
         <img src="assets/icons/edit_primary.svg" alt="" />
         <span class="text-sm md:text-base">{{'Generate Lesson Plan' | translate}}</span>
       </button>
-      <button [hasPermission]="['presentation.generate.arbitrary']" class="btn-outline-primary flex gap-2 items-center justify-center md:justify-start w-full md:w-fit" routerLink="/content-generation/presentation">
+      <button data-testid="generate-presentation-btn" [hasPermission]="['presentation.generate.arbitrary']" class="btn-outline-primary flex gap-2 items-center justify-center md:justify-start w-full md:w-fit" routerLink="/content-generation/presentation">
         <img src="assets/icons/edit_primary.svg" alt="" />
         <span class="text-sm md:text-base">{{"Generate Presentation" | translate}}</span>
       </button>
     </div>
   </section>
 
-  <!-- Searches content the teacher already created; it never generates anything new. -->
   <section
     data-testid="search-pre-created-content"
     aria-labelledby="search-pre-created-heading"
+    aria-describedby="search-pre-created-description"
     class="mt-8 pt-6 border-t border-shade-80"
   >
-  <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
-    <div>
-      <h2
-        id="search-pre-created-heading"
-        data-testid="search-pre-created-heading"
-        class="text-lg md:text-xl font-semibold text-content"
-      >
-        {{ "Search Pre-Created Content" | translate }}
-      </h2>
-      <p data-testid="search-pre-created-description" class="text-sm text-content-70 mt-1">
-        {{ "Find content you have already created. This does not create new content." | translate }}
-      </p>
+    <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+      <div>
+        <h2
+          id="search-pre-created-heading"
+          data-testid="search-pre-created-heading"
+          class="text-lg md:text-xl font-semibold text-content"
+        >
+          {{ "Search Pre-Created Content" | translate }}
+        </h2>
+        <p id="search-pre-created-description" data-testid="search-pre-created-description" class="text-sm text-content-70 mt-1">
+          {{ "Find content you have already created. This does not create new content." | translate }}
+        </p>
+      </div>
+
+      <div class="relative w-full md:w-72 shrink-0">
+        <input
+          data-testid="content-search-input"
+          [(ngModel)]="searchText"
+          (input)="searchInputChanged($event)"
+          class="appearance-none rounded pl-8 py-2 px-3 text-content leading-tight focus:outline-none w-full border border-[#ccc] h-9"
+          type="text"
+          placeholder="{{ 'Search content' | translate }}"
+        />
+        <img
+          class="absolute left-2 top-1/2 transform -translate-y-1/2 w-5 h-5"
+          src="assets/icons/Search (1).svg"
+          alt=""
+        />
+      </div>
     </div>
 
-    <div class="relative w-full md:w-72 shrink-0">
-      <input
-        data-testid="content-search-input"
-        [(ngModel)]="searchText"
-        (input)="searchInputChanged($event)"
-        class="appearance-none rounded pl-8 py-2 px-3 text-content leading-tight focus:outline-none w-full border border-[#ccc] h-9"
-        type="text"
-        placeholder="{{ 'Search content' | translate }}"
-      />
-      <img
-        class="absolute left-2 top-1/2 transform -translate-y-1/2 w-5 h-5"
-        src="assets/icons/Search (1).svg"
-        alt=""
-      />
-    </div>
-  </div>
-
-  <div
-    class="right_boxes w-full md:w-auto mt-5 border rounded-lg p-4 bg-primary-30"
-  >
-    <ng-container *ngTemplateOutlet="elementGroup"></ng-container>
-  </div>
-  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-5">
     <div
-      data-testid="content-card"
-      class="card px-6 py-8 rounded-xl bg-white border flex flex-col justify-between"
-      *ngFor="let item of list"
+      class="right_boxes w-full md:w-auto mt-5 border rounded-lg p-4 bg-primary-30"
     >
-      <ng-container *ngIf="item.isPresentation; else lessonOrResourceGenerated">
-          <div>
-            <div class="flex justify-between">
-              <div
-                class="icon flex justify-center items-center"
-                [ngClass]="{
-                  'bg-[#EB7B4A]': item.presentationStatusTone === 'completed',
-                  'bg-[#D85B32]': item.presentationStatusTone === 'failed',
-                  'bg-[#8B93A7]': item.presentationStatusTone === 'idle',
-                  'bg-[#EDF6FE]': item.presentationStatusTone === 'running'
-                }"
-              >
-                <img src="assets/icons/ppt-solid.svg" alt="" />
-              </div>
-              <div class="flex flex-col items-end">
-                <p class="text-xs font-normal text-content-70">
-                  {{'Created On' | translate}}:
-                  <span>{{ item.updatedAt | date : "MMM dd,yyyy" }}</span>
-                </p>
-              </div>
-            </div>
-
-            <div class="mt-5">
-              <h2 class="text-base font-medium">
-                {{ "Title" | translate }}:
-                <span>{{ item.presentationTitle }}</span>
-              </h2>
-              <div class="flex items-center justify-start my-2">
-                <p
-                  class="px-2 py-1 rounded-full text-primary bg-[#F1F4FD] text-[11px] inline-block me-2"
-                >
-                  {{ item.presentationSlideCount || '-' }} {{ "slides" | translate }}
-                </p>
-                <p
-                  class="px-2 py-1 rounded-full text-[#DE3B40] bg-[#FDF2F2] text-[11px] inline-block"
-                >
-                  {{ "Presentation" | translate }}
-                </p>
-                <p
-                  class="px-2 py-1 rounded-full text-[11px] inline-flex items-center gap-1 ms-2"
+      <ng-container *ngTemplateOutlet="elementGroup"></ng-container>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-5">
+      <div
+        data-testid="content-card"
+        class="card px-6 py-8 rounded-xl bg-white border flex flex-col justify-between"
+        *ngFor="let item of list"
+      >
+        <ng-container *ngIf="item.isPresentation; else lessonOrResourceGenerated">
+            <div>
+              <div class="flex justify-between">
+                <div
+                  class="icon flex justify-center items-center"
                   [ngClass]="{
-                    'text-[#3D8248] bg-[#F1FDF3]': item.presentationStatusTone === 'completed',
-                    'text-[#DE3B40] bg-[#FDF2F2]': item.presentationStatusTone === 'failed',
-                    'text-[#566074] bg-[#F3F4F8]': item.presentationStatusTone === 'idle',
-                    'text-[#B76E00] bg-[#FFF7E8]': item.presentationStatusTone === 'running'
+                    'bg-[#EB7B4A]': item.presentationStatusTone === 'completed',
+                    'bg-[#D85B32]': item.presentationStatusTone === 'failed',
+                    'bg-[#8B93A7]': item.presentationStatusTone === 'idle',
+                    'bg-[#EDF6FE]': item.presentationStatusTone === 'running'
                   }"
                 >
-                  <span
-                    class="w-4 h-4 rounded-full inline-flex items-center justify-center shrink-0"
+                  <img src="assets/icons/ppt-solid.svg" alt="" />
+                </div>
+                <div class="flex flex-col items-end">
+                  <p class="text-xs font-normal text-content-70">
+                    {{'Created On' | translate}}:
+                    <span>{{ item.updatedAt | date : "MMM dd,yyyy" }}</span>
+                  </p>
+                </div>
+              </div>
+
+              <div class="mt-5">
+                <h2 class="text-base font-medium">
+                  {{ "Title" | translate }}:
+                  <span>{{ item.presentationTitle }}</span>
+                </h2>
+                <div class="flex items-center justify-start my-2">
+                  <p
+                    class="px-2 py-1 rounded-full text-primary bg-[#F1F4FD] text-[11px] inline-block me-2"
+                  >
+                    {{ item.presentationSlideCount || '-' }} {{ "slides" | translate }}
+                  </p>
+                  <p
+                    class="px-2 py-1 rounded-full text-[#DE3B40] bg-[#FDF2F2] text-[11px] inline-block"
+                  >
+                    {{ "Presentation" | translate }}
+                  </p>
+                  <p
+                    class="px-2 py-1 rounded-full text-[11px] inline-flex items-center gap-1 ms-2"
                     [ngClass]="{
-                      'bg-[#3D8248]': item.presentationStatusTone === 'completed',
-                      'bg-[#DE3B40]': item.presentationStatusTone === 'failed',
-                      'bg-[#7B8198]': item.presentationStatusTone === 'idle',
-                      'bg-[#F59E0B]': item.presentationStatusTone === 'running'
+                      'text-[#3D8248] bg-[#F1FDF3]': item.presentationStatusTone === 'completed',
+                      'text-[#DE3B40] bg-[#FDF2F2]': item.presentationStatusTone === 'failed',
+                      'text-[#566074] bg-[#F3F4F8]': item.presentationStatusTone === 'idle',
+                      'text-[#B76E00] bg-[#FFF7E8]': item.presentationStatusTone === 'running'
                     }"
                   >
-                    <img
-                      class="w-3 h-3"
-                      [src]="
-                        item.presentationStatusTone === 'completed'
-                          ? 'assets/icons/completed-sm.svg'
-                          : item.presentationStatusTone === 'failed'
-                          ? 'assets/icons/failed-sm.svg'
-                          : item.presentationStatusTone === 'idle'
-                          ? 'assets/icons/draft-light-sm.svg'
-                          : 'assets/icons/running-sm.svg'
-                      "
-                      alt=""
-                    />
-                  </span>
-                  <span>{{ item.presentationStatusLabel | translate }}</span>
+                    <span
+                      class="w-4 h-4 rounded-full inline-flex items-center justify-center shrink-0"
+                      [ngClass]="{
+                        'bg-[#3D8248]': item.presentationStatusTone === 'completed',
+                        'bg-[#DE3B40]': item.presentationStatusTone === 'failed',
+                        'bg-[#7B8198]': item.presentationStatusTone === 'idle',
+                        'bg-[#F59E0B]': item.presentationStatusTone === 'running'
+                      }"
+                    >
+                      <img
+                        class="w-3 h-3"
+                        [src]="
+                          item.presentationStatusTone === 'completed'
+                            ? 'assets/icons/completed-sm.svg'
+                            : item.presentationStatusTone === 'failed'
+                            ? 'assets/icons/failed-sm.svg'
+                            : item.presentationStatusTone === 'idle'
+                            ? 'assets/icons/draft-light-sm.svg'
+                            : 'assets/icons/running-sm.svg'
+                        "
+                        alt=""
+                      />
+                    </span>
+                    <span>{{ item.presentationStatusLabel | translate }}</span>
+                  </p>
+                </div>
+                <p class="my-2 text-xs font-normal text-content-70">
+                  {{ "Status" | translate }} :
+                  <span>{{ item.presentationStatusMessage }}</span>
+                </p>
+                <p class="mt-2 text-xs font-normal text-content-70">
+                  {{ "Instructions" | translate }} :
+                  <span>{{ item.instruction || ("No extra instructions" | translate) }}</span>
                 </p>
               </div>
-              <p class="my-2 text-xs font-normal text-content-70">
-                {{ "Status" | translate }} :
-                <span>{{ item.presentationStatusMessage }}</span>
-              </p>
-              <p class="mt-2 text-xs font-normal text-content-70">
-                {{ "Instructions" | translate }} :
-                <span>{{ item.instruction || ("No extra instructions" | translate) }}</span>
-              </p>
             </div>
-          </div>
-          <div class="flex gap-2 mt-7 items-end">
-            <button
-              (click)="!item.isCompleted ? onViewDraft(item) : onView(item)"
-              class="w-full py-2 rounded bg-[#EB7B4A] hover:bg-[#D85B32]"
-            >
-              <span class="text-white text-sm font-semibold">
-                {{ (item.isCompleted ? "View Presentation" : "View Progress") | translate }}
-              </span>
-            </button>
-          </div>
-      </ng-container>
-      <ng-template #lessonOrResourceGenerated>
-          <div>
-            <div class="flex justify-between">
-              <div
-                class="icon flex justify-center items-center"
-                [ngClass]="{
-                  'bg-purple-100': item.isLesson,
-                  'bg-green-100': !item.isLesson
-                }"
+            <div class="flex gap-2 mt-7 items-end">
+              <button
+                (click)="!item.isCompleted ? onViewDraft(item) : onView(item)"
+                class="w-full py-2 rounded bg-[#EB7B4A] hover:bg-[#D85B32]"
               >
-                <img
-                  *ngIf="item.isLesson"
-                  src="assets/icons/basil_document-solid.svg"
-                  alt=""
-                />
-                <img
-                  *ngIf="!item.isLesson"
-                  src="assets/icons/basil_document-solid (1).svg"
-                  alt=""
-                />
-              </div>
-              <div class="flex flex-col items-end">
-                <p class="text-xs font-normal text-content-70">
-                  {{'Modified On' | translate}}:
-                  <span>{{ item.updatedAt | date : "MMM dd,yyyy" }}</span>
-                </p>
+                <span class="text-white text-sm font-semibold">
+                  {{ (item.isCompleted ? "View Presentation" : "View Progress") | translate }}
+                </span>
+              </button>
+            </div>
+        </ng-container>
+        <ng-template #lessonOrResourceGenerated>
+            <div>
+              <div class="flex justify-between">
                 <div
-                  class="bg-warn mt-2 px-4 py-1 rounded-2xl"
-                  *ngIf="!item.isCompleted"
+                  class="icon flex justify-center items-center"
+                  [ngClass]="{
+                    'bg-purple-100': item.isLesson,
+                    'bg-green-100': !item.isLesson
+                  }"
                 >
-                  <div class="flex items-center gap-1">
-                    <img
-                      src="assets/icons/draft-light-sm.svg"
-                      alt=""
-                    />
-                    <span class="text-sm text-white">{{"Draft" | translate}}</span>
+                  <img
+                    *ngIf="item.isLesson"
+                    src="assets/icons/basil_document-solid.svg"
+                    alt=""
+                  />
+                  <img
+                    *ngIf="!item.isLesson"
+                    src="assets/icons/basil_document-solid (1).svg"
+                    alt=""
+                  />
+                </div>
+                <div class="flex flex-col items-end">
+                  <p class="text-xs font-normal text-content-70">
+                    {{'Modified On' | translate}}:
+                    <span>{{ item.updatedAt | date : "MMM dd,yyyy" }}</span>
+                  </p>
+                  <div
+                    class="bg-warn mt-2 px-4 py-1 rounded-2xl"
+                    *ngIf="!item.isCompleted"
+                  >
+                    <div class="flex items-center gap-1">
+                      <img
+                        src="assets/icons/draft-light-sm.svg"
+                        alt=""
+                      />
+                      <span class="text-sm text-white">{{"Draft" | translate}}</span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <div class="mt-5">
-              <h2 data-testid="card-subject-label" class="text-base font-medium">
-                {{ "Subject" | translate }}:
-                <span>{{
-                  item.isLesson ? utilityservice.getSubjectDisplayName(item.lesson.subjects, item.lesson.board) : utilityservice.getSubjectDisplayName(item.resource.subjects, item.resource.board)
-                }}</span>
-              </h2>
-              <div class="flex items-center justify-start my-2">
-                <p
-                  class="px-2 py-1 rounded-full text-primary bg-[#F1F4FD] text-[11px] inline-block me-2"
-                >
-                  Class
-                  {{ item.isLesson ? item.lesson.class : item.resource.class }}
+              <div class="mt-5">
+                <h2 data-testid="card-subject-label" class="text-base font-medium">
+                  {{ "Subject" | translate }}:
+                  <span>{{
+                    item.isLesson ? utilityservice.getSubjectDisplayName(item.lesson.subjects, item.lesson.board) : utilityservice.getSubjectDisplayName(item.resource.subjects, item.resource.board)
+                  }}</span>
+                </h2>
+                <div class="flex items-center justify-start my-2">
+                  <p
+                    class="px-2 py-1 rounded-full text-primary bg-[#F1F4FD] text-[11px] inline-block me-2"
+                  >
+                    Class
+                    {{ item.isLesson ? item.lesson.class : item.resource.class }}
+                  </p>
+                  <p
+                    class="px-2 py-1 rounded-full text-[#DE3B40] bg-[#FDF2F2] text-[11px] inline-block"
+                  >
+                    {{ (item.isLesson ? 'Lesson Plan' : "Lesson Resource") | translate }}
+                  </p>
+                </div>
+                <p class="my-2 text-xs font-normal text-content-70">
+                  {{ "Chapter" | translate }} :
+                  <span>{{
+                    item.isLesson
+                      ? item.lesson.chapter?.orderNumber +
+                        ". " +
+                        item.lesson.chapter.topics
+                      : item.resource.chapter?.orderNumber +
+                        ". " +
+                        item.resource.chapter.topics
+                  }}</span>
                 </p>
-                <p
-                  class="px-2 py-1 rounded-full text-[#DE3B40] bg-[#FDF2F2] text-[11px] inline-block"
-                >
-                  {{ (item.isLesson ? 'Lesson Plan' : "Lesson Resource") | translate }}
+                <p class="mt-2 text-xs font-normal text-content-70">
+                  {{ "Sub-Topic" | translate }} :
+                  <ng-container *ngIf="item.isLesson; else resourceSubtopics">
+                    <span class="" *ngFor="let subtopic of item.lesson.subTopics">
+                      <p
+                        class="subtopic-chip px-2 py-1 my-1 rounded-full text-[#3D8248] bg-[#F1FDF3] text-[11px] me-2 inline-block"
+                      >
+                        {{ subtopic }}
+                      </p>
+                    </span>
+                  </ng-container>
+                  <ng-template #resourceSubtopics>
+                    <span class="" *ngFor="let subtopic of item.resource.subTopics">
+                      <p
+                        class="subtopic-chip px-2 py-1 my-1 rounded-full text-[#3D8248] bg-[#F1FDF3] text-[11px] me-2 inline-block"
+                      >
+                        {{ subtopic }}
+                      </p>
+                    </span>
+                  </ng-template>
                 </p>
               </div>
-              <p class="my-2 text-xs font-normal text-content-70">
-                {{ "Chapter" | translate }} :
-                <span>{{
-                  item.isLesson
-                    ? item.lesson.chapter?.orderNumber +
-                      ". " +
-                      item.lesson.chapter.topics
-                    : item.resource.chapter?.orderNumber +
-                      ". " +
-                      item.resource.chapter.topics
-                }}</span>
-              </p>
-              <p class="mt-2 text-xs font-normal text-content-70">
-                {{ "Sub-Topic" | translate }} :
-                <ng-container *ngIf="item.isLesson; else resourceSubtopics">
-                  <span class="" *ngFor="let subtopic of item.lesson.subTopics">
-                    <p
-                      class="subtopic-chip px-2 py-1 my-1 rounded-full text-[#3D8248] bg-[#F1FDF3] text-[11px] me-2 inline-block"
-                    >
-                      {{ subtopic }}
-                    </p>
-                  </span>
-                </ng-container>
-                <ng-template #resourceSubtopics>
-                  <span class="" *ngFor="let subtopic of item.resource.subTopics">
-                    <p
-                      class="subtopic-chip px-2 py-1 my-1 rounded-full text-[#3D8248] bg-[#F1FDF3] text-[11px] me-2 inline-block"
-                    >
-                      {{ subtopic }}
-                    </p>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-2 mt-7 sm:items-end">
+              <button
+                data-testid="card-view-button"
+                (click)="!item.isCompleted ? onViewDraft(item) : onView(item)"
+                class="w-full sm:flex-[2] h-10 rounded whitespace-nowrap text-sm"
+                [ngClass]="{
+                  'bg-[#8353E2]': item.isLesson,
+                  'bg-[#117B34]': !item.isLesson
+                }"
+              >
+                <span
+                  class="text-white text-sm font-semibold"
+                  *ngIf="!item.isCompleted; else viewLR"
+                >
+                  {{ "Continue Editing" | translate }}
+                </span>
+                <ng-template #viewLR>
+                  <span class="text-white text-sm font-semibold">
+                    {{
+                      (item.isLesson ? 'View Lesson Plan' : "View Lesson Resource")
+                        | translate
+                    }}
                   </span>
                 </ng-template>
-              </p>
-            </div>
-          </div>
-          <div class="flex flex-col sm:flex-row gap-2 mt-7 sm:items-end">
-            <button
-              data-testid="card-view-button"
-              (click)="!item.isCompleted ? onViewDraft(item) : onView(item)"
-              class="w-full sm:flex-[2] h-10 rounded whitespace-nowrap text-sm"
-              [ngClass]="{
-                'bg-[#8353E2]': item.isLesson,
-                'bg-[#117B34]': !item.isLesson
-              }"
-            >
-              <span
-                class="text-white text-sm font-semibold"
-                *ngIf="!item.isCompleted; else viewLR"
+              </button>
+              <button [hasPermission]="['chat.use']" (click)="chat(item?._id, item?.lesson?.chapter?._id)" title="{{'Chatbot' | translate}}" *ngIf="item.isLesson && item.isCompleted" class="w-full sm:flex-1 h-10 whitespace-nowrap text-sm border border-[#8353E2] text-[#8353E2] hover:bg-purple-50 rounded font-semibold">{{'Chatbot' | translate}}</button>
+              <button
+                [hasPermission]="[item.isLesson ? 'lesson-plan.delete' : 'lesson-resource.delete']"
+                *ngIf="!item.isPresentation"
+                (click)="onDelete(item)"
+                title="{{'Delete' | translate}}"
+                class="w-full sm:w-auto sm:shrink-0 flex items-center justify-center h-10 px-3 rounded border border-[#DE3B40] hover:bg-[#FDF2F2]"
               >
-                {{ "Continue Editing" | translate }}
-              </span>
-              <ng-template #viewLR>
-                <span class="text-white text-sm font-semibold">
-                  {{
-                    (item.isLesson ? 'View Lesson Plan' : "View Lesson Resource")
-                      | translate
-                  }}
-                </span>
-              </ng-template>
-            </button>
-            <button [hasPermission]="['chat.use']" (click)="chat(item?._id, item?.lesson?.chapter?._id)" title="{{'Chatbot' | translate}}" *ngIf="item.isLesson && item.isCompleted" class="w-full sm:flex-1 h-10 whitespace-nowrap text-sm border border-[#8353E2] text-[#8353E2] hover:bg-purple-50 rounded font-semibold">{{'Chatbot' | translate}}</button>
-            <button
-              [hasPermission]="[item.isLesson ? 'lesson-plan.delete' : 'lesson-resource.delete']"
-              *ngIf="!item.isPresentation"
-              (click)="onDelete(item)"
-              title="{{'Delete' | translate}}"
-              class="w-full sm:w-auto sm:shrink-0 flex items-center justify-center h-10 px-3 rounded border border-[#DE3B40] hover:bg-[#FDF2F2]"
-            >
-              <img src="assets/icons/trash.svg" alt="{{'Delete' | translate}}" />
-            </button>
-          </div>
-      </ng-template>
-    </div>
-  </div>
-
-  <app-delete-detail
-    *ngIf="showDeletePopup"
-    [config]="{
-      heading: deleteHeading,
-      confirmationText: 'Are you sure you want to delete this? This action cannot be undone.',
-      primaryButtonLabel: 'Delete',
-      primaryButtonType: 'delete'
-    }"
-    (close)="confirmDelete($event)"
-  ></app-delete-detail>
-
-  <app-pagination
-    [totalItems]="totalItems"
-    [pageSize]="pageSize"
-    [currentPage]="currentPage"
-    (pageChange)="onPageChange($event)"
-  >
-  </app-pagination>
-  <div *ngIf="list.length === 0" class="flex items-center justify-center">
-    <div class="rounded-xl bg-white border px-6 py-8 w-[460px] h-[300px] flex flex-col items-center">
-      <div class="rounded-full bg-warn-50 p-4 my-8">
-        <img src="assets/icons/no-file.svg" alt="" />
-      </div>
-      <div>
-        <h2 data-testid="no-items-message" class="text-base font-medium text-center">
-          {{ "No items found" | translate }}
-        </h2>
+                <img src="assets/icons/trash.svg" alt="{{'Delete' | translate}}" />
+              </button>
+            </div>
+        </ng-template>
       </div>
     </div>
-  </div>
+
+    <app-delete-detail
+      *ngIf="showDeletePopup"
+      [config]="{
+        heading: deleteHeading,
+        confirmationText: 'Are you sure you want to delete this? This action cannot be undone.',
+        primaryButtonLabel: 'Delete',
+        primaryButtonType: 'delete'
+      }"
+      (close)="confirmDelete($event)"
+    ></app-delete-detail>
+
+    <app-pagination
+      [totalItems]="totalItems"
+      [pageSize]="pageSize"
+      [currentPage]="currentPage"
+      (pageChange)="onPageChange($event)"
+    >
+    </app-pagination>
+    <div *ngIf="list.length === 0" class="flex items-center justify-center">
+      <div class="rounded-xl bg-white border px-6 py-8 w-[460px] h-[300px] flex flex-col items-center">
+        <div class="rounded-full bg-warn-50 p-4 my-8">
+          <img src="assets/icons/no-file.svg" alt="" />
+        </div>
+        <div>
+          <h2 data-testid="no-items-message" class="text-base font-medium text-center">
+            {{ "No items found" | translate }}
+          </h2>
+        </div>
+      </div>
+    </div>
   </section>
 </div>
 
@@ -452,7 +453,7 @@
       <label for="month" class="form-control-label inline-flex items-center gap-1">{{'Month' | translate}}</label>
       <input
         type="month"
-        placeholder="Select Month"
+        placeholder="{{ 'Select Month' | translate }}"
         [(ngModel)]="selectedMonth"
         (change)="onMonthSelection($event)"
         class="form-control block"
