@@ -1021,15 +1021,16 @@
   "New role": "కొత్త పాత్ర",
   "Select a role": "పాత్రను ఎంచుకోండి",
   "Each row needs the phone number of an existing teacher and the school role name, for example Power Teacher.": "ప్రతి వరుసలో ఉన్న ఉపాధ్యాయుని ఫోన్ నంబర్ మరియు పాఠశాల పాత్ర పేరు ఉండాలి, ఉదాహరణకు Power Teacher.",
-  "You can create 3 types of content:": "మీరు 3 రకాల కంటెంట్‌ను సృష్టించవచ్చు:",
-  "Lesson Resource: includes activities, examples, extra questions.": "పాఠ్య వనరు: కార్యకలాపాలు, ఉదాహరణలు, అదనపు ప్రశ్నలు ఉంటాయి.",
-  "Lesson Plan: what to teach in one class.": "పాఠ్య ప్రణాళిక: ఒక తరగతిలో ఏమి బోధించాలి.",
-  "Period Plan: what to teach in one class.": "పీరియడ్ ప్రణాళిక: ఒక తరగతిలో ఏమి బోధించాలి.",
-  "Presentation: classroom-ready slides with images.": "ప్రెజెంటేషన్: చిత్రాలతో తరగతికి సిద్ధంగా ఉన్న స్లైడ్‌లు.",
   "Generate New Content": "కొత్త కంటెంట్‌ను రూపొందించండి",
   "Generate New Lesson Resource": "కొత్త పాఠ్య వనరును రూపొందించండి",
   "Generate New Lesson Plan": "కొత్త పాఠ్య ప్రణాళికను రూపొందించండి",
   "Generate New Period Plan": "కొత్త పీరియడ్ ప్రణాళికను రూపొందించండి",
   "Generate New Presentation": "కొత్త ప్రెజెంటేషన్‌ను రూపొందించండి",
-  "Write the period plan for an assigned chapter": "కేటాయించిన అధ్యాయం కోసం పీరియడ్ ప్రణాళికను రాయండి"
+  "Write the period plan for an assigned chapter": "కేటాయించిన అధ్యాయం కోసం పీరియడ్ ప్రణాళికను రాయండి",
+  "includes activities, examples, extra questions": "కార్యకలాపాలు, ఉదాహరణలు, అదనపు ప్రశ్నలు ఉంటాయి",
+  "what to teach in one class": "ఒక తరగతిలో ఏమి బోధించాలి",
+  "classroom-ready slides with images": "చిత్రాలతో తరగతికి సిద్ధంగా ఉన్న స్లైడ్‌లు",
+  "You can create {{count}} types of content:": "మీరు {{count}} రకాల కంటెంట్‌ను సృష్టించవచ్చు:",
+  "You can create 1 type of content:": "మీరు 1 రకం కంటెంట్‌ను సృష్టించవచ్చు:",
+  "Presentation": "ప్రెజెంటేషన్"
 }

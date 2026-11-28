@@ -1,4 +1,4 @@
-<div class="p-8 bg-white rounded-sm min-h-[90vh]">
+<div class="p-4 md:p-8 bg-white rounded-sm min-h-[90vh]">
   <h1
     data-testid="lesson-content-heading"
     class="text-xl md:text-3xl font-bold text-content main-heading leading-[48px]"
@@ -6,6 +6,7 @@
     {{ "Lesson Content" | translate }}
   </h1>
   <div
+    *ngIf="allowedContentTypes.length"
     data-testid="lesson-content-info"
     class="rounded-lg border border-primary relative bg-[#E5EDF67D] text-sm md:text-[16px] py-6 px-7 mt-5 text-content-100 grid grid-cols-[auto,1fr] gap-2 items-start"
   >
@@ -16,11 +17,16 @@
     />
 
     <div>
-      <p>{{ "You can create 3 types of content:" | translate }}</p>
+      <p data-testid="content-types-count">
+        {{
+          (allowedContentTypes.length === 1 ? "You can create 1 type of content:" : "You can create {{count}} types of content:")
+            | translate: { count: allowedContentTypes.length }
+        }}
+      </p>
       <ol class="list-decimal list-inside mt-1 space-y-1">
-        <li>{{ "Lesson Resource: includes activities, examples, extra questions." | translate }}</li>
-        <li>{{ "Lesson Plan: what to teach in one class." | translate }}</li>
-        <li>{{ "Presentation: classroom-ready slides with images." | translate }}</li>
+        <li *ngFor="let type of allowedContentTypes" data-testid="content-type-item">
+          <strong>{{ type.label | translate }}:</strong> {{ type.description | translate }}.
+        </li>
       </ol>
     </div>
   </div>

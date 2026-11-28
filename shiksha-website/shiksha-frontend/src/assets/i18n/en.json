@@ -1435,16 +1435,6 @@
   "New role": "New role",
   "Select a role": "Select a role",
   "Each row needs the phone number of an existing teacher and the school role name, for example Power Teacher.": "Each row needs the phone number of an existing teacher and the school role name, for example Power Teacher.",
-  "You can create 3 types of content:": "You can create 3 types of content:",
-  "Lesson Resource: includes activities, examples, extra questions.": "Lesson Resource: includes activities, examples, extra questions.",
-  "Lesson Plan: what to teach in one class.": [
-    {
-      "rule": "state == 'Telangana'",
-      "value": "Period Plan: what to teach in one class."
-    },
-    "Lesson Plan: what to teach in one class."
-  ],
-  "Presentation: classroom-ready slides with images.": "Presentation: classroom-ready slides with images.",
   "Generate New Content": "Generate New Content",
   "Generate New Lesson Resource": "Generate New Lesson Resource",
   "Generate New Lesson Plan": [
@@ -1455,7 +1445,12 @@
     "Generate New Lesson Plan"
   ],
   "Generate New Presentation": "Generate New Presentation",
-  "Period Plan: what to teach in one class.": "Period Plan: what to teach in one class.",
   "Generate New Period Plan": "Generate New Period Plan",
-  "Write the period plan for an assigned chapter": "Write the period plan for an assigned chapter"
+  "Write the period plan for an assigned chapter": "Write the period plan for an assigned chapter",
+  "includes activities, examples, extra questions": "includes activities, examples, extra questions",
+  "what to teach in one class": "what to teach in one class",
+  "classroom-ready slides with images": "classroom-ready slides with images",
+  "You can create {{count}} types of content:": "You can create {{count}} types of content:",
+  "You can create 1 type of content:": "You can create 1 type of content:",
+  "Presentation": "Presentation"
 }
